@@ -65,7 +65,9 @@ test('a staff member adds a phone booking and it appears on the floor', { skip }
     await page.fill('#bk-add-party', '2');
     await page.fill('#bk-add-date', TODAY);
     await page.fill('#bk-add-time', '19:30');
-    await page.selectOption('#bk-add-table', 'tbl-bar-3');
+    // S110 UI: choose specific seats (the default stays auto-assign).
+    await page.check('#bk-seat-mode-choose');
+    await page.check('[data-bookings-seats] [data-bookings-seat="tbl-bar-3"]');
     await page.fill('#bk-add-name', 'Katrín');
     await page.fill('#bk-add-phone', '+354 555 2222');
     await page.click('[data-bookings-create-submit]');
@@ -91,9 +93,12 @@ test('a staff member moves a reservation to another table', { skip }, async () =
   try {
     await navigateTo(page, '#bookings');
     await page.click('[data-bookings-table="tbl-bar-1"]'); // Erla, confirmed on Bar 1
-    await page.waitForSelector('[data-bookings-assign-select]');
+    await page.waitForSelector('[data-bookings-move-seats]');
 
-    await page.selectOption('[data-bookings-assign-select]', 'tbl-bar-4');
+    // S110 UI: the current seat is pre-ticked; move it to Bar 4.
+    assert.equal(await page.isChecked('[data-bookings-move-seats] [data-bookings-seat="tbl-bar-1"]'), true);
+    await page.uncheck('[data-bookings-move-seats] [data-bookings-seat="tbl-bar-1"]');
+    await page.check('[data-bookings-move-seats] [data-bookings-seat="tbl-bar-4"]');
     await page.click('[data-bookings-assign]');
     await until(() => bookings.callsFor('assign').length > 0, { message: 'assign' });
 

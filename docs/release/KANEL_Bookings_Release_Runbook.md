@@ -146,6 +146,21 @@ In Alcedo (staff): open Bookings for today and a future day. Create a test booki
 for 2, assign seats, change its status, then cancel it. Check the Bar shows sections
 A/B/C. Book two stools across 8|9 and confirm it is refused with a clear message.
 
+### A3b. S110 seat integrity — **APPROVAL** (production database write)
+Details: [`KANEL_S110_Seat_Integrity_Impact.md`](KANEL_S110_Seat_Integrity_Impact.md).
+Do it before the merge.
+1. Run `docs/release/sql/KANEL_S110_preflight_readonly.sql` immediately before
+   applying. Proceed only with 0 FAIL, after the owner has reviewed any WARN.
+2. Run `docs/release/sql/KANEL_apply_5_s110_booking_seat_integrity.sql` whole (one
+   transaction; it refuses unless S109 is recorded and S110 is not).
+3. Read-only checks: the ledger has `20261027090000`; the four S110 functions match
+   the CI-tested build; grants are unchanged.
+4. Rollback: `KANEL_S110_rollback.sql`. It must run before
+   `KANEL_S106_S109_rollback.sql`, which refuses while S110 is recorded.
+
+### A4a. Staff test, auto-assign part — before the merge
+[`KANEL_A4_Staff_Test.md`](KANEL_A4_Staff_Test.md) Part A1, on today's live UI.
+
 ### A5. Merge PR #135 — **APPROVAL** (Netlify deploys app.alcedo.is from `main`)
 - Mark the PR ready, then merge once CI and approvals are green. Browser CI status:
   see [`KANEL_PR135_Browser_CI_Evidence.md`](KANEL_PR135_Browser_CI_Evidence.md).
@@ -155,6 +170,11 @@ A/B/C. Book two stools across 8|9 and confirm it is refused with a clear message
   Merging after A3 keeps `main` equal to production.
 - After the Netlify deploy: hard-reload app.alcedo.is, open Bookings, and repeat the
   A4 staff check.
+
+### A4b. MANDATORY post-deployment gate — immediately after the A5 deploy
+Run the full multi-stool staff UI test ([`KANEL_A4_Staff_Test.md`](KANEL_A4_Staff_Test.md)
+Part A2) before A6 or any further rollout. If it fails, Netlify → publish the
+previous deploy, then stop.
 
 ### A6. Deploy `atlas-bookings` (staff edge) from merged `main` — **APPROVAL**
 ```bash

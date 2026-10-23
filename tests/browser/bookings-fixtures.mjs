@@ -55,6 +55,28 @@ export function defaultRoom() {
   };
 }
 
+// KANEL Bar (S106/S110 shape): 16 one-seat stools in three fixed sections —
+// A Bar 1–8, B Bar 9–12, C Bar 13–16 — with a party of 2 on Bar 3 + Bar 4 from
+// 16:00 to 18:00 (venue time = UTC). TEST DATA only.
+export function kanelRoom() {
+  const segment = (n) => (n <= 8 ? 'A' : n <= 12 ? 'B' : 'C');
+  const stools = Array.from({ length: 16 }, (_, i) => {
+    const n = i + 1;
+    return { id: `bar-${n}`, area_id: 'area-bar', label: `Bar ${n}`, seat_capacity: 1, min_party: 0, priority: n,
+      is_bookable: true, block_online: false, temporarily_unavailable: false, unavailable_from: null, unavailable_until: null,
+      floor_x: n, floor_y: 1, shape: 'round', position_index: n, segment: segment(n) };
+  });
+  return {
+    areas: [{ id: 'area-bar', name: 'Bar', section_colour: 'teal', display_order: 1, is_active: true, allocation_mode: 'tables' }],
+    tables: stools,
+    combinations: [],
+    settings: { ...defaultRoom().settings, max_party_online: 4, approval_party_threshold: 30 },
+    reservations: [
+      { id: 'res-b1', source: 'phone', status: 'confirmed', start_at: `${TODAY}T16:00:00.000Z`, end_at: `${TODAY}T18:00:00.000Z`, party_size: 2, guest_name: 'A4 TEST 1', guest_phone: '', guest_email: '', guest_requests: '', staff_notes: '', booking_reference: 'KA-1001', table_ids: ['bar-3', 'bar-4'] }
+    ]
+  };
+}
+
 export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {}) {
   const areas = new Map(room.areas.map((a) => [a.id, { ...a }]));
   const tables = new Map(room.tables.map((t) => [t.id, { ...t }]));
@@ -64,6 +86,8 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
   const allocations = new Map(); // reservation_id -> [table_id]
   const holds = [];
   const calls = [];
+  // One-shot server refusals for a POST action: rejectNext.assign = { status, error_code }.
+  const rejectNext = {};
   // S109 in-app booking inbox (per-manager). Each row: { id, reservation_id,
   // kind, title, body, route, read, created_at }. Empty by default so existing
   // tests see an empty inbox; the notifications test seeds its own.
@@ -143,6 +167,11 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
     const params = new URLSearchParams(ctx.search || '');
     calls.push({ method, action, body, search: ctx.search });
     if (!STAFF_ROLES.has(user?.role)) return forbidden();
+    if (method === 'POST' && rejectNext[action]) {
+      const { status, error_code } = rejectNext[action];
+      delete rejectNext[action];
+      return { __status: status, body: { error_code, message: 'Refused by the test backend.' } };
+    }
 
     if (method === 'GET' && (action === 'snapshot' || !action)) return snapshot(user, params.get('date'));
     if (method === 'GET' && action === 'config') {
@@ -284,7 +313,7 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
   return {
     handler,
     calls,
-    areas, tables, combinations, settings, reservations, allocations, holds, inbox,
+    areas, tables, combinations, settings, reservations, allocations, holds, inbox, rejectNext,
     reservation: (id) => reservations.get(id),
     reservationView,
     table: (id) => tables.get(id),

@@ -6,7 +6,7 @@ to the next. The runbook section is in brackets:
 [`KANEL_Bookings_Release_Runbook.md`](KANEL_Bookings_Release_Runbook.md).
 
 Current state (23 Oct 2026): **production is at S109** (A3 applied 07:31 UTC). A1, A2,
-A2.9, A3 and the A4 database checks are done; the A4 staff check in Alcedo is pending. Nothing has been merged, deployed or switched on. Public
+A2.9, A3 and the A4 database checks are done. S110 (seat integrity) is implemented on the draft branch only; A3b, A4a, A5 and the A4b post-deploy gate are pending. Nothing has been merged, deployed or switched on. Public
 reservations are off. kanel.is is untouched.
 
 ## 0. Owner decisions
@@ -52,8 +52,13 @@ still needs its own approval.
 | [x] | A3.2 | Run `KANEL_apply_2_s107_public_booking_api.sql` | ✅ APPROVED (23 Oct 2026) | applied 07:31:30 UTC; ledger `20261024090000` |
 | [x] | A3.3 | Run `KANEL_apply_3_s108_booking_notifications.sql` | ✅ APPROVED (23 Oct 2026) | applied 07:31:31 UTC; ledger `20261025090000` |
 | [x] | A3.4 | Run `KANEL_apply_4_s109_booking_notifications_inbox.sql` | ✅ APPROVED (23 Oct 2026) | applied 07:31:32 UTC; ledger `20261026090000` |
-| [ ] | A4 | Post-apply checks (ledger S105…S109; settings 4 / 15 / `public_online_enabled=false`; zero web rows) and the staff booking check in Alcedo | — (read-only + test booking) | results | **DB checks done** (settings 4 / 15 / off; 17/17 functions and 2/2 constraints match CI-tested S109; guest RPCs service_role only). **Pending:** the staff booking check in Alcedo. [`evidence/KANEL_A3_A4_Evidence_20261023.md`](evidence/KANEL_A3_A4_Evidence_20261023.md) **BLOCKED (23 Oct): the staff UI cannot choose or move multi-stool groups; the backend lacks a capacity check on assign and a section check on explicit create. See [`KANEL_A4_Blocker_Multi_Seat.md`](KANEL_A4_Blocker_Multi_Seat.md).** A5 stays NO-GO.
-| [ ] | A5 | Mark PR #135 ready and **merge**. Netlify deploys app.alcedo.is with both web flags off | 🔒 APPROVAL (merge + web deploy) | merge SHA, Netlify deploy id |
+| [x] | A4 | Post-apply database checks (ledger S105…S109; settings 4 / 15 / `public_online_enabled=false`; zero web rows; functions match CI-tested S109; guest RPCs service_role only) | — (read-only) | ✅ done 23 Oct 2026 — [`evidence/KANEL_A3_A4_Evidence_20261023.md`](evidence/KANEL_A3_A4_Evidence_20261023.md) |
+| [ ] | A3b.1 | **Fresh S110 preflight** immediately before A3b.2: `KANEL_S110_preflight_readonly.sql` — must show 0 FAIL; owner reviews every WARN (allocations the stricter rule would refuse to re-assign) | — (read-only) — **mandatory** | CSV export, time run |
+| [ ] | A3b.2 | Run `KANEL_apply_5_s110_booking_seat_integrity.sql` (guarded, one transaction: previous = S109, no S110 row) | 🔒 APPROVAL (production DB) — **not yet approved** | SQL editor result |
+| [ ] | A3b.3 | Post-S110 checks (read-only): ledger has `20261027090000`; the 4 S110 functions match the CI-tested S110 build; grants unchanged (service_role only); settings 4 / 15 / public off | — (read-only) | results |
+| [ ] | A4a | **Staff test, auto-assign part — before the merge** ([`KANEL_A4_Staff_Test.md`](KANEL_A4_Staff_Test.md) Part A1) on the live UI: 2 guests auto-assigned to adjacent stools in one section, Arrive → Seat, Cancel; then read-only database check (Part B) | Owner performs (creates and cancels test bookings) | step results + DB check |
+| [ ] | A5 | **Only after A3b and A4a pass:** mark PR #135 ready and **merge**. Netlify deploys app.alcedo.is with both web flags off | 🔒 APPROVAL (merge + web deploy) | merge SHA, Netlify deploy id |
+| [ ] | A4b | **MANDATORY post-deployment gate — immediately after the A5 Netlify deploy, before A6 or any further rollout:** full multi-stool staff UI test ([`KANEL_A4_Staff_Test.md`](KANEL_A4_Staff_Test.md) Part A2: Bar 3+4 16:00–18:00; 18:00 refused; 18:15 accepted; Bar 8+9 refused; Bar 5+6 accepted; status changes; cancel all) + read-only DB check. **If it fails: Netlify → publish previous deploy, stop.** | Owner performs | step results + DB check |
 | [ ] | A6 | `supabase functions deploy atlas-bookings` from merged `main` | 🔒 APPROVAL (edge deploy) | CLI output |
 | [ ] | A7 | Separate PR: `BOOKING_NOTIFICATIONS_ENABLED: true` plus the S42 re-pin; merge → Netlify | 🔒 APPROVAL (frontend flag) | PR, deploy id |
 | [ ] | A8a | Secret `PUBLIC_BOOKING_ENABLED=false` | 🔒 APPROVAL (secret) | — |

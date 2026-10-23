@@ -1,6 +1,6 @@
 # A4 functional blocker — staff cannot choose or move multi-stool seating (23 Oct 2026)
 
-**Status: finding and proposal only. Nothing is implemented or deployed.** Raised by
+**Status (23 Oct 2026): correction IMPLEMENTED on the draft branch** (S110 + staff UI; see [`KANEL_S110_Seat_Integrity_Impact.md`](KANEL_S110_Seat_Integrity_Impact.md)). **Not applied to production, not merged, not deployed.** The original finding follows. Raised by
 the owner's review of the A4 script. Verified from the code and by a probe of the S109
 functions on a local S109 database, inside a transaction that was rolled back.
 Production runs the same function bodies: 17/17 release functions match the

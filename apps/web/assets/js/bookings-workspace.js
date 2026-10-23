@@ -48,6 +48,12 @@
     no_show: []
   };
   const LIVE_STATUSES = new Set(['requested', 'confirmed', 'arrived', 'seated']);
+  // Statuses whose seats are taken (atlas_private.booking_table_free).
+  const ALLOCATING_STATUSES = new Set(['confirmed', 'arrived', 'seated']);
+  // S106 rules as approved; used only to explain availability before saving —
+  // the server re-checks every rule (S110 booking_check_seat_group).
+  const DEFAULT_TURNAROUND_MINUTES = 15;
+  const DEFAULT_DURATION_MINUTES = 120;
   const SOURCE_LABEL = { phone: 'Phone', walk_in: 'Walk-in', web: 'Website', dineout: 'Dineout' };
 
   const state = {
@@ -234,6 +240,123 @@
     return tables().filter((table) => tableStatus(table).key === 'free');
   }
 
+  // ---------- seats: time-aware availability + the seat-group rule ----------
+  // The floor plan's tableStatus() is day-wide (a stool booked at 16:00 reads
+  // Booked all day). Choosing seats is time-aware instead: a seat is free for a
+  // window unless another live allocation or active hold overlaps it once both
+  // get the turnaround — the same test the server makes. The server stays
+  // authoritative and re-checks every rule when the booking is saved.
+
+  function turnaroundMs() {
+    const minutes = Number(state.snapshot?.rules?.turnaround_minutes);
+    return (Number.isFinite(minutes) && minutes >= 0 ? minutes : DEFAULT_TURNAROUND_MINUTES) * 60000;
+  }
+
+  function seatAvailability(table, startMs, endMs, reservation = null) {
+    if (tableIsUnavailable(table)) return { free: false, label: 'Unavailable' };
+    if (table.unavailable_from && table.unavailable_until
+        && Date.parse(table.unavailable_from) < endMs && Date.parse(table.unavailable_until) > startMs) {
+      return { free: false, label: 'Unavailable' };
+    }
+    const buffer = turnaroundMs();
+    const overlaps = (start, end) => startMs < end + buffer && start < endMs + buffer;
+    const taken = reservations().find((other) => other.id !== reservation?.id
+      && ALLOCATING_STATUSES.has(other.status)
+      && Array.isArray(other.tables) && other.tables.some((allocation) => allocation.table_id === table.id)
+      && overlaps(Date.parse(other.start_at), Date.parse(other.end_at || other.start_at)));
+    if (taken) return { free: false, label: `Taken ${formatTime(taken.start_at)}–${formatTime(taken.end_at)}` };
+    // A web request's own pending hold covers exactly its window; it never blocks
+    // assigning that request (the server ignores a reservation's own holds).
+    const ownHold = (hold) => reservation && hold.start_at === reservation.start_at && hold.end_at === reservation.end_at;
+    const held = holds().find((hold) => hold.table_id === table.id && !ownHold(hold)
+      && overlaps(Date.parse(hold.start_at), Date.parse(hold.end_at)));
+    if (held) return { free: false, label: 'Held' };
+    return { free: true, label: 'Free' };
+  }
+
+  function seatsInOrder(areaId) {
+    return tables().filter((table) => table.area_id === areaId)
+      .sort((a, b) => (a.position_index ?? 1e9) - (b.position_index ?? 1e9)
+        || String(a.label).localeCompare(String(b.label), undefined, { numeric: true }));
+  }
+
+  function seatSections(areaId) {
+    const sections = [];
+    seatsInOrder(areaId).forEach((table) => {
+      const key = table.segment || '';
+      let section = sections.find((entry) => entry.key === key);
+      if (!section) { section = { key, tables: [] }; sections.push(section); }
+      section.tables.push(table);
+    });
+    return sections;
+  }
+
+  // Mirrors the server's seat-group rule so staff see the reason before saving.
+  function seatGroupProblem(tableIds, party) {
+    const chosen = tableIds.map(tableById).filter(Boolean);
+    if (!chosen.length) return 'Choose at least one seat.';
+    if (new Set(chosen.map((table) => table.area_id)).size > 1) return 'Choose seats in one location.';
+    const capacity = chosen.reduce((sum, table) => sum + (Number(table.seat_capacity) || 0), 0);
+    if (capacity < party) {
+      return `Choose seats for ${party} guest${party === 1 ? '' : 's'} — the seats chosen hold ${capacity}.`;
+    }
+    if (chosen.length > 1) {
+      const segments = new Set(chosen.map((table) => table.segment || null));
+      const sectioned = !(segments.size === 1 && segments.has(null));
+      if (sectioned) {
+        if (segments.size > 1 || segments.has(null)) {
+          return `${chosen.map((table) => table.label).join(' and ')} are in different sections. Choose seats next to each other within one section.`;
+        }
+        const positions = chosen.map((table) => Number(table.position_index)).sort((a, b) => a - b);
+        const gapFree = positions.every((value, index) => Number.isFinite(value) && (index === 0 || value === positions[index - 1] + 1));
+        if (!gapFree) return 'Choose seats next to each other, with no gaps.';
+      }
+    }
+    return '';
+  }
+
+  // Server refusals arrive as fixed copy by kind; word the seat ones for staff.
+  function seatErrorMessage(error) {
+    if (error?.kind === 'conflict') {
+      return 'A chosen seat is taken at that time (bookings need a 15-minute gap on the same seat). Choose other seats or another time.';
+    }
+    if (error?.kind === 'invalid') {
+      return 'Bookings couldn’t use those seats. Choose enough seats next to each other within one section.';
+    }
+    return shown(error, 'The seats couldn’t be saved. Nothing was changed; try again.');
+  }
+
+  function seatPickerMarkup({ idPrefix, areaId, startMs, endMs, reservation = null, checked = new Set() }) {
+    const sections = seatSections(areaId);
+    if (!sections.length) return '<p class="bk-note">No seats configured here.</p>';
+    return sections.map((section) => {
+      const name = section.key ? `Section ${section.key}` : (areaById(areaId)?.name || 'Seats');
+      const first = section.tables[0]?.label || '';
+      const last = section.tables[section.tables.length - 1]?.label || '';
+      const range = section.tables.length > 1 ? ` · ${first}–${last.replace(/^\D+/, '')}` : '';
+      const seats = section.tables.map((table) => {
+        const availability = seatAvailability(table, startMs, endMs, reservation);
+        const isChecked = checked.has(table.id);
+        const usable = availability.free || isChecked;
+        const id = `${idPrefix}-${table.id}`;
+        return `<label class="bk-seat${usable ? '' : ' is-unavailable'}" for="${escapeHtml(id)}">
+          <input type="checkbox" class="atlas-check" id="${escapeHtml(id)}" name="seat" value="${escapeHtml(table.id)}" data-bookings-seat="${escapeHtml(table.id)}"${isChecked ? ' checked' : ''}${usable ? '' : ' disabled'}>
+          <span class="bk-seat__label">${escapeHtml(table.label)}</span>
+          <span class="bk-seat__state">${escapeHtml(availability.label)}</span>
+        </label>`;
+      }).join('');
+      return `<div class="bk-seats__section" role="group" aria-label="${escapeHtml(name)}"><p class="bk-seats__section-name">${escapeHtml(name + range)}</p><div class="bk-seats__grid">${seats}</div></div>`;
+    }).join('');
+  }
+
+  function checkedSeats(container) {
+    return Array.from(container?.querySelectorAll('[data-bookings-seat]:checked') || []).map((input) => input.value);
+  }
+
+  function seatAreas() {
+    return areas().filter((area) => area.allocation_mode !== 'pooled' && seatsInOrder(area.id).length);
+  }
+
   // ---------- render: day view ----------
 
   function headerMarkup() {
@@ -388,23 +511,38 @@
           ${reservation.guest_requests ? `<div><dt>Requests</dt><dd>${escapeHtml(reservation.guest_requests)}</dd></div>` : ''}
           ${reservation.staff_notes ? `<div><dt>Staff notes</dt><dd>${escapeHtml(reservation.staff_notes)}</dd></div>` : ''}
         </dl>
-        ${canAssign ? `<div class="bk-detail__assign"><label class="bk-detail__assign-label" for="bk-assign-select">Assign / move table</label>
-          <div class="bk-detail__assign-row"><select class="atlas-select" id="bk-assign-select" data-bookings-assign-select>${assignOptions(reservation)}</select><button type="button" class="atlas-btn atlas-btn--secondary" data-bookings-assign>${icon('move')}Move</button></div></div>` : ''}
+        ${canAssign ? moveSeatsMarkup(reservation) : ''}
       </div>
       ${transitions ? `<footer class="atlas-sheet__foot bk-detail__foot" data-bookings-status-actions>${transitions}</footer>` : ''}
     </section>`;
   }
 
-  function assignOptions(reservation) {
+  // Assign / move: choose a valid seat group for this booking's own time window.
+  function moveArea(reservation) {
+    const current = (reservation.tables || []).map((allocation) => tableById(allocation.table_id)).find(Boolean);
+    const candidates = seatAreas();
+    return candidates.find((area) => area.id === current?.area_id)
+      || candidates.find((area) => area.id === reservation.area_id) || candidates[0] || null;
+  }
+
+  function moveSeatsMarkup(reservation, areaId = moveArea(reservation)?.id) {
+    const candidates = seatAreas();
+    if (!areaId) return '';
     const current = new Set((reservation.tables || []).map((allocation) => allocation.table_id));
-    const options = tables()
-      .filter((table) => !tableIsUnavailable(table))
-      .filter((table) => current.has(table.id) || tableStatus(table).key === 'free')
-      .map((table) => {
-        const area = areas().find((entry) => entry.id === table.area_id);
-        return `<option value="${escapeHtml(table.id)}"${current.has(table.id) ? ' selected' : ''}>${escapeHtml(table.label)}${area ? ` (${escapeHtml(area.name)})` : ''}</option>`;
-      }).join('');
-    return options || '<option value="">No free tables</option>';
+    const startMs = Date.parse(reservation.start_at);
+    const endMs = Date.parse(reservation.end_at || reservation.start_at);
+    const locationSelect = candidates.length > 1
+      ? `<div class="atlas-field"><label for="bk-move-location">Location</label><select class="atlas-select" id="bk-move-location" data-bookings-move-location>${candidates.map((area) => `<option value="${escapeHtml(area.id)}"${area.id === areaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`).join('')}</select></div>`
+      : '';
+    const party = Number(reservation.party_size) || 1;
+    return `<fieldset class="bk-detail__assign bk-seats" data-bookings-move-seats>
+      <legend class="bk-detail__assign-label">Seats for ${escapeHtml(String(party))} guest${party === 1 ? '' : 's'} · ${escapeHtml(formatTime(reservation.start_at))}–${escapeHtml(formatTime(reservation.end_at))}</legend>
+      ${locationSelect}
+      <p class="bk-note">Choose seats next to each other within one section. Seats free at this time are shown; the 15-minute gap between bookings is included.</p>
+      <div class="bk-seats__picker" data-bookings-seat-picker>${seatPickerMarkup({ idPrefix: 'bk-move-seat', areaId, startMs, endMs, reservation, checked: current })}</div>
+      <p class="error" role="alert" hidden data-bookings-seat-error></p>
+      <div class="bk-detail__assign-row"><button type="button" class="atlas-btn atlas-btn--secondary" data-bookings-assign>${icon('move')}Save seats</button></div>
+    </fieldset>`;
   }
 
   function openReservation(reservationId) {
@@ -420,10 +558,29 @@
       const statusBtn = event.target.closest('[data-bookings-status-btn]');
       if (statusBtn) { await changeStatus(reservationId, statusBtn.dataset.toStatus, root); return; }
       if (event.target.closest('[data-bookings-assign]')) {
-        const select = root.querySelector('[data-bookings-assign-select]');
-        const value = select?.value;
-        if (value) await assignTable(reservationId, [value], root);
+        const reservation = reservationById(reservationId);
+        const fieldset = root.querySelector('[data-bookings-move-seats]');
+        const error = fieldset?.querySelector('[data-bookings-seat-error]');
+        const chosen = checkedSeats(fieldset);
+        const current = (reservation?.tables || []).map((allocation) => allocation.table_id);
+        let problem = seatGroupProblem(chosen, Number(reservation?.party_size) || 1);
+        if (!problem && chosen.length === current.length && chosen.every((id) => current.includes(id))) {
+          problem = 'Those are already this booking’s seats.';
+        }
+        if (error) { error.textContent = problem; error.hidden = !problem; }
+        if (problem) { fieldset?.querySelector('[data-bookings-seat]:not(:disabled)')?.focus(); return; }
+        await assignTable(reservationId, chosen, root);
       }
+    });
+    root.addEventListener('change', (event) => {
+      const location = event.target.closest('[data-bookings-move-location]');
+      if (!location) return;
+      const reservation = reservationById(reservationId);
+      const fieldset = root.querySelector('[data-bookings-move-seats]');
+      if (!reservation || !fieldset) return;
+      fieldset.outerHTML = moveSeatsMarkup(reservation, location.value);
+      paintIcons();
+      root.querySelector('[data-bookings-move-location]')?.focus();
     });
   }
 
@@ -439,11 +596,7 @@
   function addBookingMarkup(prefill = {}) {
     const inferredAreaId = prefill.areaId || tableById(prefill.tableId)?.area_id || areas()[0]?.id || '';
     const locationOptions = areas().map((area) => `<option value="${escapeHtml(area.id)}"${area.id === inferredAreaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`).join('');
-    const areaOptions = areas().filter((area) => area.allocation_mode !== 'pooled').map((area) => {
-      const areaTables = tablesForArea(area.id).filter((table) => !tableIsUnavailable(table));
-      if (!areaTables.length) return '';
-      return `<optgroup label="${escapeHtml(area.name)}">${areaTables.map((table) => `<option value="${escapeHtml(table.id)}"${prefill.tableId === table.id ? ' selected' : ''}>${escapeHtml(table.label)}</option>`).join('')}</optgroup>`;
-    }).join('');
+    const choose = Boolean(prefill.tableId);
     return `<section class="atlas-sheet bk-add" data-modal-panel aria-labelledby="bk-add-title">
       <span class="atlas-sheet__grabber" aria-hidden="true"></span>
       <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="bk-add-title">Add booking</h2><p class="atlas-sheet__desc">Phone or walk-in. A reference is shown when it saves.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
@@ -457,7 +610,16 @@
           <div class="atlas-field"><label for="bk-add-date">Date</label><input class="atlas-input" type="date" id="bk-add-date" name="date" value="${escapeHtml(prefill.date || state.date)}" required></div>
           <div class="atlas-field"><label for="bk-add-time">Time</label><input class="atlas-input" type="time" step="900" id="bk-add-time" name="time" required><p class="error" hidden data-error-for="time">Enter a time.</p></div>
         </div>
-        <div class="atlas-field"><label for="bk-add-table">Specific Bar seat <span class="optional">Optional</span></label><select class="atlas-select" id="bk-add-table" name="table_id"><option value="">Auto-assign adjacent seats</option>${areaOptions}</select></div>
+        <fieldset class="atlas-field bk-seats" data-bookings-seats${prefill.tableId ? ` data-prefill-seat="${escapeHtml(prefill.tableId)}"` : ''}>
+          <legend class="bk-seats__legend">Seats</legend>
+          <div class="bk-seats__modes">
+            <label class="atlas-check-row bk-seats__mode"><input type="radio" class="atlas-radio" id="bk-seat-mode-auto" name="seat_mode" value="auto"${choose ? '' : ' checked'}>Auto-assign adjacent seats</label>
+            <label class="atlas-check-row bk-seats__mode"><input type="radio" class="atlas-radio" id="bk-seat-mode-choose" name="seat_mode" value="choose"${choose ? ' checked' : ''}>Choose seats</label>
+          </div>
+          <p class="bk-note" data-bookings-seat-note hidden></p>
+          <div class="bk-seats__picker" data-bookings-seat-picker hidden></div>
+          <p class="error" role="alert" hidden data-error-for="seats"></p>
+        </fieldset>
         <div class="atlas-field"><label for="bk-add-name">Guest name</label><input class="atlas-input" id="bk-add-name" name="guest_name" maxlength="120" placeholder="Name for the booking" required><p class="error" hidden data-error-for="guest_name">Add the guest name.</p></div>
         <div class="atlas-field"><label for="bk-add-phone">Phone <span class="optional">Optional</span></label><input class="atlas-input" id="bk-add-phone" name="guest_phone" maxlength="60" inputmode="tel"></div>
         <div class="atlas-field"><label for="bk-add-requests">Requests <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="bk-add-requests" name="guest_requests" rows="2" maxlength="1000"></textarea></div>
@@ -470,10 +632,67 @@
     if (!canManageReservations()) return;
     const root = window.AtlasModal.layer({ id: 'bk-add-layer', className: 'bk-layer', panel: addBookingMarkup(prefill), initialFocus: '#bk-add-party' });
     paintIcons();
-    root.querySelector('form')?.addEventListener('submit', (event) => {
+    const form = root.querySelector('form');
+    form?.addEventListener('submit', (event) => {
       event.preventDefault();
       submitBooking(root);
     });
+    // Re-draw the seat picker when anything that decides availability changes.
+    const SEAT_INPUTS = new Set(['party_size', 'area_id', 'date', 'time', 'seat_mode']);
+    form?.addEventListener('change', (event) => {
+      if (event.target.closest('[data-bookings-seat]')) { refreshAddSeatError(root); return; }
+      if (SEAT_INPUTS.has(event.target.name)) renderAddSeats(root);
+    });
+    renderAddSeats(root);
+  }
+
+  // The window a new booking would occupy, from the form (local time, like submit).
+  function addWindow(root) {
+    const form = root.querySelector('form');
+    const date = String(form?.elements.date?.value || '').trim();
+    const time = String(form?.elements.time?.value || '').trim();
+    if (!date || !time) return null;
+    const startMs = new Date(`${date}T${time}:00`).getTime();
+    if (!Number.isFinite(startMs)) return null;
+    return { date, startMs, endMs: startMs + DEFAULT_DURATION_MINUTES * 60000 };
+  }
+
+  function renderAddSeats(root) {
+    const fieldset = root.querySelector('[data-bookings-seats]');
+    if (!fieldset) return;
+    const form = root.querySelector('form');
+    const picker = fieldset.querySelector('[data-bookings-seat-picker]');
+    const note = fieldset.querySelector('[data-bookings-seat-note]');
+    const choose = fieldset.querySelector('#bk-seat-mode-choose')?.checked;
+    const areaId = String(form?.elements.area_id?.value || '');
+    const area = areaById(areaId);
+    const previous = new Set(checkedSeats(picker));
+    const prefill = fieldset.dataset.prefillSeat;
+    if (prefill) { previous.add(prefill); delete fieldset.dataset.prefillSeat; }
+    const say = (text) => { note.textContent = text; note.hidden = !text; };
+    picker.hidden = true;
+    picker.innerHTML = '';
+    if (!choose) { say(''); refreshAddSeatError(root); return; }
+    if (!area || area.allocation_mode === 'pooled' || !seatsInOrder(areaId).length) {
+      say('This location doesn’t use seats. Auto-assign is used.');
+      return;
+    }
+    const slot = addWindow(root);
+    if (!slot) { say('Enter a date and time to see which seats are free.'); return; }
+    if (slot.date !== state.snapshot?.date) {
+      say(`Seats can be chosen for the day that’s open (${state.snapshot?.date || state.date}). Open that date first, or use auto-assign.`);
+      return;
+    }
+    say('Seats free from this time for two hours are shown; the 15-minute gap between bookings is included.');
+    picker.innerHTML = seatPickerMarkup({ idPrefix: 'bk-add-seat', areaId, startMs: slot.startMs, endMs: slot.endMs, checked: previous });
+    picker.hidden = false;
+    refreshAddSeatError(root);
+  }
+
+  // Clear a shown seat error once the choice changes; submit re-validates.
+  function refreshAddSeatError(root) {
+    const error = root.querySelector('[data-error-for="seats"]');
+    if (error && !error.hidden) { error.hidden = true; error.textContent = ''; }
   }
 
   async function submitBooking(root) {
@@ -501,8 +720,18 @@
       guest_phone: String(data.get('guest_phone') || '').trim() || undefined,
       guest_requests: String(data.get('guest_requests') || '').trim() || undefined
     };
-    const tableId = String(data.get('table_id') || '').trim();
-    if (tableId) body.table_ids = [tableId];
+    if (data.get('seat_mode') === 'choose') {
+      const seatError = root.querySelector('[data-error-for="seats"]');
+      const picker = root.querySelector('[data-bookings-seats] [data-bookings-seat-picker]');
+      const chosen = picker && !picker.hidden ? checkedSeats(picker) : [];
+      const problem = picker && !picker.hidden ? seatGroupProblem(chosen, party) : '';
+      if (problem) {
+        if (seatError) { seatError.textContent = problem; seatError.hidden = false; }
+        picker?.querySelector('[data-bookings-seat]:not(:disabled)')?.focus();
+        return;
+      }
+      if (chosen.length) body.table_ids = chosen;
+    }
     state.submitting = true;
     const submit = root.querySelector('[data-bookings-create-submit]');
     if (submit) submit.disabled = true;
@@ -522,6 +751,10 @@
       }
       await loadSnapshot({ force: true, silent: true });
     } catch (error) {
+      if (body.table_ids) {
+        const seatError = root.querySelector('[data-error-for="seats"]');
+        if (seatError) { seatError.textContent = seatErrorMessage(error); seatError.hidden = false; }
+      }
       toast(shown(error, 'The booking couldn’t be saved. Nothing was changed; try again.'), 'warning');
     } finally {
       state.submitting = false;
@@ -560,6 +793,8 @@
       await loadSnapshot({ force: true, silent: true });
       refreshReservationLayer(root, reservationId);
     } catch (error) {
+      const seatError = root?.querySelector('[data-bookings-seat-error]');
+      if (seatError) { seatError.textContent = seatErrorMessage(error); seatError.hidden = false; }
       toast(shown(error, 'That table couldn’t be assigned. Nothing was changed; try again.'), 'warning');
     } finally {
       state.submitting = false;
