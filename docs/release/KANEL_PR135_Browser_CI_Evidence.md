@@ -132,9 +132,9 @@ condition, two events, deep link), `atlas-shell.js` (one route), and
 
 ### Classification
 
-- `atlas-bot:85` and `:368`: **existing instability.** They fail the same way on
-  code without PR #135.
-- `atlas-bot:734`: **non-deterministic on identical code; no regression found.**
+- `atlas-bot:85` and `:368`: **demonstrated existing instability** (recorded by
+  owner decision, 23 Oct 2026). They fail the same way on code without PR #135.
+- `atlas-bot:734`: **intermittent, no regression identified, not proven pre-existing** (recorded by owner decision, 23 Oct 2026).
   It passes on `main` and the PR head locally (10/10 each) and in CI on five other
   heads with the same code, and the PR does not touch it. **Limit:** it has not been
   observed failing before PR #135, so it is **not proven** to be a pre-existing
