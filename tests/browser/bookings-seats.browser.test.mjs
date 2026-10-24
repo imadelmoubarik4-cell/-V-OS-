@@ -139,6 +139,11 @@ test('auto-assign stays the default and sends no seats; seats can only be chosen
     await settle(page);
     assert.match(await page.textContent('[data-bookings-seats] [data-bookings-seat-note]'), /Seats can be chosen for the day that’s open/);
     assert.equal(await page.isHidden('[data-bookings-seats] [data-bookings-seat-picker]'), true, 'no stale availability for another day');
+    const before = bookings.callsFor('create').length;
+    await page.click('[data-bookings-create-submit]');
+    await settle(page);
+    assert.equal(bookings.callsFor('create').length, before, 'manual seat selection on another day must never auto-assign');
+    assert.match(await seatError(page), /Open 2026-12-31 in Bookings first/, 'show actionable date message');
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
