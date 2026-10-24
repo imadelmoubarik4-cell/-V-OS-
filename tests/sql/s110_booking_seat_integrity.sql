@@ -191,14 +191,17 @@ begin
   exception when invalid_parameter_value then null; end;
   perform public.atlas_bookings_assign(mgr, 'manager', r4, jsonb_build_array(b[13], b[14], b[15], b[16]));
 
-  -- 7. A move to another seat-based location records that location.
+  -- 7. Moving stays within the booking's original area; mixed areas also refuse.
   insert into atlas_private.booking_areas (id, name, section_colour, display_order, is_active, allocation_mode)
   values (other_area, 'S110 Terrace', 'sage', 99, true, 'tables');
   insert into atlas_private.booking_tables (id, area_id, label, seat_capacity, min_party, priority, is_bookable, block_online)
   values (other_tbl, other_area, 'Terrace 1', 4, 0, 1, true, false);
-  perform public.atlas_bookings_assign(mgr, 'manager', r4, jsonb_build_array(other_tbl));
+  begin
+    perform public.atlas_bookings_assign(mgr, 'manager', r4, jsonb_build_array(other_tbl));
+    raise exception 's110: a move to another location was allowed';
+  exception when invalid_parameter_value then null; end;
   select area_id into area_after from atlas_private.reservations where id = r4;
-  if area_after <> other_area then raise exception 's110: a move to another location must record that location'; end if;
+  if area_after <> bar then raise exception 's110: refused cross-area move changed the location'; end if;
   begin
     perform public.atlas_bookings_assign(mgr, 'manager', r4, jsonb_build_array(other_tbl, b[1]));
     raise exception 's110: seats from two locations were accepted';
