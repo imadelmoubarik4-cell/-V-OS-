@@ -135,6 +135,7 @@ test('auto-assign stays the default and sends no seats; seats can only be chosen
     await page.waitForSelector('[data-bookings-create-form]');
     await page.fill('#bk-add-date', '2026-12-31');
     await page.fill('#bk-add-time', '20:00');
+    await page.fill('#bk-add-name', 'A4 TEST OTHER DAY');
     await page.check('#bk-seat-mode-choose');
     await settle(page);
     assert.match(await page.textContent('[data-bookings-seats] [data-bookings-seat-note]'), /Seats can be chosen for the day that’s open/);
