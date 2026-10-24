@@ -531,9 +531,8 @@
     const current = new Set((reservation.tables || []).map((allocation) => allocation.table_id));
     const startMs = Date.parse(reservation.start_at);
     const endMs = Date.parse(reservation.end_at || reservation.start_at);
-    const locationSelect = candidates.length > 1
-      ? `<div class="atlas-field"><label for="bk-move-location">Location</label><select class="atlas-select" id="bk-move-location" data-bookings-move-location>${candidates.map((area) => `<option value="${escapeHtml(area.id)}"${area.id === areaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`).join('')}</select></div>`
-      : '';
+    // Moving a booking to another area is not part of the KANEL release.
+    const locationSelect = '';
     const party = Number(reservation.party_size) || 1;
     return `<fieldset class="bk-detail__assign bk-seats" data-bookings-move-seats>
       <legend class="bk-detail__assign-label">Seats for ${escapeHtml(String(party))} guest${party === 1 ? '' : 's'} · ${escapeHtml(formatTime(reservation.start_at))}–${escapeHtml(formatTime(reservation.end_at))}</legend>
@@ -571,16 +570,6 @@
         if (problem) { fieldset?.querySelector('[data-bookings-seat]:not(:disabled)')?.focus(); return; }
         await assignTable(reservationId, chosen, root);
       }
-    });
-    root.addEventListener('change', (event) => {
-      const location = event.target.closest('[data-bookings-move-location]');
-      if (!location) return;
-      const reservation = reservationById(reservationId);
-      const fieldset = root.querySelector('[data-bookings-move-seats]');
-      if (!reservation || !fieldset) return;
-      fieldset.outerHTML = moveSeatsMarkup(reservation, location.value);
-      paintIcons();
-      root.querySelector('[data-bookings-move-location]')?.focus();
     });
   }
 
@@ -723,8 +712,14 @@
     if (data.get('seat_mode') === 'choose') {
       const seatError = root.querySelector('[data-error-for="seats"]');
       const picker = root.querySelector('[data-bookings-seats] [data-bookings-seat-picker]');
-      const chosen = picker && !picker.hidden ? checkedSeats(picker) : [];
-      const problem = picker && !picker.hidden ? seatGroupProblem(chosen, party) : '';
+      // A manual choice must never silently become automatic allocation.
+      const pickerReady = Boolean(picker && !picker.hidden && picker.querySelector('[data-bookings-seat]'));
+      const chosen = pickerReady ? checkedSeats(picker) : [];
+      const problem = !pickerReady
+        ? (date !== state.snapshot?.date
+          ? `Open ${date} in Bookings first to choose seats, or select Auto-assign.`
+          : 'Seat selection is unavailable for this date or location. Select Auto-assign or correct the details.')
+        : seatGroupProblem(chosen, party);
       if (problem) {
         if (seatError) { seatError.textContent = problem; seatError.hidden = false; }
         picker?.querySelector('[data-bookings-seat]:not(:disabled)')?.focus();
