@@ -1,0 +1,41 @@
+{
+  "note": "S105 state of every object S106-S109 touch. Generated; do not hand-edit.",
+  "restored_functions": {
+    "atlas_private.booking_find_contiguous_tables(p_area_id uuid, p_party_size integer, p_start timestamp with time zone, p_end timestamp with time zone, p_ignore_reservation uuid)": {
+      "src_md5": "04ca17b789f078ec096213837f3a01b2",
+      "secdef": true,
+      "config": "search_path=\"\"",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}"
+    },
+    "public.atlas_bookings_assign(p_actor_id uuid, p_actor_role text, p_reservation_id uuid, p_table_ids jsonb)": {
+      "src_md5": "cde80a066d53abdd4e894eb97e3ef8d3",
+      "secdef": true,
+      "config": "search_path=\"\"",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}"
+    }
+  },
+  "release_functions": [
+    "atlas_private.booking_day_last_start_minutes(p_weekday smallint, p_duration_minutes integer)",
+    "atlas_private.booking_lifecycle_notify()",
+    "atlas_private.booking_local_dow(p_ts timestamp with time zone, p_tz text)",
+    "atlas_private.booking_local_minutes(p_ts timestamp with time zone, p_tz text)",
+    "atlas_private.booking_public_rate_ok(p_fingerprint text, p_limit integer, p_window_seconds integer)",
+    "atlas_private.booking_public_reference()",
+    "atlas_private.booking_public_token()",
+    "atlas_private.booking_tables_contiguous_segment(p_table_ids uuid[])",
+    "atlas_private.booking_within_hours(p_start timestamp with time zone, p_duration_minutes integer, p_tz text)",
+    "public.atlas_bookings_notification_read(p_actor_id uuid, p_actor_role text, p_ids jsonb, p_all boolean)",
+    "public.atlas_bookings_notifications(p_actor_id uuid, p_actor_role text, p_limit integer)",
+    "public.atlas_public_booking_availability(p_date date, p_party_size integer, p_tz text)",
+    "public.atlas_public_booking_rate(p_fingerprint text, p_action text)",
+    "public.atlas_public_booking_request(p_payload jsonb)",
+    "public.atlas_public_booking_status(p_token text)"
+  ],
+  "release_triggers": [
+    "atlas_private.reservations.booking_lifecycle_notify_trg"
+  ],
+  "restored_constraints": {
+    "atlas_private.push_notification_queue.push_notification_queue_event_type_check": "CHECK ((event_type = ANY (ARRAY['team_message'::text, 'shift_update'::text, 'marketing_attention'::text])))",
+    "atlas_private.push_notification_queue.push_notification_queue_route_check": "CHECK ((route = ANY (ARRAY['team'::text, 'shifts'::text, 'marketing'::text])))"
+  }
+}

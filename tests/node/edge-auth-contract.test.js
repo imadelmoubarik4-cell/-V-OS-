@@ -36,14 +36,27 @@ function sourceFiles(dir) {
 
 const ALL_SOURCES = sourceFiles(FUNCTIONS);
 
+// Intentionally PUBLIC (guest) functions: they serve unauthenticated callers, so
+// they must NOT resolve a staff actor. They carry their own security bar instead
+// (asserted below): an independent server flag that is off by default, and no
+// service-role key ever returned to the caller. S107: atlas-public-booking.
+const PUBLIC_FUNCTIONS = new Set(['atlas-public-booking']);
+
 test('every Edge Function imports the shared gateway check', () => {
   const dirs = functionDirs();
   assert.ok(dirs.length >= 20, `expected the Atlas gateways, found ${dirs.length}`);
   for (const name of dirs) {
     const files = sourceFiles(path.join(FUNCTIONS, name));
+    const text = files.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+    if (PUBLIC_FUNCTIONS.has(name)) {
+      // A public function must not pretend to authenticate a staff actor…
+      assert.doesNotMatch(text, /\bresolveActor\b/, `${name} is public and must not resolve a staff actor`);
+      // …and must be gated by its own independent, default-off server flag.
+      assert.match(text, /PUBLIC_BOOKING_ENABLED/, `${name} must gate on an independent server flag`);
+      continue;
+    }
     const importing = files.filter((file) => /from\s+["']\.\.\/_shared\/auth\.mjs["']/.test(fs.readFileSync(file, 'utf8')));
     assert.ok(importing.length > 0, `${name} must import ../_shared/auth.mjs`);
-    const text = files.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
     assert.match(text, /\bresolveActor\b/, `${name} must resolve the caller with resolveActor`);
   }
 });

@@ -62,6 +62,14 @@ verify_jwt = false
 [functions.atlas-bookings]
 verify_jwt = false
 
+# S107: the PUBLIC (guest) booking service for the KANEL website. Unauthenticated
+# (guests have no JWT); the handler is gated by the independent server flag
+# PUBLIC_BOOKING_ENABLED (off by default) and forwards to service-role
+# public.atlas_public_booking_* RPCs that re-check the database flag and enforce
+# every approved rule. The service-role key never reaches the browser.
+[functions.atlas-public-booking]
+verify_jwt = false
+
 [functions.atlas-reports]
 verify_jwt = false
 entrypoint = "./functions/atlas-reports/entrypoint.ts"

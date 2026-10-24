@@ -169,8 +169,9 @@
       if (rest[0] === 'suppliers' && rest[1]) return [['suppliers', { section: 'suppliers', supplier: rest[1] }]];
       return [['suppliers', section(rest[0])]];
     },
-    // #bookings (staff day), #bookings/config (manager), #bookings/<date>.
-    bookings: (rest) => [['bookings', section(rest[0])]],
+    // #bookings (staff day), #bookings/config (manager), #bookings/<date>,
+    // #bookings/res/<id> (open a specific reservation — booking-notification deep link).
+    bookings: (rest) => (rest[0] === 'res' && rest[1]) ? [['bookings', { reservation: rest[1] }]] : [['bookings', section(rest[0])]],
     shifts: (rest) => [['shifts', section(rest[0])]],
     team: (rest) => [['team-profiles', rest[0] ? { profile: rest[0] } : {}]],
     knowledge: (rest) => {
