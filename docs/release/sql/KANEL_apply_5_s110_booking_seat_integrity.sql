@@ -343,7 +343,11 @@ begin
     raise exception 'Choose at least one table.' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
 
-  v_area := atlas_private.booking_check_seat_group(v_table_ids, null, r.party_size, r.start_at, r.end_at, r.id);
+  if r.area_id is null then
+    raise exception 'This booking has no location; seat moves require an existing location.'
+      using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  v_area := atlas_private.booking_check_seat_group(v_table_ids, r.area_id, r.party_size, r.start_at, r.end_at, r.id);
 
   update atlas_private.reservation_tables set released_at = pg_catalog.now()
   where reservation_id = r.id and released_at is null;
@@ -351,9 +355,6 @@ begin
     insert into atlas_private.reservation_tables (reservation_id, table_id, start_at, end_at)
     values (r.id, tid, r.start_at, r.end_at);
   end loop;
-  if r.area_id is distinct from v_area then
-    update atlas_private.reservations set area_id = v_area where id = r.id;
-  end if;
 
   was_requested := r.status = 'requested';
   if was_requested then
