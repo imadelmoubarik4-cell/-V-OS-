@@ -10,7 +10,7 @@ pre-apply checks (checklist A3b).
 |---|---|---|
 | Staff create, **auto-assign** | adjacent group within a section (S106 finder) | unchanged result; now also passes the full seat-group rule |
 | Staff create, **chosen seats** | capacity, location and turnaround only; **no adjacency or section check**; unavailable seats not refused | full seat-group rule |
-| Staff **assign / move** | section check and turnaround only; **no capacity check**; duplicates and unavailable seats not refused | full seat-group rule; a move to another seat-based location records that location |
+| Staff **assign / move** | section check and turnaround only; **no capacity check**; duplicates and unavailable seats not refused | full seat-group rule; moving to another booking area is refused |
 | `booking_table_json` | no section field | adds read-only `segment` |
 | Public guest booking | unchanged (uses the S106 finder; still switched off) | unchanged |
 
@@ -55,9 +55,9 @@ and let the UI explain section refusals.
 - **Add booking:** a "Seats" choice. **Auto-assign adjacent seats** is the default
   and sends no seats. **Choose seats** shows each stool by section with a
   time-aware state ("Free", "Taken 16:00–18:00", "Held", "Unavailable").
-- **Move:** the same picker with the booking's current seats pre-ticked, plus a
-  location choice when more than one seat-based location exists. **Save seats**
-  sends the whole group.
+- **Move:** the same picker with the booking's current seats pre-ticked. Moves
+  stay inside the reservation's existing area; cross-area relocation is not part
+  of this release. **Save seats** sends the whole group.
 - **Time-aware:** availability is computed for the booking's own window, with the
   15-minute gap on both sides. It uses `snapshot.rules.turnaround_minutes` when the
   server provides it, otherwise the approved 15. The day-wide floor-plan status no
@@ -69,6 +69,8 @@ and let the UI explain section refusals.
 - **Server refusals** (for example a seat taken meanwhile) are explained in the
   sheet, which stays open. The server is authoritative.
 - Seats can be chosen only for the day that's open, so availability is never stale.
+  If staff choose manual seats for another date or an unavailable picker, submission
+  is blocked with an inline explanation; it never silently falls back to auto-assign.
   Auto-assign works for any date.
 - 44 px seat targets, keyboard Tab/Space, phone layout with two columns.
 - Fixed in the same change: on a phone, a Bar with positioned stools widened the
@@ -120,6 +122,7 @@ SQL coverage:
 - one stool for 2 refused; 3 stools for 4 refused;
 - duplicate, unknown, temporarily unavailable, unavailable-window and non-bookable
   stools refused;
-- a move to another location is recorded; seats from two locations are refused;
+- a move to a different booking area is refused, and the original area is unchanged;
+  seats from two locations are refused;
 - a viewer can neither create nor move;
 - grants sealed; `segment` exposed.
