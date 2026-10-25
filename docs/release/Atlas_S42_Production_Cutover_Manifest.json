@@ -23,7 +23,7 @@
   "automatic_import_authorized": false
  },
  "files": {
-  "apps/web/config.js": "1d6d26fa9d874c244e5458855fa407bfb6499a252287e7340986b678b87e9965",
+  "apps/web/config.js": "acb85dde0f53b96d62a8ad8d75752fd441884fb4bfc64d2ca5d92ad562ef15f0",
   "apps/web/assets/js/rehearsal-boundary.js": "1c89934dc783d9d9802e1ccbc4b73fdc481b58bd4478fda64678729086d0b4fe",
   "apps/web/assets/js/stock-count-workspace.js": "6653a4226e762248186a2c64a793a080203d4fa94830b9b28453a4a6d9f20092",
   "apps/web/assets/js/data-workspace.js": "de64be7e75b22abd4ffb2cd4ff0960bd7f8e566cde25e96d49d635c262836486",

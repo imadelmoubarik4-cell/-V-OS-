@@ -143,3 +143,8 @@
   .bk-seats__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 }
+
+/* Requests waiting (website requests have no seats until confirmed) */
+.bk-requests { margin: 0 0 var(--space-4, 16px); }
+.bk-request-row { width: 100%; text-align: left; }
+.bk-request-row__note { display: block; white-space: pre-line; }

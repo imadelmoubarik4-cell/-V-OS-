@@ -227,8 +227,24 @@
     const allocations = reservationsForTable(table.id);
     if (allocations.some((reservation) => reservation.status === 'seated')) return { key: 'seated', label: 'Seated', tone: 'positive' };
     if (allocations.length) return { key: 'booked', label: 'Booked', tone: 'info' };
-    if (holds().some((hold) => hold.table_id === table.id)) return { key: 'held', label: 'Booked', tone: 'warning' };
+    if (holds().some((hold) => hold.table_id === table.id)) return { key: 'held', label: heldRequestForTable(table) ? 'Requested' : 'Held', tone: 'warning' };
     return { key: 'free', label: 'Free', tone: 'neutral' };
+  }
+
+  // A web request holds seats until staff confirm it; the hold carries the
+  // request's exact window, so the request is the requested reservation in the
+  // same location with that window.
+  function heldRequestForTable(table) {
+    const hold = holds().find((entry) => entry.table_id === table.id);
+    if (!hold) return null;
+    return reservations().find((reservation) => reservation.status === 'requested'
+      && reservation.area_id === table.area_id
+      && reservation.start_at === hold.start_at && reservation.end_at === hold.end_at) || null;
+  }
+
+  function requestedReservations() {
+    return reservations().filter((reservation) => reservation.status === 'requested')
+      .sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
   }
 
   function tablesForArea(areaId) {
@@ -390,7 +406,7 @@
 
   function tableButtonMarkup(table) {
     const status = tableStatus(table);
-    const reservation = reservationsForTable(table.id)[0] || null;
+    const reservation = reservationsForTable(table.id)[0] || heldRequestForTable(table);
     const capacity = table.seat_capacity ? `${table.seat_capacity} seat${table.seat_capacity === 1 ? '' : 's'}` : '';
     const label = `${table.label} — ${status.label}${reservation?.guest_name ? `, ${reservation.guest_name}` : ''}`;
     return `<button type="button" class="bk-table bk-table--${escapeHtml(status.key)}" data-bookings-table="${escapeHtml(table.id)}" data-bookings-position="${escapeHtml(String(table.position_index || ''))}"${reservation ? ` data-bookings-reservation="${escapeHtml(reservation.id)}"` : ''} aria-label="${escapeHtml(label)}">
@@ -443,7 +459,7 @@
     const tableRows = tables().map((table) => {
       const area = areaById(table.area_id);
       const status = tableStatus(table);
-      const reservation = reservationsForTable(table.id)[0] || null;
+      const reservation = reservationsForTable(table.id)[0] || heldRequestForTable(table);
       const meta = [area?.name, table.seat_capacity ? `${table.seat_capacity} seat${table.seat_capacity === 1 ? '' : 's'}` : null,
         reservation ? `${reservation.guest_name || SOURCE_LABEL[reservation.source] || 'Booked'} · ${formatTime(reservation.start_at)}` : null].filter(Boolean).join(' · ');
       return `<li class="atlas-row bk-row" data-bookings-row="${escapeHtml(table.id)}" data-bookings-table="${escapeHtml(table.id)}"${reservation ? ` data-bookings-reservation="${escapeHtml(reservation.id)}"` : ''}>
@@ -472,12 +488,34 @@
     return `<ul class="atlas-list bk-list" data-bookings-list>${rows}</ul>`;
   }
 
+  // Requests waiting for confirmation on this day — website requests have no
+  // seats yet, so without this list they would not appear anywhere.
+  function requestsMarkup() {
+    const list = requestedReservations();
+    if (!list.length) return '';
+    const rows = list.map((reservation) => {
+      const area = areaById(reservation.area_id);
+      const meta = [formatTime(reservation.start_at),
+        `${reservation.party_size} guest${Number(reservation.party_size) === 1 ? '' : 's'}`,
+        area?.name, reservation.guest_phone, reservation.guest_email].filter(Boolean).join(' · ');
+      return `<li><button type="button" class="atlas-row bk-row bk-request-row" data-bookings-reservation="${escapeHtml(reservation.id)}" aria-label="${escapeHtml(`Request — ${reservation.guest_name || 'Guest'}, ${formatTime(reservation.start_at)}`)}">
+        <span class="atlas-row__body"><span class="atlas-row__title">${escapeHtml(reservation.guest_name || 'Guest')}${reservation.source ? ` <span class="bk-note">${escapeHtml(SOURCE_LABEL[reservation.source] || humanize(reservation.source))}</span>` : ''}</span><span class="atlas-row__meta">${escapeHtml(meta)}</span>${reservation.guest_requests ? `<span class="atlas-row__meta bk-request-row__note">${escapeHtml(reservation.guest_requests)}</span>` : ''}</span>
+        <span class="bk-row__status">${pill(STATUS_LABEL.requested, STATUS_TONE.requested)}</span>
+      </button></li>`;
+    }).join('');
+    return `<section class="bk-requests" data-bookings-requests aria-labelledby="bk-requests-title">
+      <h3 class="bk-area__title" id="bk-requests-title">Requests waiting <span class="bk-note">${escapeHtml(String(list.length))} to confirm</span></h3>
+      <ul class="atlas-list bk-list">${rows}</ul>
+    </section>`;
+  }
+
   function dayBodyMarkup() {
     if (!state.snapshot && !state.error) {
       return `<div class="bk-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(5)}<span class="sr-only">Loading Bookings</span></div>`;
     }
     if (!state.snapshot) return '';
     return `<div class="bk-day" data-bookings-mode="${escapeHtml(state.mode)}">
+      ${requestsMarkup()}
       ${state.mode === 'map' ? mapMarkup() : listMarkup()}
     </div>`;
   }
@@ -1109,15 +1147,21 @@
 
     paint();
     // The snapshot carries permissions for both sections, so it loads first.
-    const needSnapshot = !state.snapshot && (!state.failedAt || Date.now() - state.failedAt > 20000);
-    const ensure = needSnapshot ? loadSnapshot() : Promise.resolve();
+    const otherDay = Boolean(state.snapshot && state.snapshot.date && state.snapshot.date !== state.date);
+    const needSnapshot = otherDay || (!state.snapshot && (!state.failedAt || Date.now() - state.failedAt > 20000));
+    const ensure = needSnapshot ? loadSnapshot(otherDay ? { force: true } : undefined) : Promise.resolve();
     if (state.section === 'config') {
       ensure.then(() => { if (state.visible && state.section === 'config' && canConfigure() && !state.config) loadConfig(); });
     }
     // Deep link from a booking notification (#bookings/res/<id>): open that
     // reservation's detail once the day view is ready.
     if (params.reservation) {
-      ensure.then(() => { if (state.visible) openReservation(String(params.reservation)); });
+      ensure.then(() => {
+        if (!state.visible) return;
+        const id = String(params.reservation);
+        if (reservationById(id)) openReservation(id);
+        else if (state.snapshot) toast('That booking isn’t on this day. Open its date to see it.', 'info');
+      });
     }
     if (!params.section && !params.reservation) window.scrollTo?.(0, 0);
   }

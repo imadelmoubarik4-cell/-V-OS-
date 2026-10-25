@@ -85,7 +85,10 @@ jobs:
         run: bash scripts/verify_s109_booking_notifications_inbox.sh
       - name: Run S110 seat-integrity acceptance (parties 1–4 adjacent in one section, capacity, cross-section and gaps refused on create and move, duplicates/unavailable seats refused, 15-min turnaround with same-day reuse, viewer denied)
         run: bash scripts/verify_s110_booking_seat_integrity.sh
+      - name: S110b booking inbox carries the visit time
+        run: bash scripts/verify_s110b_booking_inbox_visit_time.sh
+
       - name: Run S111 personal-data retention acceptance (90 days after the visit guest details anonymised, linked inbox/outbox/push rows deleted, recent and future bookings untouched, no notifications fired, idempotent, 30-day minimum, sealed, counts-only run log)
         run: bash scripts/verify_s111_booking_personal_data_retention.sh
-      - name: Prove the S111, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S111 via the reviewed bundles)
+      - name: Prove the S111, S110b, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S111 via the reviewed bundles)
         run: bash scripts/release/verify_kanel_bookings_rollback.sh
