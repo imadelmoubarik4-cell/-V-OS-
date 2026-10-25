@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the reviewed production apply bundles for S106, S107, S108, S109 and S110.
+"""Generate the reviewed production apply bundles for S106, S107, S108, S109, S110 and S111.
 
 Production runs on an adopted/squashed migration baseline, so `supabase db push` is
 PROHIBITED (it would treat squashed history as pending). Each migration is applied
@@ -25,12 +25,12 @@ BEGIN = "-- >>> migration file (verbatim) >>>"
 END = "-- <<< end of migration file <<<"
 
 files = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if p.name.split("_")[0] > S105)
-assert [p.name.split("_")[0] for p in files] == ["20261023090000", "20261024090000", "20261025090000", "20261026090000", "20261027090000"], files
+assert [p.name.split("_")[0] for p in files] == ["20261023090000", "20261024090000", "20261025090000", "20261026090000", "20261027090000", "20261028090000"], files
 
 prev = S105
 out_dir = ROOT / "docs/release/sql"
 for n, path in enumerate(files, 1):
-    tag = f"{n}/4" if n <= 4 else f"{n} (S110)"
+    tag = f"{n}/4" if n <= 4 else f"{n} ({path.name.split('_')[1].upper()})"
     version = path.name.split("_")[0]
     name = path.stem.split("_", 1)[1]
     body = path.read_text(encoding="utf-8")

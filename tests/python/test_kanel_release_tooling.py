@@ -1,4 +1,4 @@
-"""KANEL bookings release tooling (S106–S109) — static contract.
+"""KANEL bookings release tooling (S106–S111) — static contract.
 
 The rollback itself is proven on a replayed database by
 scripts/release/verify_kanel_bookings_rollback.sh (last step of the replay gate).
@@ -16,10 +16,12 @@ PREFLIGHT = (ROOT / "docs/release/sql/KANEL_preflight_readonly.sql").read_text(e
 WORKFLOW = (ROOT / ".github/workflows/migration-replay.yml").read_text(encoding="utf-8")
 RELEASE_MIGRATIONS = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if p.name.split("_")[0] > "20261022090000")
 S106_S109 = [p for p in RELEASE_MIGRATIONS if p.name.split("_")[0] < "20261027000000"]
-BUNDLES = sorted((ROOT / "docs/release/sql").glob("KANEL_apply_[1-5]_*.sql"))
+BUNDLES = sorted((ROOT / "docs/release/sql").glob("KANEL_apply_[1-6]_*.sql"))
 EXPECTED_110 = json.loads((ROOT / "scripts/release/kanel_pre_s110_expected.json").read_text(encoding="utf-8"))
 ROLLBACK_110 = (ROOT / "docs/release/sql/KANEL_S110_rollback.sql").read_text(encoding="utf-8")
 PREFLIGHT_110 = (ROOT / "docs/release/sql/KANEL_S110_preflight_readonly.sql").read_text(encoding="utf-8")
+ROLLBACK_111 = (ROOT / "docs/release/sql/KANEL_S111_rollback.sql").read_text(encoding="utf-8")
+PREFLIGHT_111 = (ROOT / "docs/release/sql/KANEL_S111_preflight_readonly.sql").read_text(encoding="utf-8")
 
 
 def code_only(sql):
@@ -30,7 +32,7 @@ def code_only(sql):
 
 class KanelReleaseTooling(unittest.TestCase):
     def test_preflight_is_strictly_read_only(self):
-        for name, text in (("S106", PREFLIGHT), ("S110", PREFLIGHT_110)):
+        for name, text in (("S106", PREFLIGHT), ("S110", PREFLIGHT_110), ("S111", PREFLIGHT_111)):
             code = code_only(text).lower()
             for word in ("insert", "update", "delete", "alter", "drop", "create", "grant", "revoke",
                          "truncate", "copy", "call", "do", "set ", "begin", "commit", "vacuum"):
@@ -88,6 +90,23 @@ class KanelReleaseTooling(unittest.TestCase):
         for line in ROLLBACK_110.splitlines():
             self.assertIsNone(re.search(r"\b(drop (table|column)|truncate|delete from atlas_private)\b", line, re.I), line)
 
+    def test_s111_preflight_requires_s110_and_pg_cron(self):
+        self.assertIn("'20261027090000'", PREFLIGHT_111)  # production must be at S110
+        self.assertIn("'20261028090000'", PREFLIGHT_111)
+        self.assertIn("pg_available_extensions where name = 'pg_cron'", PREFLIGHT_111)
+
+    def test_s111_rollback_unschedules_and_drops_only_s111_objects(self):
+        code = code_only(ROLLBACK_111)
+        self.assertEqual(code.count("begin;"), 1)
+        self.assertTrue(code.rstrip().endswith("commit;"))
+        self.assertIn("cron.unschedule", ROLLBACK_111)
+        self.assertIn("drop function if exists atlas_private.booking_purge_personal_data(integer, boolean);", ROLLBACK_111)
+        self.assertIn("drop table if exists atlas_private.booking_retention_runs;", ROLLBACK_111)
+        self.assertIn("delete from supabase_migrations.schema_migrations where version = '20261028090000';", ROLLBACK_111)
+        for line in ROLLBACK_111.splitlines():
+            if re.search(r"\b(drop table|truncate|delete from)\b", line, re.I) and not line.lstrip().startswith("--"):
+                self.assertTrue("booking_retention_runs" in line or "schema_migrations" in line, line)
+
     def test_rollback_clears_exactly_the_release_ledger_rows(self):
         versions = [p.name.split("_")[0] for p in S106_S109]
         self.assertEqual(versions, ["20261023090000", "20261024090000", "20261025090000", "20261026090000"])
@@ -97,7 +116,7 @@ class KanelReleaseTooling(unittest.TestCase):
 
     def test_apply_bundles_embed_each_migration_verbatim_in_order(self):
         self.assertEqual(len(BUNDLES), len(RELEASE_MIGRATIONS))
-        self.assertEqual([p.name.split("_")[0] for p in RELEASE_MIGRATIONS][-1], "20261027090000")
+        self.assertEqual([p.name.split("_")[0] for p in RELEASE_MIGRATIONS][-1], "20261028090000")
         prev = "20261022090000"
         for bundle, migration in zip(BUNDLES, RELEASE_MIGRATIONS):
             text = bundle.read_text(encoding="utf-8")
