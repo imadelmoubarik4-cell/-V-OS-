@@ -4,7 +4,8 @@
 # bookings whose visit ended more than 90 days ago are anonymised (all guest fields,
 # token, idempotency key, provider ref) while date/party/status/reference stay;
 # bookings inside the window and future bookings untouched; linked inbox, email
-# outbox and booking push rows deleted; no notifications or emails fired; repeat
+# outbox and booking push rows deleted; staff notes in the append-only status history
+# cleared (break-glass restored, history still append-only); no notifications or emails fired; repeat
 # run is a no-op; every run logged with counts only.
 # tests/sql/s111_booking_personal_data_retention.sql seeds fixtures in one
 # transaction and rolls back. Loopback databases only.

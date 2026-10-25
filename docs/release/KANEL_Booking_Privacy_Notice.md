@@ -16,7 +16,7 @@ Facts behind the text (for the reviewer, not for publication):
 | IP address | Used only to limit abuse. A salted one-way hash is stored, never the raw IP. Rows are removed automatically by later requests, normally within about an hour. |
 | Status token | A random token is created per request. The website discards it; it is never stored in the browser. |
 | Guest emails | Not sent. Emails are queued in a sealed outbox inside the database until an email provider is approved. |
-| Retention | **90 days after the visit**, enforced by S111 (`atlas_private.booking_purge_personal_data`, nightly pg_cron job `kanel-booking-retention`). Publish the 90-day text below **only after S111 is applied in production** and the cron job is confirmed. |
+| Retention | **90 days after the visit** (S111: `atlas_private.booking_purge_personal_data`, nightly pg_cron job `kanel-booking-retention`, 03:17 UTC). **Removed:** guest name, phone, email, guest note, staff notes, staff notes typed on status changes, the status token, idempotency key and provider reference; the staff booking inbox, queued guest emails and booking push messages. **Kept (no name or contact details):** KA- booking reference, date and time, party size, status and status history (times, which staff member changed it), source (web/phone/…), area and table/seat assignment. These are not claimed to be anonymous: a reference or date could be matched with other records (e.g. a payment). **Not covered:** Supabase's routine database backups **[confirm backup/PITR retention for the project plan]**, and anything copied outside Alcedo. Publish the 90-day text only after S111 is applied in production and the cron job is confirmed. |
 | Who can see it | Signed-in KANEL staff in Alcedo. The booking inbox is limited to managers and administrators. |
 | Analytics | The booking form loads no analytics or trackers. (The site loads Google Fonts and links to Google Maps. The site-wide privacy policy should cover these.) |
 
@@ -33,6 +33,8 @@ request a table. Contact: kanel@kanel.is · +354 692 0528.
 **What we collect.** Your name, email address, phone number, the number of guests,
 the date and time you request, and any note you add. Please don't include health or
 other sensitive information in the note. For allergies, tell your server on the day.
+When we handle your request we also record a booking reference, its status, the
+table assigned to you, and any internal notes our staff add about your booking.
 
 **Why we use it.** Only to handle your booking request: to check availability, to
 hold your request while our team reviews it, to contact you with the answer, and to
@@ -52,8 +54,13 @@ hosting region: Ireland (EEA)]**. We do not sell your data or use it for marketi
 uses no analytics or advertising trackers.
 
 **How long we keep it.** We keep your booking details for 90 days after your visit.
-After that they are deleted automatically: your name, phone number, email and any
-requests or notes are removed, and only an anonymous record (date, party size) remains.
+After that, your name, phone number, email address, your note and our staff's notes
+about the booking are deleted automatically, together with the messages about it in
+our booking system. We keep a record of the booking without your name or contact
+details — its reference, date and time, number of guests, status and status
+changes, how it was made, and the table assigned — for our business records.
+Our hosting provider's routine backups may hold a copy for up to
+**[confirm, e.g. 7]** days longer, after which they are overwritten.
 
 **Your rights.** You can ask for access to your data, for correction or deletion,
 for restriction, or object to its use. Email kanel@kanel.is. If you think we have not
@@ -73,7 +80,9 @@ Authority (Persónuvernd), www.personuvernd.is.
 **Hvað við skráum.** Nafn, netfang, símanúmer, fjölda gesta, dagsetningu og tíma
 sem þú óskar eftir og athugasemd ef þú bætir henni við. Vinsamlegast skráðu ekki
 heilsufarsupplýsingar eða aðrar viðkvæmar upplýsingar í athugasemdina. Láttu
-þjóninn vita af ofnæmi á staðnum.
+þjóninn vita af ofnæmi á staðnum. Þegar við afgreiðum beiðnina skráum við einnig
+bókunarnúmer, stöðu bókunarinnar, borðið sem þér er úthlutað og athugasemdir sem
+starfsfólk okkar skráir um bókunina.
 
 **Til hvers.** Eingöngu til að afgreiða bókunarbeiðnina þína: til að kanna laus
 sæti, taka beiðnina frá á meðan starfsfólk fer yfir hana, hafa samband við þig með
@@ -94,8 +103,13 @@ upplýsingarnar þínar né notum þær í markaðsskyni og bókunarformið nota
 vefmælingar eða auglýsingarakningu.
 
 **Varðveislutími.** Við geymum bókunarupplýsingarnar þínar í 90 daga eftir heimsókn.
-Eftir það er þeim eytt sjálfkrafa: nafn, símanúmer, netfang og óskir eða athugasemdir
-eru fjarlægð og aðeins ópersónugreinanleg skráning (dagsetning, fjöldi gesta) stendur eftir.
+Eftir það er nafni þínu, símanúmeri, netfangi, athugasemd þinni og athugasemdum
+starfsfólks um bókunina eytt sjálfkrafa, ásamt skilaboðum um hana í bókunarkerfinu.
+Við geymum skráningu um bókunina án nafns eða tengiliðaupplýsinga — bókunarnúmer,
+dagsetningu og tíma, fjölda gesta, stöðu og stöðubreytingar, hvernig bókað var og
+borðið sem var úthlutað — vegna rekstrar okkar. Reglubundin afrit hýsingaraðilans
+geta geymt eintak í allt að **[staðfesta, t.d. 7]** daga til viðbótar, en þá er
+skrifað yfir þau.
 
 **Réttindi þín.** Þú getur óskað eftir aðgangi að upplýsingunum, leiðréttingu eða
 eyðingu þeirra og takmörkun vinnslu, eða andmælt vinnslu. Sendu póst á

@@ -25,4 +25,16 @@ union all select 11, 'impact', 'oldest booking visit on record', 'INFO',
 union all select 12, 'impact', 'inbox / email outbox rows older than 90 days (deleted on the first run)', 'INFO',
   (select pg_catalog.count(*) from atlas_private.booking_notifications where created_at < pg_catalog.now() - interval '90 days')::text
   || ' / ' || (select pg_catalog.count(*) from atlas_private.booking_email_outbox where created_at < pg_catalog.now() - interval '90 days')::text
+union all select 13, 'impact', 'booking push rows older than 90 days / status-history notes on bookings older than 90 days', 'INFO',
+  (select pg_catalog.count(*) from atlas_private.push_notification_queue q
+    where (q.event_type = 'booking_request' or q.route = 'bookings') and q.created_at < pg_catalog.now() - interval '90 days')::text
+  || ' / ' || (select pg_catalog.count(*) from atlas_private.reservation_status_history h join atlas_private.reservations r on r.id = h.reservation_id
+    where r.end_at < pg_catalog.now() - interval '90 days' and h.note is not null)::text
+union all select 14, 'impact', 'expected first dry run: every impact count above is 0', 
+  case when not exists (select 1 from atlas_private.reservations where end_at < pg_catalog.now() - interval '90 days')
+        and not exists (select 1 from atlas_private.booking_notifications where created_at < pg_catalog.now() - interval '90 days')
+        and not exists (select 1 from atlas_private.booking_email_outbox where created_at < pg_catalog.now() - interval '90 days')
+        and not exists (select 1 from atlas_private.push_notification_queue q where (q.event_type = 'booking_request' or q.route = 'bookings')
+                          and q.created_at < pg_catalog.now() - interval '90 days')
+       then 'PASS' else 'INFO' end, 'PASS = the first nightly run removes nothing'
 ) checks order by ord, "check";

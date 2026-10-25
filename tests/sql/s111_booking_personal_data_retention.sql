@@ -56,6 +56,12 @@ begin
   select p.id, 'booking_request', 'New booking request', 'Old Web Guest · party of 2', 'bookings', old_web, 'pending', now() - interval '101 days'
   from (select 'a8000000-0000-4000-8000-0000000000a1'::uuid as id) p;
 
+  -- Staff free-text notes in the (append-only) status history.
+  insert into atlas_private.reservation_status_history (reservation_id, from_status, to_status, changed_by_label, note, changed_at)
+  values (old_web, 'requested', 'cancelled', 'S111 Manager', 'Old Web Guest called, +354 555 0001', now() - interval '100 days'),
+         (old_phone, 'confirmed', 'completed', 'S111 Manager', 'Old Phone Guest left early', now() - interval '91 days'),
+         (recent, 'confirmed', 'completed', 'S111 Manager', 'Recent Guest asked for a booth', now() - interval '89 days');
+
   -- 1. Guard: a window shorter than 30 days is refused.
   begin
     perform atlas_private.booking_purge_personal_data(7, false);
@@ -66,6 +72,7 @@ begin
   select count(*) into n_runs_before from atlas_private.booking_retention_runs;
   dry := atlas_private.booking_purge_personal_data(90, true);
   if (dry->>'reservations_anonymised')::int <> 2 then raise exception 's111: dry run should find 2 reservations, got %', dry; end if;
+  if (dry->>'status_notes_cleared')::int < 2 then raise exception 's111: dry run should count the old status notes, got %', dry; end if;
   if (select guest_name from atlas_private.reservations where id = old_web) is null then
     raise exception 's111: the dry run changed data';
   end if;
@@ -84,6 +91,27 @@ begin
      and staff_notes is null and public_token is null and idempotency_key is null and provider_ref is null
      and booking_reference in ('KA-S111A', 'KA-S111B') and party_size in (2, 3) and status in ('cancelled', 'completed');
   if n <> 2 then raise exception 's111: old bookings were not anonymised correctly'; end if;
+
+  -- Status history: old bookings' notes cleared, rows (status, time, staff label) kept;
+  -- the recent booking's note kept; the S96 break-glass is not left switched on.
+  if exists (select 1 from atlas_private.reservation_status_history where reservation_id in (old_web, old_phone) and note is not null) then
+    raise exception 's111: a status-history note of a purged booking survived';
+  end if;
+  if (select count(*) from atlas_private.reservation_status_history
+       where reservation_id in (old_web, old_phone) and to_status in ('cancelled', 'completed') and changed_by_label = 'S111 Manager') <> 2 then
+    raise exception 's111: status-history rows of purged bookings were lost';
+  end if;
+  if not exists (select 1 from atlas_private.reservation_status_history where reservation_id = recent and note = 'Recent Guest asked for a booth') then
+    raise exception 's111: a recent booking''s status note was cleared';
+  end if;
+  if coalesce(current_setting('atlas.audit_break_glass', true), '') = 'on' then
+    raise exception 's111: the purge left the audit break-glass switched on';
+  end if;
+  -- The history is still append-only for everything else.
+  begin
+    update atlas_private.reservation_status_history set note = 'tamper' where reservation_id = recent;
+    raise exception 's111: status history became editable';
+  exception when insufficient_privilege then null; end;
 
   -- Recent and future bookings untouched.
   select count(*) into n from atlas_private.reservations

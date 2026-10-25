@@ -32,9 +32,15 @@ $guard$;
 --     (booking_notifications), the guest email outbox (booking_email_outbox) and
 --     booking web-push rows (push_notification_queue) — for purged reservations
 --     and anything else older than the window.
+--   * staff free-text notes on those reservations' status history are cleared
+--     (reservation_status_history.note can hold up to 500 characters a staff
+--     member typed, e.g. a cancellation reason). The history is append-only (S96);
+--     the purge uses S96's transaction-local break-glass, which the guard honours
+--     only for session user postgres / supabase_admin (pg_cron runs as postgres),
+--     and restores it before returning. Statuses, times and staff labels stay.
 --   * every run is recorded in atlas_private.booking_retention_runs (counts only).
--- The append-only status history and booking events hold no guest details (status
--- changes, party size, source, seat ids, staff labels) and are left untouched.
+-- Booking events hold no guest details (status changes, party size, source, seat
+-- ids, staff labels) and are left untouched.
 -- Anonymising never fires guest or staff notifications: the lifecycle trigger
 -- acts only on a status change, and the cleared public_token ends it early anyway.
 --
@@ -79,6 +85,8 @@ declare
   n_inbox integer := 0;
   n_outbox integer := 0;
   n_push integer := 0;
+  n_notes integer := 0;
+  prev_break_glass text;
   result jsonb;
 begin
   -- Guard against an accidental short window wiping current bookings.
@@ -103,6 +111,8 @@ begin
     select pg_catalog.count(*) into n_push from atlas_private.push_notification_queue q
       where (q.event_type = 'booking_request' or q.route = 'bookings')
         and (q.object_id = any(targets) or q.created_at < cutoff);
+    select pg_catalog.count(*) into n_notes from atlas_private.reservation_status_history h
+      where h.reservation_id = any(targets) and h.note is not null;
   else
     delete from atlas_private.booking_notifications n
       where n.reservation_id = any(targets) or n.created_at < cutoff;
@@ -118,11 +128,20 @@ begin
        set guest_name = null, guest_phone = null, guest_email = null, guest_requests = null,
            staff_notes = null, public_token = null, idempotency_key = null, provider_ref = null
      where id = any(targets);
+    -- Status-history notes: S96 break-glass for this one statement, then restored.
+    if n_res > 0 then
+      prev_break_glass := pg_catalog.current_setting('atlas.audit_break_glass', true);
+      perform pg_catalog.set_config('atlas.audit_break_glass', 'on', true);
+      update atlas_private.reservation_status_history h set note = null
+       where h.reservation_id = any(targets) and h.note is not null;
+      get diagnostics n_notes = row_count;
+      perform pg_catalog.set_config('atlas.audit_break_glass', coalesce(prev_break_glass, ''), true);
+    end if;
   end if;
 
   result := pg_catalog.jsonb_build_object(
     'reservations_anonymised', n_res, 'inbox_deleted', n_inbox,
-    'outbox_deleted', n_outbox, 'push_deleted', n_push);
+    'outbox_deleted', n_outbox, 'push_deleted', n_push, 'status_notes_cleared', n_notes);
   insert into atlas_private.booking_retention_runs (retention_days, cutoff, dry_run, counts)
   values (p_days, cutoff, coalesce(p_dry_run, false), result);
   return result || pg_catalog.jsonb_build_object('cutoff', cutoff, 'dry_run', coalesce(p_dry_run, false));
