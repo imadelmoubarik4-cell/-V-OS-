@@ -64,19 +64,18 @@ window.VABAR_CONFIG = {
   // are complete and verified (KANEL × ALCEDO online-bookings handoff, phased).
   PUBLIC_BOOKING_ENABLED: false,
   // Staff in-app booking notifications (the manager/admin booking inbox in the
-  // notification bell). FEATURE-FLAGGED and OFF by default, and INDEPENDENT of
+  // notification bell). Explicitly enabled for KANEL staff, INDEPENDENT of
   // PUBLIC_BOOKING_ENABLED: this only turns on the staff-facing inbox worker
   // (bookings-notifications.js). While false, the worker is completely inert — it
   // registers nothing, adds no listeners and never calls atlas-bookings — so no
-  // page makes an unexpected booking request. Turn this on ONLY after the s109
-  // migration is applied and the authenticated staff edge (atlas-bookings
-  // notifications actions) is deployed; it is separate from, and must not be
+  // page makes an unexpected booking request. S109 and the authenticated staff
+  // edge notifications actions are now deployed. This is separate from, and must not be
   // conflated with, activating the public guest-booking website.
-  BOOKING_NOTIFICATIONS_ENABLED: false,
+  BOOKING_NOTIFICATIONS_ENABLED: true,
   // Optional visible manager/admin inbox refresh. 0 disables timed refreshes;
-  // only whole seconds in 30–300 are accepted. Enable with 60 after the staff
-  // edge deploy and live inbox verification, separately from public activation.
-  BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 0,
+  // only whole seconds in 30–300 are accepted. Visible managers refresh once
+  // per minute; public website activation and its live test remain separate.
+  BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 60,
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application

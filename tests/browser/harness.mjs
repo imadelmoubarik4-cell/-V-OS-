@@ -153,12 +153,12 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
     if (file === '/assets/js/atlas-app.js') {
       body = Buffer.from(body.toString('utf8').replace(/script\.integrity = SUPABASE_SRI;/, ''));
     }
-    // A test may deliberately configure the environment by overriding config
-    // values (e.g. a feature flag that is OFF by default in production). The
-    // override lives only in the served copy — the repository config.js is
-    // untouched — so a test enables a flag without a production backdoor.
-    if (file === '/config.js' && configOverrides) {
-      body = Buffer.from(`${body.toString('utf8')}\nObject.assign(window.VABAR_CONFIG, ${JSON.stringify(configOverrides)});\n`);
+    // Isolate unrelated module tests from background inbox work. Dedicated
+    // inbox tests opt in explicitly, including the timed manager-bell test.
+    // These overrides affect only this mocked test environment.
+    if (file === '/config.js') {
+      const testConfig = { BOOKING_NOTIFICATIONS_ENABLED: false, BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 0, ...(configOverrides || {}) };
+      body = Buffer.from(`${body.toString('utf8')}\nObject.assign(window.VABAR_CONFIG, ${JSON.stringify(testConfig)});\n`);
     }
     // enforceCsp: serve pages with the production Content-Security-Policy from netlify.toml.
     const headers = enforceCsp && file.endsWith('.html') ? { 'content-security-policy': productionCsp() } : {};
