@@ -113,9 +113,14 @@ test('push opt-in covers unsupported, denied, pending, and enabled states', () =
   assert.match(notifications, /pushManager\.subscribe/);
   assert.match(worker, /addEventListener\('push'/);
   assert.match(worker, /addEventListener\('notificationclick'/);
-  assert.match(worker, /route === 'shifts' \? 'shifts' : 'team'/);
-  // S88: message notifications open #messages (the spec route table gives #team to Team).
-  assert.match(worker, /new URL\(`\.\/#\$\{route === 'shifts' \? 'shifts' : 'messages'\}`/);
+  // Routes are allow-listed; an unknown route falls back to Team (S88 route table:
+  // shifts -> #shifts, team -> #messages, bookings -> #bookings[/res/<id>]).
+  assert.match(worker, /routeOf\s*=\s*\(value\)\s*=>\s*\(ROUTES\.has\(value\)\s*\?\s*value\s*:\s*'team'\)/);
+  assert.match(worker, /ROUTES\s*=\s*new Set\(\['shifts', 'bookings', 'team'\]\)/);
+  assert.match(worker, /route === 'shifts'\) return '#shifts'/);
+  assert.match(worker, /return '#messages'/);
+  // S109: booking notifications deep-link the exact reservation when present.
+  assert.match(worker, /route === 'bookings'\) return objectId \? `#bookings\/res\/\$\{encodeURIComponent\(objectId\)\}` : '#bookings'/);
   assert.match(notificationApi, /ATLAS_PUSH_DELIVERY_ENABLED/);
   assert.match(notificationApi, /delivery: "disabled"/);
   assert.match(notificationApi, /npm:web-push@3\.6\.7/);

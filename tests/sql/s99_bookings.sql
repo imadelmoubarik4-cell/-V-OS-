@@ -128,18 +128,29 @@ begin
   if (r2->'reservation'->'tables'->0->>'label') <> 'Bar 2' then raise exception 'auto-assign should fall through to Bar 2'; end if;
 
   -- A website request stays requested until staff approval, even when capacity exists.
+  -- S106: online parties are capped at max_party_online (4); this uses a valid
+  -- online size and still exercises the requested -> assign -> confirmed flow.
   r_big := public.atlas_bookings_create(bart,'bartender', jsonb_build_object(
-    'party_size',8,'start_at', base + interval '150 minutes','source','web','guest_name','Big Group'));
-  if (r_big->'reservation'->>'status') <> 'requested' then raise exception 'a large party should stay requested'; end if;
+    'party_size',2,'start_at', base + interval '150 minutes','source','web','guest_name','Web Guests'));
+  if (r_big->'reservation'->>'status') <> 'requested' then raise exception 'a website request should stay requested'; end if;
   if jsonb_array_length(r_big->'reservation'->'tables') <> 0 then raise exception 'a requested booking must not hold a table'; end if;
   res_big := (r_big->'reservation'->>'id')::uuid;
+
+  -- S106: an online party above the cap is refused (groups > 4 contact staff).
+  begin
+    perform public.atlas_bookings_create(bart,'bartender', jsonb_build_object(
+      'party_size',5,'start_at', base + interval '150 minutes','source','web','guest_name','Too Big'));
+    raise exception 'an over-cap online party was accepted';
+  exception when invalid_parameter_value then null; end;  -- 22023 / atlas:invalid_request
 
   -- Confirming a requested booking without a table is refused; assigning one confirms it.
   begin
     perform public.atlas_bookings_set_status(mgr,'manager', res_big, 'confirmed', null);
     raise exception 'a requested booking confirmed without a table';
   exception when invalid_parameter_value then null; end;  -- 22023 / atlas:invalid_request
-  r_after := public.atlas_bookings_assign(mgr,'manager', res_big, jsonb_build_array(t2));
+  -- Assign Bar 1: free at this later slot (its earlier booking has ended, incl. the
+  -- S106 15-minute turnaround buffer) and capacity-matched for the party.
+  r_after := public.atlas_bookings_assign(mgr,'manager', res_big, jsonb_build_array(t1));
   if (r_after->'reservation'->>'status') <> 'confirmed' then raise exception 'assigning a table should confirm the request'; end if;
 
   -- Idempotent create: same idempotency_key returns the original booking, not a new one.

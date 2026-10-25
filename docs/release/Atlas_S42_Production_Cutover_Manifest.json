@@ -1,33 +1,33 @@
 {
-  "package": "Atlas S42 production web cutover v1",
-  "status": "Approved production endpoint and site launch package",
-  "generated_on": "2026-09-15",
-  "source_merge_commit": "ddc9d4ed48b1e4ff8c452546fe3336309fd4b6e9",
-  "production": {
-    "project_ref": "dnefgcmjcgxlynycxkts",
-    "supabase_origin": "https://dnefgcmjcgxlynycxkts.supabase.co",
-    "browser_origin": "https://os-vabar.netlify.app",
-    "runtime_function_count": 20,
-    "configured_frontend_endpoint_count": 22
-  },
-  "inactive_features": {
-    "import_worker": true,
-    "stock_count_publication": true,
-    "push_delivery": true,
-    "item_master_publication": true
-  },
-  "boundaries": {
-    "staging_references_allowed": false,
-    "wildcard_cors_allowed": false,
-    "real_stock_mutation_authorized": false,
-    "automatic_import_authorized": false
-  },
-  "files": {
-    "apps/web/config.js": "43a5f70b92f4fb787ffb0a23801244abf683c8695a92968e9fe5980e30e202ac",
-    "apps/web/assets/js/rehearsal-boundary.js": "1c89934dc783d9d9802e1ccbc4b73fdc481b58bd4478fda64678729086d0b4fe",
-    "apps/web/assets/js/stock-count-workspace.js": "6653a4226e762248186a2c64a793a080203d4fa94830b9b28453a4a6d9f20092",
-    "apps/web/assets/js/data-workspace.js": "de64be7e75b22abd4ffb2cd4ff0960bd7f8e566cde25e96d49d635c262836486",
-    "netlify.toml": "e0f811a4a374a5de7fda9eca1e24884006e5bcce5998102bac32872ae67ce8ce",
-    "supabase/config.toml": "24efa2cef1b984f0a1b945e6e046911ca87609b9f62b25885092c3201ff2f4b0"
-  }
+ "package": "Atlas S42 production web cutover v1",
+ "status": "Approved production endpoint and site launch package",
+ "generated_on": "2026-09-15",
+ "source_merge_commit": "ddc9d4ed48b1e4ff8c452546fe3336309fd4b6e9",
+ "production": {
+  "project_ref": "dnefgcmjcgxlynycxkts",
+  "supabase_origin": "https://dnefgcmjcgxlynycxkts.supabase.co",
+  "browser_origin": "https://os-vabar.netlify.app",
+  "runtime_function_count": 20,
+  "configured_frontend_endpoint_count": 22
+ },
+ "inactive_features": {
+  "import_worker": true,
+  "stock_count_publication": true,
+  "push_delivery": true,
+  "item_master_publication": true
+ },
+ "boundaries": {
+  "staging_references_allowed": false,
+  "wildcard_cors_allowed": false,
+  "real_stock_mutation_authorized": false,
+  "automatic_import_authorized": false
+ },
+ "files": {
+  "apps/web/config.js": "bca719885cb5acf35da0270bc5f8212f49bf4a03bd33f21e67c40657438878b1",
+  "apps/web/assets/js/rehearsal-boundary.js": "1c89934dc783d9d9802e1ccbc4b73fdc481b58bd4478fda64678729086d0b4fe",
+  "apps/web/assets/js/stock-count-workspace.js": "6653a4226e762248186a2c64a793a080203d4fa94830b9b28453a4a6d9f20092",
+  "apps/web/assets/js/data-workspace.js": "de64be7e75b22abd4ffb2cd4ff0960bd7f8e566cde25e96d49d635c262836486",
+  "netlify.toml": "e0f811a4a374a5de7fda9eca1e24884006e5bcce5998102bac32872ae67ce8ce",
+  "supabase/config.toml": "71adebc1e28fd3879a25a38dfd59b604069121b349174127f736f25a2e954e98"
+ }
 }
