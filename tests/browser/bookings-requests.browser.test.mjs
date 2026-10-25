@@ -7,7 +7,7 @@
 //     party, phone and email; the held stool reads "Requested" and opens it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, settle, USERS, fixtureTime } from './harness.mjs';
+import { harnessAvailable, launchAtlas, settle, until, USERS, fixtureTime } from './harness.mjs';
 import { bookingsWorld, kanelRoom } from './bookings-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -82,5 +82,40 @@ test('a deep link to a booking that is not on the open day says so', { skip }, a
   try {
     await page.evaluate(() => { location.hash = '#bookings/res/res-web'; });
     await page.waitForFunction(() => /isn’t on this day/.test(document.body.textContent || ''), null, { timeout: 15000 });
+  } finally { await close(); }
+});
+
+test('a single Confirm click assigns adjacent free stools for a website request', { skip }, async () => {
+  const { page, record, bookings, close } = await boot();
+  try {
+    await page.evaluate((day) => { location.hash = `#bookings/${day}`; }, DAY);
+    await page.waitForSelector('[data-bookings-requests] [data-bookings-reservation="res-web"]');
+    await page.click('[data-bookings-requests] [data-bookings-reservation="res-web"]');
+    await page.waitForSelector('[data-bookings-status-btn][data-to-status="confirmed"]', { state: 'visible' });
+    assert.match(await page.textContent('[data-bookings-status-btn][data-to-status="confirmed"]'), /Confirm.*assign seats/);
+    await page.click('[data-bookings-status-btn][data-to-status="confirmed"]');
+    await until(() => bookings.callsFor('assign').length === 1, { message: 'single-click assign request' });
+    assert.deepEqual(bookings.callsFor('assign')[0].body, { reservation_id: 'res-web', table_ids: ['bar-1', 'bar-2'] });
+    assert.equal(bookings.callsFor('set-status').length, 0, 'does not call the server operation rejected without seats');
+    assert.equal(bookings.reservation('res-web').status, 'confirmed', 'assignment also confirms in production');
+    await page.waitForSelector('[data-bookings-status-btn][data-to-status="arrived"]', { state: 'visible' });
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('Confirm respects the specific adjacent stools selected by staff', { skip }, async () => {
+  const { page, record, bookings, close } = await boot();
+  try {
+    await page.evaluate((day) => { location.hash = `#bookings/${day}`; }, DAY);
+    await page.waitForSelector('[data-bookings-requests] [data-bookings-reservation="res-web"]');
+    await page.click('[data-bookings-requests] [data-bookings-reservation="res-web"]');
+    await page.waitForSelector('[data-bookings-move-seats] [data-bookings-seat="bar-9"]');
+    await page.check('[data-bookings-move-seats] [data-bookings-seat="bar-9"]');
+    await page.check('[data-bookings-move-seats] [data-bookings-seat="bar-10"]');
+    await page.click('[data-bookings-status-btn][data-to-status="confirmed"]');
+    await until(() => bookings.callsFor('assign').length === 1, { message: 'staff-selected assignment' });
+    assert.deepEqual(bookings.callsFor('assign')[0].body, { reservation_id: 'res-web', table_ids: ['bar-9', 'bar-10'] });
+    assert.equal(bookings.callsFor('set-status').length, 0);
+    assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
