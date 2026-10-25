@@ -217,6 +217,8 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
       if (!reservations.get(id)) return notFound();
       if (!Array.isArray(body.table_ids) || !body.table_ids.length) return invalid();
       allocations.set(id, [...body.table_ids]);
+      // Production S110: assigning seats confirms a Requested website booking.
+      if (reservations.get(id).status === 'requested') reservations.get(id).status = 'confirmed';
       reservations.get(id).updated_at = fixtureTime(0);
       return { reservation: reservationView(id) };
     }
@@ -228,6 +230,9 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
       if (!r) return notFound();
       const to = String(body.to_status || '');
       const unchanged = r.status === to;
+      // Production refuses confirmation of a seat-based request without seats.
+      if (r.status === 'requested' && to === 'confirmed' && !(allocations.get(id) || []).length
+          && areas.get(r.area_id)?.allocation_mode !== 'pooled') return invalid();
       r.status = to;
       r.updated_at = fixtureTime(0);
       return { reservation: reservationView(id), unchanged };
