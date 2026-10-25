@@ -892,13 +892,16 @@
     applyRole();
     syncOnline();
     syncBadges();
-    // Keeps badges current and picks up a venue name edited in Settings.
+    // Picks up a venue name edited in Settings, and reconciles badges as a cheap
+    // safety net. Badges are already event-driven (messages:unread above), so this
+    // need not be frequent; 15s (was 2.5s) cuts background wakeups ~6x with no
+    // user-visible change (a venue-name edit still appears within 15s).
     state.pollTimer = window.setInterval(() => {
       if (document.hidden) return;
       syncBadges();
       const edited = venueFromWorkspace(window.AtlasSettings?.snapshot?.());
       if (edited) setVenue(edited);
-    }, 2500);
+    }, 15000);
     // Sign-in screen: the venue last read on this device, else nothing.
     applyVenue(readCachedVenue());
     refreshStaticIcons();
