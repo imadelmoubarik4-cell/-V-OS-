@@ -1,5 +1,5 @@
-// The staff booking-notifications worker is feature-flagged OFF by default and
-// independent of public guest-booking activation. While off it must be completely
+// The production staff inbox is explicitly enabled independently of guest-booking
+// activation. The worker itself still fails closed without its flag. While off it must be completely
 // inert — no atlas-bookings request from any page — so Accounting / Home / Team
 // and every other page stay free of unexpected booking requests or console errors.
 import test from 'node:test';
@@ -12,14 +12,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const config = readFileSync(path.join(ROOT, 'apps/web/config.js'), 'utf8');
 const worker = readFileSync(path.join(ROOT, 'apps/web/assets/js/bookings-notifications.js'), 'utf8');
 
-test('BOOKING_NOTIFICATIONS_ENABLED is defined and OFF by default', () => {
-  assert.match(config, /BOOKING_NOTIFICATIONS_ENABLED:\s*false/);
+test('the production staff inbox is explicitly enabled with a 60-second refresh', () => {
+  assert.match(config, /BOOKING_NOTIFICATIONS_ENABLED:\s*true/);
+  assert.match(config, /BOOKING_NOTIFICATIONS_REFRESH_SECONDS:\s*60/);
 });
 
 test('the staff inbox flag is independent of public guest-booking activation', () => {
-  // Both flags exist and both are off; neither references the other.
+  // The staff inbox is on while public guest-booking remains off in the staff app.
   assert.match(config, /PUBLIC_BOOKING_ENABLED:\s*false/);
-  assert.match(config, /BOOKING_NOTIFICATIONS_ENABLED:\s*false/);
+  assert.match(config, /BOOKING_NOTIFICATIONS_ENABLED:\s*true/);
 });
 
 test('the worker gates on the flag before doing anything', () => {
@@ -31,7 +32,7 @@ test('the worker gates on the flag before doing anything', () => {
   assert.match(worker, /if \(!enabled\(\)[^)]*\) return;/);
 });
 
-test('the worker has no polling and no MutationObserver (performance/guard preserved)', () => {
+test('the worker has no polling interval and no MutationObserver (performance/guard preserved)', () => {
   assert.doesNotMatch(worker, /setInterval\s*\(/);
   assert.doesNotMatch(worker, /new\s+(?:window\.)?MutationObserver\s*\(/);
 });

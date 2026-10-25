@@ -9,7 +9,7 @@
 //   * a bartender gets nothing (the inbox is manager/admin only).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, settle, until, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, settle, until, advanceTimers, USERS } from './harness.mjs';
 import { bookingsWorld, TODAY } from './bookings-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -23,8 +23,8 @@ function world(extra = {}) {
   });
 }
 
-// The staff inbox is OFF by default in production (BOOKING_NOTIFICATIONS_ENABLED);
-// these tests deliberately configure the environment to turn it on.
+// The mocked harness isolates background inbox work by default. These tests
+// explicitly opt in; production's activation is checked by the Node contract.
 const ENABLE = { BOOKING_NOTIFICATIONS_ENABLED: true };
 
 async function boot({ user = USERS.admin } = {}) {
@@ -79,8 +79,8 @@ test('mark-all-read persists to the server for bookings too', { skip }, async ()
   } finally { await close(); }
 });
 
-test('OFF by default: the worker is inert — no booking request, no console error', { skip }, async () => {
-  // No configOverrides: BOOKING_NOTIFICATIONS_ENABLED stays false (production).
+test('when disabled the worker is inert — no booking request, no console error', { skip }, async () => {
+  // The isolated test environment supplies the explicit disabled configuration.
   const w = world();
   const app = await launchAtlas({ user: USERS.admin, fixtures: w.fixtures });
   try {
@@ -92,6 +92,25 @@ test('OFF by default: the worker is inert — no booking request, no console err
     assert.ok(!w.bookings.calls.some((c) => c.action === 'notifications'), 'no atlas-bookings notifications request while off');
     const bookingErrors = app.record.consoleErrors.filter((t) => /atlas-bookings/.test(t));
     assert.deepEqual(bookingErrors, [], 'no booking console errors while off');
+  } finally { await app.close(); }
+});
+
+test('a visible manager receives a new request in the bell after 60 seconds without an interaction', { skip }, async () => {
+  const w = world({ notifications: [] });
+  const app = await launchAtlas({ user: USERS.admin, fixtures: w.fixtures, controlTimers: true,
+    configOverrides: { BOOKING_NOTIFICATIONS_ENABLED: true, BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 60 } });
+  try {
+    await app.page.waitForFunction(() => window.AtlasBookingsNotifications?.loaded?.() === true);
+    await settle(app.page);
+    assert.equal(await app.page.evaluate(() => window.AtlasBookingsNotifications.count()), 0);
+    const before = w.bookings.callsFor('notifications').length;
+    w.bookings.inbox.push({ id: 'timed-request', reservation_id: 'res-erla', kind: 'request', title: 'New website request', body: 'Test party of 2', read: false, created_at: `${TODAY}T12:00:00Z` });
+    await advanceTimers(app.page, 61000, { step: 10000 });
+    await until(() => app.page.evaluate(() => window.AtlasBookingsNotifications.count() === 1), { message: 'timed website request in manager inbox' });
+    assert.ok(w.bookings.callsFor('notifications').length > before, 'a timed inbox request reached the gateway');
+    const items = await app.page.evaluate(() => window.AtlasShell.notify.items().filter(item => item.type === 'booking'));
+    assert.ok(items.some(item => item.title === 'New website request'), 'the unread request appears in the real shell bell without a click');
+    assert.deepEqual(app.record.pageErrors, []);
   } finally { await app.close(); }
 });
 
