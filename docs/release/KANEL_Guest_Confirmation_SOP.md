@@ -40,7 +40,7 @@ your request" is not a confirmation.
 |---|---|
 | Who monitors requests, by shift | Manager on duty; owner as backup |
 | Response target | **10 minutes while open** (proposed); requests made while closed are handled within 30 minutes of opening |
-| How staff notice new requests | See runbook gate B0. With push off, the bell does **not** update on a screen left open. Planned fix: Option A, a 60-second refresh while a manager or admin has Alcedo open and visible (`KANEL_B0_Inbox_Refresh_Spec.md`; not yet approved or built). **Interim:** the manager on duty reopens or refocuses Alcedo at least every 10 minutes. |
+| How staff notice new requests | See runbook gate B0. Option A is implemented in the inbox-refresh follow-up but remains **off and undeployed**. Once deployed and configured to `60`, the bell refreshes every minute while a manager/admin has Alcedo open, visible and online. The live test must show a new request appearing without a click. **Until then:** the manager on duty reopens or refocuses Alcedo at least every 10 minutes. |
 | Same-day requests | Phone (not email) if the visit is under 4 hours away |
 | Minimum notice for web requests | Not enforced by the system today. Decide whether same-day requests are acceptable. |
 | Group requests (5+) | Website sends them to email/phone (online limit 1–4); handle as today |

@@ -6,10 +6,9 @@
 //
 // It reads the server-side inbox (atlas-bookings ?action=notifications), which is
 // written by the booking lifecycle trigger and is INDEPENDENT of web-push: it
-// works whether or not ATLAS_PUSH_DELIVERY_ENABLED is set. There is NO polling
-// loop — the inbox refreshes only on real events (sign-in, the tab becoming
-// visible or focused, coming back online, a staff booking change, or a push the
-// service worker relays), each throttled so a burst collapses to one request.
+// works whether or not ATLAS_PUSH_DELIVERY_ENABLED is set. Event refreshes are
+// throttled. An independently opt-in, bounded refresh runs only for a visible,
+// online manager/admin; it stops on sign-out, denial and page cleanup.
 //
 // Read API: window.AtlasBookingsNotifications
 //   count() · items() · loaded() · refresh({force}) · markAllRead() · clear()
@@ -30,7 +29,15 @@
     lastFetchAt: 0,
     forbidden: false,            // a non-manager profile: stay silent, stop fetching
     authSubscription: null,
-    initialized: false
+    initialized: false,
+    userId: null,
+    request: null,
+    pollTimer: null,
+    pollFailures: 0,
+    pollSuspended: false,
+    disposed: false,
+    cleanups: [],
+    readyCleanup: null
   };
 
   function endpoint() {
@@ -54,21 +61,60 @@
     return appVisible && !loginVisible;
   }
 
+  function refreshMilliseconds() {
+    const seconds = (window.VABAR_CONFIG || cfg).BOOKING_NOTIFICATIONS_REFRESH_SECONDS;
+    return Number.isInteger(seconds) && seconds >= 30 && seconds <= 300 ? seconds * 1000 : 0;
+  }
+
+  function canPoll() {
+    const profile = window.atlasCurrentProfile;
+    return enabled() && refreshMilliseconds() > 0 && !state.disposed && !state.forbidden &&
+      !state.pollSuspended && appIsSignedIn() && document.visibilityState === 'visible' &&
+      navigator.onLine !== false && Boolean(state.userId) && profile?.id === state.userId &&
+      profile.active !== false && MANAGER_ROLES.has(profile.role);
+  }
+
+  function stopPoll() {
+    if (state.pollTimer !== null) window.clearTimeout(state.pollTimer);
+    state.pollTimer = null;
+  }
+
+  function schedulePoll() {
+    stopPoll();
+    if (!canPoll() || state.inFlight) return;
+    const base = refreshMilliseconds();
+    const backoff = Math.min(300000, base * (2 ** Math.min(state.pollFailures, 4)));
+    const delay = state.pollFailures ? Math.min(300000, backoff * (0.9 + Math.random() * 0.2)) : base;
+    state.pollTimer = window.setTimeout(async function pollTick() {
+      state.pollTimer = null;
+      if (!canPoll()) return;
+      await refresh({ silent: true, timed: true });
+      schedulePoll();
+    }, delay);
+  }
+
   // Run once the app screen is actually shown. The boot/auth triggers can fire
   // before the shell reveals the app, when a fetch would no-op; this waits for
   // the shell's own readiness events (profile ready / first view shown), which
   // are mirrored on window. Event-driven — never a MutationObserver or a poll.
   function whenSignedIn(run) {
+    state.readyCleanup?.();
+    if (state.disposed) return;
     if (appIsSignedIn()) { run(); return; }
     let done = false;
+    let timer;
     const cleanup = () => {
+      done = true;
       window.removeEventListener('atlas:profile-ready', go);
       window.removeEventListener('atlas:view-change', go);
+      window.clearTimeout(timer);
+      state.readyCleanup = null;
     };
     function go() { if (done || !appIsSignedIn()) return; done = true; cleanup(); run(); }
     window.addEventListener('atlas:profile-ready', go);
     window.addEventListener('atlas:view-change', go);
-    window.setTimeout(cleanup, 20000);  // never leak the listeners
+    state.readyCleanup = cleanup;
+    timer = window.setTimeout(cleanup, 20000);  // never leak the listeners
   }
 
   async function activeSession() {
@@ -113,22 +159,25 @@
   }
 
   // ---- fetch (event-driven, throttled; never a polling interval) --------------
-  async function fetchInbox(session) {
+  async function fetchInbox(session, controller) {
     const api = endpoint();
     if (!api) throw new Error('Bookings are not set up.');
     const url = new URL(api);
     url.searchParams.set('action', 'notifications');
     url.searchParams.set('limit', '30');
-    const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const response = await fetch(url, {
         method: 'GET', cache: 'no-store', signal: controller.signal,
         headers: { authorization: `Bearer ${session.access_token}`, accept: 'application/json' }
       });
-      if (response.status === 403) { state.forbidden = true; return { items: [], unread: 0 }; }
+      if (response.status === 403) return { items: [], unread: 0, forbidden: true };
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(`Booking notifications unavailable (${response.status}).`);
+      if (!response.ok) {
+        const error = new Error(`Booking notifications unavailable (${response.status}).`);
+        error.status = response.status;
+        throw error;
+      }
       return {
         items: Array.isArray(payload?.items) ? payload.items : [],
         unread: Number(payload?.unread) || 0
@@ -140,22 +189,39 @@
 
   async function refresh(options = {}) {
     if (!enabled() || state.inFlight || state.forbidden || !appIsSignedIn()) return;
+    if (state.disposed) return;
     if (!options.force && Date.now() - state.lastFetchAt < THROTTLE_MS) return;
-    let session;
-    try { session = await activeSession(); } catch { return; }
-    if (!session?.access_token) return;
+    stopPoll();
+    const request = { controller: new AbortController() };
+    state.request = request;
     state.inFlight = true;
     try {
-      const result = await fetchInbox(session);
+      const session = await activeSession();
+      if (state.request !== request || state.disposed) return;
+      if (!session?.access_token) { state.pollSuspended = true; return; }
+      if (state.userId && state.userId !== session.user?.id) return;
+      state.userId = session.user?.id || null;
+      const result = await fetchInbox(session, request.controller);
+      if (state.request !== request || state.disposed) return;
+      if (result.forbidden) state.forbidden = true;
       state.items = result.items;
       state.unread = result.unread;
       state.loaded = true;
       state.lastFetchAt = Date.now();
+      state.pollFailures = 0;
+      state.pollSuspended = false;
       announce();
     } catch (error) {
+      if (state.request !== request || state.disposed) return;
+      if (error.status === 401) state.pollSuspended = true;
+      else if (options.timed) state.pollFailures += 1;
       if (!options.silent) console.warn('Booking notifications could not refresh.');
     } finally {
-      state.inFlight = false;
+      if (state.request === request) {
+        state.request = null;
+        state.inFlight = false;
+        schedulePoll();
+      }
     }
   }
 
@@ -179,6 +245,12 @@
   }
 
   function clear() {
+    stopPoll();
+    state.request?.controller.abort();
+    state.request = null;
+    state.inFlight = false;
+    state.pollFailures = 0;
+    state.pollSuspended = false;
     state.items = [];
     state.unread = 0;
     state.loaded = false;
@@ -211,10 +283,17 @@
     if (!client?.auth?.onAuthStateChange || state.authSubscription) return false;
     let userId = null;
     const subscription = client.auth.onAuthStateChange((event, session) => {
-      if (!session) { userId = null; clear(); return; }
+      if (state.disposed) return;
+      if (!session) { userId = null; state.userId = null; state.readyCleanup?.(); clear(); return; }
       const changed = session.user?.id !== userId;
       userId = session.user?.id || null;
-      if (changed || event === 'SIGNED_IN') { state.forbidden = false; whenSignedIn(() => refresh({ force: true, silent: true })); }
+      if (changed) clear();
+      state.userId = userId;
+      if (changed || event === 'SIGNED_IN' || (event === 'TOKEN_REFRESHED' && state.pollSuspended)) {
+        state.forbidden = false;
+        state.pollSuspended = false;
+        whenSignedIn(() => refresh({ force: true, silent: true }));
+      }
     });
     state.authSubscription = subscription?.data?.subscription || subscription?.subscription || null;
     return true;
@@ -233,22 +312,37 @@
     subscribeToAuth();        // subscribe now if the client is ready…
     whenSignedIn(() => { subscribeToAuth(); refresh({ force: true, silent: true }); });  // …else once the app is shown (the client exists by then)
 
-    // Event-driven refreshes only — no setInterval anywhere.
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh({ silent: true }); });
-    window.addEventListener('focus', () => refresh({ silent: true }));
-    window.addEventListener('online', () => refresh({ force: true, silent: true }));
+    function listen(target, event, handler) {
+      target.addEventListener(event, handler);
+      state.cleanups.push(() => target.removeEventListener(event, handler));
+    }
+    listen(document, 'visibilitychange', () => {
+      if (document.hidden) stopPoll();
+      else { refresh({ silent: true }); schedulePoll(); }
+    });
+    listen(window, 'focus', () => refresh({ silent: true }));
+    listen(window, 'online', () => { refresh({ force: true, silent: true }); schedulePoll(); });
+    listen(window, 'offline', stopPoll);
+    listen(window, 'atlas:profile-ready', () => schedulePoll());
     // A staff booking change (assign / approve / cancel) may create rows for me.
-    window.addEventListener('atlas:bookings-changed', () => refresh({ force: true, silent: true }));
+    listen(window, 'atlas:bookings-changed', () => refresh({ force: true, silent: true }));
     // The service worker relays a push so an open manager updates immediately.
-    navigator.serviceWorker?.addEventListener?.('message', (event) => {
+    if (navigator.serviceWorker?.addEventListener) listen(navigator.serviceWorker, 'message', (event) => {
       if (event.data?.type === 'atlas:push' && event.data?.route === 'bookings') refresh({ force: true, silent: true });
     });
     // When the bell is cleared with "mark all read", persist it for bookings too.
-    window.AtlasShell?.on?.('notify:changed', (detail) => {
+    const removeNotify = window.AtlasShell?.on?.('notify:changed', (detail) => {
       if (detail?.all && state.items.some((row) => !row.read)) persistRead(null, true);
     });
+    if (typeof removeNotify === 'function') state.cleanups.push(removeNotify);
 
-    window.addEventListener('pagehide', () => { state.authSubscription?.unsubscribe?.(); }, { once: true });
+    listen(window, 'pagehide', () => {
+      state.disposed = true;
+      state.readyCleanup?.();
+      state.authSubscription?.unsubscribe?.();
+      state.cleanups.splice(0).forEach((cleanup) => cleanup());
+      clear();
+    });
   }
 
   window.AtlasBookingsNotifications = {

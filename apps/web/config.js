@@ -73,6 +73,10 @@ window.VABAR_CONFIG = {
   // notifications actions) is deployed; it is separate from, and must not be
   // conflated with, activating the public guest-booking website.
   BOOKING_NOTIFICATIONS_ENABLED: false,
+  // Optional visible manager/admin inbox refresh. 0 disables timed refreshes;
+  // only whole seconds in 30–300 are accepted. Enable with 60 after the staff
+  // edge deploy and live inbox verification, separately from public activation.
+  BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 0,
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
