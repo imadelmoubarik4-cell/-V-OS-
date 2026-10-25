@@ -40,7 +40,7 @@ read its log.
 
 ## Production impact at preflight (25 Oct 2026, read-only)
 
-All checks PASS. production is at S110 with no S111 row; pg_cron 1.6.4 is available
+All checks PASS (run before S110b was added; S111 now applies after S110b). Production was at S110 with no S111 row; pg_cron 1.6.4 is available
 but not yet installed. Impact: 0 bookings, 0 inbox / 0 outbox rows, 0 push rows and
 0 status notes older than 90 days, so the first dry run reports 0 everywhere. The
 oldest visit is 2026-10-26, so the first run that actually removes data falls around
@@ -60,8 +60,8 @@ not-scheduled path.
 
 1. Run `docs/release/sql/KANEL_S111_preflight_readonly.sql`. Continue only if there
    are no FAIL rows; keep the output.
-2. Run `docs/release/sql/KANEL_apply_6_s111_booking_personal_data_retention.sql`. It
-   refuses unless S110 is recorded and S111 is not.
+2. Run `docs/release/sql/KANEL_apply_7_s111_booking_personal_data_retention.sql`. It
+   refuses unless S110b (`20261027120000`, bundle 6) is recorded and S111 is not.
 3. Verify:
    ```sql
    select jobname, schedule, command, active from cron.job where jobname = 'kanel-booking-retention';

@@ -170,8 +170,10 @@
       return [['suppliers', section(rest[0])]];
     },
     // #bookings (staff day), #bookings/config (manager), #bookings/<date>,
-    // #bookings/res/<id> (open a specific reservation — booking-notification deep link).
-    bookings: (rest) => (rest[0] === 'res' && rest[1]) ? [['bookings', { reservation: rest[1] }]] : [['bookings', section(rest[0])]],
+    // #bookings/res/<id>[/<date>] (open a specific reservation on its day — booking-notification deep link).
+    bookings: (rest) => (rest[0] === 'res' && rest[1])
+      ? [['bookings', { reservation: rest[1], ...(/^\d{4}-\d{2}-\d{2}$/.test(rest[2] || '') ? { section: rest[2] } : {}) }]]
+      : [['bookings', section(rest[0])]],
     shifts: (rest) => [['shifts', section(rest[0])]],
     team: (rest) => [['team-profiles', rest[0] ? { profile: rest[0] } : {}]],
     knowledge: (rest) => {

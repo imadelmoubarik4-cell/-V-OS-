@@ -105,6 +105,8 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
     reservations.set(r.id, { ...r });
     allocations.set(r.id, [...(r.table_ids || [])]);
   }
+  // Seeded seat holds (a web request's pending hold): { id, table_id, start_at, end_at, reason }.
+  for (const h of room.holds || []) holds.push({ expires_at: fixtureTime(3600000), reason: 'web_pending', ...h });
 
   function tableLabel(id) {
     return tables.get(id)?.label || id;
@@ -116,6 +118,7 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
     const tableIds = allocations.get(id) || [];
     return {
       id: r.id, source: r.source, status: r.status, start_at: r.start_at, end_at: r.end_at || null,
+      area_id: r.area_id || tables.get(tableIds[0])?.area_id || null,
       party_size: r.party_size, guest_name: r.guest_name || '', guest_phone: r.guest_phone || '',
       guest_email: r.guest_email || '', guest_requests: r.guest_requests || '', staff_notes: r.staff_notes || '',
       booking_reference: r.booking_reference || '', provider_ref: r.provider_ref || null,
@@ -280,7 +283,11 @@ export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {
 
     if (method === 'GET' && action === 'notifications') {
       if (!MANAGER_ROLES.has(user?.role)) return forbidden();
-      const items = inbox.map((n) => ({ ...n }));
+      // S110b: each row carries its reservation's visit start and venue-local date.
+      const items = inbox.map((n) => {
+        const r = n.reservation_id ? reservations.get(n.reservation_id) : null;
+        return { ...n, start_at: r?.start_at || null, visit_date: r?.start_at ? r.start_at.slice(0, 10) : null };
+      });
       return { items, unread: items.filter((n) => !n.read).length };
     }
     if (method === 'POST' && action === 'notifications-read') {

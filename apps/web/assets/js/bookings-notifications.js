@@ -128,6 +128,17 @@
   // ---- notify-bell contributor ------------------------------------------------
   // Each inbox row becomes a bell item. Only managers/admins ever see them (the
   // context role gates it, and the server only returns rows for this manager).
+  // The inbox returns the visit's venue-local date (S110b) so the app opens the
+  // booking's own day — a request for another day is not in today's snapshot.
+  function visitDate(row) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(row?.visit_date || '')) ? row.visit_date : null;
+  }
+
+  function reservationRoute(reservationId, date) {
+    if (!reservationId) return '#bookings';
+    return date ? `#bookings/res/${reservationId}/${date}` : `#bookings/res/${reservationId}`;
+  }
+
   function toNotifyItem(row) {
     const isRequest = row.kind === 'request';
     return {
@@ -140,7 +151,7 @@
       time: row.created_at || null,
       needsAction: isRequest,
       // actionId lets activation mark the row read server-side before navigating.
-      action: { actionId: OPEN_ACTION, reservationId: row.reservation_id || null, notificationId: row.id, route: row.reservation_id ? `#bookings/res/${row.reservation_id}` : '#bookings' }
+      action: { actionId: OPEN_ACTION, reservationId: row.reservation_id || null, visitDate: visitDate(row), notificationId: row.id, route: reservationRoute(row.reservation_id, visitDate(row)) }
     };
   }
 
@@ -270,7 +281,7 @@
         run: async (ctx) => {
           const act = ctx?.notification?.action || {};
           if (act.notificationId) persistRead([act.notificationId], false);
-          const route = act.reservationId ? `#bookings/res/${act.reservationId}` : '#bookings';
+          const route = reservationRoute(act.reservationId, act.visitDate);
           shell.navigate(route, { source: 'notification' });
           return { ok: true };
         }

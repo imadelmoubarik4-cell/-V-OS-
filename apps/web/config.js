@@ -168,7 +168,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // the server-side booking inbox; independent of web-push delivery. Loads after
 // window load so it never delays startup.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/bookings-notifications.js?v=20261026-s109',
+  scriptPath: 'assets/js/bookings-notifications.js?v=20261025-s110b',
   globalName: 'AtlasBookingsNotifications',
   dataAttribute: 'atlasBookingsNotifications',
 }));

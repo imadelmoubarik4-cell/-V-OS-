@@ -197,7 +197,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261006-s92r"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261025-bkres"><\/script>\s*<script src="config\.js"><\/script>/);
   // S99: atlas-mfa-enroll.js loads between atlas-bot.js and atlas-app.js.
   assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-mfa-enroll\.js\?v=[^"]+"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
@@ -240,9 +240,11 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['modal.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261001-s92e"></script>`), file);
   }
-  for (const file of ['atlas-shell.js', 'atlas-palette.js']) {
+  for (const file of ['atlas-palette.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261006-s92r"></script>`), file);
   }
+  // Bookings deep link carries the visit day (#bookings/res/<id>/<date>).
+  assert.ok(index.includes('<script src="assets/js/atlas-shell.js?v=20261025-bkres"></script>'), 'atlas-shell.js');
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['s38-app-remediation.js', 'atlas-venue-clock.js']) {

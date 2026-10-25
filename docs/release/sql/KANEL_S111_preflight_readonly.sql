@@ -3,8 +3,8 @@
 -- Go only if there is no FAIL row. The 'impact' rows show what the FIRST nightly run
 -- would remove (90 days after the visit); review them before applying.
 select section, "check", status, detail from (
-select 1 as ord, 'ledger' as section, 'production is at S110' as "check",
-  case when (select max(version) from supabase_migrations.schema_migrations) = '20261027090000' then 'PASS' else 'FAIL' end as status,
+select 1 as ord, 'ledger' as section, 'production is at S110b' as "check",
+  case when (select max(version) from supabase_migrations.schema_migrations) = '20261027120000' then 'PASS' else 'FAIL' end as status,
   'last migration ' || coalesce((select max(version) from supabase_migrations.schema_migrations), 'none') as detail
 union all select 2, 'ledger', 'no S111 row yet',
   case when not exists (select 1 from supabase_migrations.schema_migrations where version = '20261028090000') then 'PASS' else 'FAIL' end, ''

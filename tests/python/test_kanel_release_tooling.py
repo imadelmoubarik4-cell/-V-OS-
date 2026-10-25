@@ -1,4 +1,4 @@
-"""KANEL bookings release tooling (S106–S111) — static contract.
+"""KANEL bookings release tooling (S106–S111, incl. S110b) — static contract.
 
 The rollback itself is proven on a replayed database by
 scripts/release/verify_kanel_bookings_rollback.sh (last step of the replay gate).
@@ -16,12 +16,15 @@ PREFLIGHT = (ROOT / "docs/release/sql/KANEL_preflight_readonly.sql").read_text(e
 WORKFLOW = (ROOT / ".github/workflows/migration-replay.yml").read_text(encoding="utf-8")
 RELEASE_MIGRATIONS = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if p.name.split("_")[0] > "20261022090000")
 S106_S109 = [p for p in RELEASE_MIGRATIONS if p.name.split("_")[0] < "20261027000000"]
-BUNDLES = sorted((ROOT / "docs/release/sql").glob("KANEL_apply_[1-6]_*.sql"))
+BUNDLES = sorted((ROOT / "docs/release/sql").glob("KANEL_apply_[1-7]_*.sql"))
 EXPECTED_110 = json.loads((ROOT / "scripts/release/kanel_pre_s110_expected.json").read_text(encoding="utf-8"))
 ROLLBACK_110 = (ROOT / "docs/release/sql/KANEL_S110_rollback.sql").read_text(encoding="utf-8")
 PREFLIGHT_110 = (ROOT / "docs/release/sql/KANEL_S110_preflight_readonly.sql").read_text(encoding="utf-8")
 ROLLBACK_111 = (ROOT / "docs/release/sql/KANEL_S111_rollback.sql").read_text(encoding="utf-8")
 PREFLIGHT_111 = (ROOT / "docs/release/sql/KANEL_S111_preflight_readonly.sql").read_text(encoding="utf-8")
+ROLLBACK_110B = (ROOT / "docs/release/sql/KANEL_S110b_rollback.sql").read_text(encoding="utf-8")
+PREFLIGHT_110B = (ROOT / "docs/release/sql/KANEL_S110b_preflight_readonly.sql").read_text(encoding="utf-8")
+S109_SQL = (ROOT / "supabase/migrations/20261026090000_s109_booking_notifications_inbox.sql").read_text(encoding="utf-8")
 
 
 def code_only(sql):
@@ -32,7 +35,7 @@ def code_only(sql):
 
 class KanelReleaseTooling(unittest.TestCase):
     def test_preflight_is_strictly_read_only(self):
-        for name, text in (("S106", PREFLIGHT), ("S110", PREFLIGHT_110), ("S111", PREFLIGHT_111)):
+        for name, text in (("S106", PREFLIGHT), ("S110", PREFLIGHT_110), ("S110b", PREFLIGHT_110B), ("S111", PREFLIGHT_111)):
             code = code_only(text).lower()
             for word in ("insert", "update", "delete", "alter", "drop", "create", "grant", "revoke",
                          "truncate", "copy", "call", "do", "set ", "begin", "commit", "vacuum"):
@@ -91,9 +94,26 @@ class KanelReleaseTooling(unittest.TestCase):
             self.assertIsNone(re.search(r"\b(drop (table|column)|truncate|delete from atlas_private)\b", line, re.I), line)
 
     def test_s111_preflight_requires_s110_and_pg_cron(self):
-        self.assertIn("'20261027090000'", PREFLIGHT_111)  # production must be at S110
+        self.assertIn("'20261027120000'", PREFLIGHT_111)  # production must be at S110b
         self.assertIn("'20261028090000'", PREFLIGHT_111)
         self.assertIn("pg_available_extensions where name = 'pg_cron'", PREFLIGHT_111)
+
+    def test_s110b_preflight_pins_the_s109_inbox_rpc(self):
+        self.assertIn("'20261027090000'", PREFLIGHT_110B)  # production must be at S110
+        self.assertIn("'20261027120000'", PREFLIGHT_110B)
+        self.assertIn("'ad9b5f669b08363c5ce9c1b3ba934cf1'", PREFLIGHT_110B)  # md5 of the S109 definition
+
+    def test_s110b_rollback_restores_the_s109_inbox_rpc_verbatim(self):
+        code = code_only(ROLLBACK_110B)
+        self.assertEqual(code.count("begin;"), 1)
+        self.assertTrue(code.rstrip().endswith("commit;"))
+        start = S109_SQL.index("create or replace function public.atlas_bookings_notifications(")
+        end = S109_SQL.index("to service_role;", start) + len("to service_role;")
+        self.assertIn(S109_SQL[start:end], ROLLBACK_110B)
+        self.assertLess(ROLLBACK_110B.index("version >= '20261028000000'"), ROLLBACK_110B.index("create or replace function"))
+        self.assertIn("delete from supabase_migrations.schema_migrations where version = '20261027120000';", ROLLBACK_110B)
+        for line in ROLLBACK_110B.splitlines():
+            self.assertIsNone(re.search(r"\b(drop|truncate|delete from atlas_private|update atlas_private)\b", line, re.I), line)
 
     def test_s111_rollback_unschedules_and_drops_only_s111_objects(self):
         code = code_only(ROLLBACK_111)
