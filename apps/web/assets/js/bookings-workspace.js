@@ -532,7 +532,10 @@
     const contact = [reservation.guest_phone, reservation.guest_email].filter(Boolean);
     const transitions = (TRANSITIONS[status] || []).map(([to, label]) => {
       const tone = to === 'cancelled' || to === 'no_show' ? 'danger' : to === 'confirmed' ? 'primary' : 'secondary';
-      return `<button type="button" class="atlas-btn atlas-btn--${tone} atlas-btn--sm" data-bookings-status-btn data-to-status="${escapeHtml(to)}">${escapeHtml(label)}</button>`;
+      const actionLabel = to === 'confirmed' && status === 'requested'
+        && reservation.area_allocation_mode !== 'pooled' && !(reservation.tables || []).length
+        ? 'Confirm & assign seats' : label;
+      return `<button type="button" class="atlas-btn atlas-btn--${tone} atlas-btn--sm" data-bookings-status-btn data-to-status="${escapeHtml(to)}">${escapeHtml(actionLabel)}</button>`;
     }).join('');
     const canAssign = canManageReservations() && LIVE_STATUSES.has(status) && reservation.area_allocation_mode !== 'pooled';
     return `<section class="atlas-sheet bk-detail" data-modal-panel aria-labelledby="bk-detail-title">
@@ -797,8 +800,60 @@
 
   // ---------- mutations ----------
 
+  // Staff approval for a seat-based website request also needs a seat allocation.
+  // The database rejects set-status confirmed without seats; its existing assign
+  // RPC validates the seating rules and confirms requested bookings atomically.
+  function freeAdjacentSeatsForRequest(reservation) {
+    const party = Number(reservation?.party_size);
+    const startMs = Date.parse(reservation?.start_at);
+    const endMs = Date.parse(reservation?.end_at);
+    if (!reservation?.area_id || !Number.isInteger(party) || party < 1
+        || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
+    for (const section of seatSections(reservation.area_id)) {
+      for (let first = 0; first < section.tables.length; first += 1) {
+        const ids = [];
+        let capacity = 0;
+        let previous = null;
+        for (let index = first; index < section.tables.length; index += 1) {
+          const table = section.tables[index];
+          const position = Number(table.position_index);
+          const prevPosition = Number(previous?.position_index);
+          if (previous && Number.isFinite(position) && Number.isFinite(prevPosition)
+              && position !== prevPosition + 1) break;
+          if (!seatAvailability(table, startMs, endMs, reservation).free) break;
+          ids.push(table.id);
+          capacity += Math.max(0, Number(table.seat_capacity) || 0);
+          if (capacity >= party && !seatGroupProblem(ids, party)) return ids;
+          previous = table;
+        }
+      }
+    }
+    return [];
+  }
+
   async function changeStatus(reservationId, toStatus, root) {
     if (state.submitting || !toStatus) return;
+    const booking = reservationById(reservationId);
+    const allocationMode = booking?.area_allocation_mode || areaById(booking?.area_id)?.allocation_mode;
+    // A single Confirm click approves and allocates the free adjacent seats.
+    // If staff selected seats in the detail sheet, respect that explicit choice.
+    if (toStatus === 'confirmed' && booking?.status === 'requested'
+        && allocationMode !== 'pooled' && !(booking.tables || []).length) {
+      const fieldset = root?.querySelector('[data-bookings-move-seats]');
+      const chosen = checkedSeats(fieldset);
+      const seats = chosen.length ? chosen : freeAdjacentSeatsForRequest(booking);
+      const problem = seats.length
+        ? seatGroupProblem(seats, Number(booking.party_size) || 1)
+        : 'No adjacent seats are available for this time. Choose other seats or contact the guest about another time.';
+      if (problem) {
+        const fieldError = fieldset?.querySelector('[data-bookings-seat-error]');
+        if (fieldError) { fieldError.textContent = problem; fieldError.hidden = false; }
+        toast(problem, 'warning');
+        return;
+      }
+      await assignTable(reservationId, seats, root);
+      return;
+    }
     state.submitting = true;
     try {
       await api('set-status', { body: { reservation_id: reservationId, to_status: toStatus } });
