@@ -1,13 +1,14 @@
 # B0 Option A — 60-second staff inbox refresh: implementation and test requirements
 
-**Status: specification only. Not implemented, not activated.** The owner chose
-Option A for planning (22 Oct 2026). Building it and switching it on each need
-separate approval. Until then, the interim procedure is the manual 10-minute check in
+**Status: implemented in the inbox-refresh follow-up branch; not deployed or activated.**
+The owner requested completion of the booking release on 24 Oct 2026, with publication
+only after a successful live end-to-end test. The refresh ships disabled (`0`), and
+the master inbox flag stays off. Until activation, use the manual 10-minute check in
 [`KANEL_Guest_Confirmation_SOP.md`](KANEL_Guest_Confirmation_SOP.md).
 
 ## Problem
 
-`apps/web/assets/js/bookings-notifications.js` refreshes the manager inbox only on
+Before this follow-up, `apps/web/assets/js/bookings-notifications.js` refreshed the manager inbox only on
 events: sign-in, the tab becoming visible or focused, coming back `online`,
 `atlas:bookings-changed`, or a push the service worker relays. Web-push delivery
 (`ATLAS_PUSH_DELIVERY_ENABLED`) is off, so a manager with Alcedo open on one screen
@@ -44,6 +45,13 @@ hold again. The existing event-driven refreshes stay exactly as they are.
 | R9 | **Comments and docs.** Update the worker header comment ("no polling loop") to describe the bounded, opt-in, visible-only refresh. Update the SOP to say the bell refreshes every minute while Alcedo is open and visible. |
 
 ## Test requirements (no test is weakened)
+
+The follow-up adds `tests/node/bookings-notifications-refresh.test.js`: the real
+worker runs in a VM with a controlled clock, auth, visibility, network responses,
+and notification contributor. It covers timed delivery, invalid/default-off flags,
+roles, 403, 401, hidden/offline tabs, sign-out during a request, stale data,
+de-duplication, backoff, and complete page cleanup. Existing browser tests are
+unchanged. These tests do not replace the live manager-bell gate below.
 
 The node contract `tests/node/bookings-notifications-flag.test.js` currently asserts
 `doesNotMatch(worker, /setInterval\s*\(/)`. **Keep that assertion.** R5 uses
