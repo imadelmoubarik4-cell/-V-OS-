@@ -16,7 +16,7 @@ Facts behind the text (for the reviewer, not for publication):
 | IP address | Used only to limit abuse. A salted one-way hash is stored, never the raw IP. Rows are removed automatically by later requests, normally within about an hour. |
 | Status token | A random token is created per request. The website discards it; it is never stored in the browser. |
 | Guest emails | Not sent. Emails are queued in a sealed outbox inside the database until an email provider is approved. |
-| Retention | **No automatic deletion of bookings exists today.** The owner must choose a period, and a clean-up job must be built before that period can be promised. |
+| Retention | **90 days after the visit**, enforced by S111 (`atlas_private.booking_purge_personal_data`, nightly pg_cron job `kanel-booking-retention`). Publish the 90-day text below **only after S111 is applied in production** and the cron job is confirmed. |
 | Who can see it | Signed-in KANEL staff in Alcedo. The booking inbox is limited to managers and administrators. |
 | Analytics | The booking form loads no analytics or trackers. (The site loads Google Fonts and links to Google Maps. The site-wide privacy policy should cover these.) |
 
@@ -51,9 +51,9 @@ stores the data for us under a data processing agreement **[confirm DPA in place
 hosting region: Ireland (EEA)]**. We do not sell your data or use it for marketing, and the booking form
 uses no analytics or advertising trackers.
 
-**How long we keep it.** **[Owner decision — e.g. "We keep booking details for 12
-months after your visit and then delete or anonymise them, unless we must keep them
-longer by law."]**
+**How long we keep it.** We keep your booking details for 90 days after your visit.
+After that they are deleted automatically: your name, phone number, email and any
+requests or notes are removed, and only an anonymous record (date, party size) remains.
 
 **Your rights.** You can ask for access to your data, for correction or deletion,
 for restriction, or object to its use. Email kanel@kanel.is. If you think we have not
@@ -93,9 +93,9 @@ hýsingarsvæði: Írland (EES)]**. Við seljum ekki
 upplýsingarnar þínar né notum þær í markaðsskyni og bókunarformið notar engar
 vefmælingar eða auglýsingarakningu.
 
-**Varðveislutími.** **[Ákvörðun eiganda — t.d. „Við geymum bókunarupplýsingar í
-12 mánuði eftir heimsókn og eyðum þeim eða gerum þær ópersónugreinanlegar eftir það,
-nema lög krefjist lengri varðveislu.“]**
+**Varðveislutími.** Við geymum bókunarupplýsingarnar þínar í 90 daga eftir heimsókn.
+Eftir það er þeim eytt sjálfkrafa: nafn, símanúmer, netfang og óskir eða athugasemdir
+eru fjarlægð og aðeins ópersónugreinanleg skráning (dagsetning, fjöldi gesta) stendur eftir.
 
 **Réttindi þín.** Þú getur óskað eftir aðgangi að upplýsingunum, leiðréttingu eða
 eyðingu þeirra og takmörkun vinnslu, eða andmælt vinnslu. Sendu póst á
