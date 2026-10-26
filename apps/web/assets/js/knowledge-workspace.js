@@ -102,6 +102,24 @@
     return `<span class="atlas-pill atlas-pill--${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
   }
 
+  // Progress at the true ratio with both ends labelled ("1 read" … "2
+  // required"). Up to 12 items draw one segment each; more draw one bar whose
+  // fill is set from data-kn-ratio after paint (a transform, no style markup).
+  function meterMarkup({ done, total, label, start, end }) {
+    const count = Math.max(0, Number(total) || 0);
+    const filled = Math.max(0, Math.min(count, Number(done) || 0));
+    const track = count && count <= 12
+      ? `<span class="kn-meter__track${filled === count ? ' is-complete' : ''}">${Array(count).fill('').map((_, index) => `<i${index < filled ? ' class="is-on"' : ''}></i>`).join('')}</span>`
+      : `<span class="kn-meter__track kn-meter__track--bar${count && filled === count ? ' is-complete' : ''}"><i data-kn-ratio="${count ? filled / count : 0}"></i></span>`;
+    return `<div class="kn-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${count}" aria-valuenow="${filled}" aria-label="${escapeHtml(label)}">${track}<span class="kn-meter__ends" aria-hidden="true"><span>${escapeHtml(start)}</span><span>${escapeHtml(end)}</span></span></div>`;
+  }
+
+  function applyRatios(root) {
+    root?.querySelectorAll('[data-kn-ratio]').forEach((fill) => {
+      fill.style.transform = `scaleX(${Math.max(0, Math.min(1, Number(fill.dataset.knRatio) || 0))})`;
+    });
+  }
+
   function inlineMarkdown(value) {
     let text = escapeHtml(value);
     text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -352,9 +370,12 @@
     return `<div class="atlas-alert atlas-alert--danger kn-alert" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Knowledge couldn’t be ${state.snapshot ? 'updated' : 'loaded'}.</p><p class="atlas-alert__body">${escapeHtml(state.error)} ${state.snapshot ? 'You’re seeing what loaded last.' : 'Nothing has changed.'}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-knowledge-refresh>Try again</button></div></div>`;
   }
 
+  // Title, then the summary (what the reader will learn), then where it lives
+  // and when it changed. A search result shows its matching snippet instead.
   function articleRow(article, options = {}) {
+    const summary = !options.snippet && !options.meta && article.summary ? `<p class="kn-row__summary">${escapeHtml(article.summary)}</p>` : '';
     return `<li class="atlas-row atlas-row--link kn-row"><a class="kn-row__link" href="#knowledge/${encodeURIComponent(article.id)}" data-knowledge-open="${escapeHtml(article.id)}">
-      <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(article.title)}</p><p class="atlas-row__meta">${options.snippet ? snippetMarkup(options.snippet) : escapeHtml(options.meta || articleMeta(article))}</p></div>
+      <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(article.title)}</p>${summary}<p class="atlas-row__meta">${options.snippet ? snippetMarkup(options.snippet) : escapeHtml(options.meta || articleMeta(article))}</p></div>
       <div class="atlas-row__end">${statusPill(article)}<span class="atlas-row__chevron">${icon('chevron-right')}</span></div>
     </a></li>`;
   }
@@ -372,10 +393,15 @@
     return `<label class="sr-only" for="kn-category">Category</label><select class="atlas-select kn-category-select" id="kn-category" data-knowledge-category-select><option value="all">All categories</option>${categories().map((category) => `<option value="${escapeHtml(category.key)}" ${state.category === category.key ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('')}</select>`;
   }
 
+  // Loading: list rows at their real size (a title bar and a meta bar).
+  function skeletonRows(count) {
+    return Array(count).fill('<div class="kn-skel__row"><span class="atlas-skel kn-skel__name"></span><span class="atlas-skel kn-skel__sub"></span></div>').join('');
+  }
+
   function searchResultsMarkup() {
     const query = state.search.trim();
     if (state.searchStatus === 'loading' && !state.searchResults) {
-      return `<div class="kn-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(3)}<span class="sr-only">Searching</span></div>`;
+      return `<div class="kn-skel" aria-busy="true">${skeletonRows(3)}<span class="sr-only">Searching</span></div>`;
     }
     // Server results when available; otherwise the titles and summaries on this page.
     const rows = state.searchResults
@@ -419,9 +445,19 @@
     }
     const due = required.filter((article) => article.required_due);
     const done = required.filter((article) => !article.required_due);
-    return `<p class="kn-note">Required reading follows the published version: when a manager publishes a new version, it’s due again. Earlier confirmations are kept.</p>
+    // Lists on the left; the reading figure at its true ratio in the aside.
+    return `<div class="kn-split">
+      <div class="kn-split__main">
       ${due.length ? `<section class="kn-section"><h2 class="kn-section__title">To read</h2><ul class="atlas-list kn-list">${due.map((article) => articleRow(article)).join('')}</ul></section>` : `<p class="kn-done">${icon('circle-check')}You’re up to date.</p>`}
-      ${done.length ? `<section class="kn-section"><h2 class="kn-section__title">${canManage() ? 'Required articles' : 'Read'}</h2><ul class="atlas-list kn-list">${done.map((article) => articleRow(article)).join('')}</ul></section>` : ''}`;
+      ${done.length ? `<section class="kn-section"><h2 class="kn-section__title">${canManage() ? 'Required articles' : 'Read'}</h2><ul class="atlas-list kn-list">${done.map((article) => articleRow(article)).join('')}</ul></section>` : ''}
+      </div>
+      <aside class="kn-split__aside"><div class="kn-progress">
+        <p class="kn-progress__title">Required reading</p>
+        <p class="kn-progress__figure"><span class="num">${done.length}</span><span class="kn-progress__of"> of ${required.length} read</span></p>
+        ${meterMarkup({ done: done.length, total: required.length, label: 'Required reading', start: `${done.length} read`, end: `${required.length} required` })}
+        <p class="kn-note">Required reading follows the published version: when a manager publishes a new version, it’s due again. Earlier confirmations are kept.</p>
+      </div></aside>
+    </div>`;
   }
 
   function trainingMarkup() {
@@ -432,14 +468,22 @@
     const team = Array.isArray(training().team) ? training().team : [];
     return `<section class="kn-section kn-training">
         <h2 class="kn-section__title">Your training</h2>
+        ${total ? `<div class="kn-progress"><p class="kn-progress__figure"><span class="num">${completed}</span><span class="kn-progress__of"> of ${total} required steps</span></p>${meterMarkup({ done: completed, total, label: 'Training progress', start: `${completed} done`, end: `${total} required` })}</div>` : ''}
         <p class="kn-note">${total ? `${completed} of ${total} required steps done. Your manager confirms each step in Team.` : 'No training steps are set up yet.'}</p>
-        ${total ? `<div class="atlas-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${completed}" aria-label="Training progress"><i style="width:${Math.round((completed / total) * 100)}%"></i></div>` : ''}
         ${tasks.length ? `<ul class="atlas-list kn-list">${tasks.map((task) => {
           const linked = Array.isArray(task.linked_articles) ? task.linked_articles : [];
-          return `<li class="atlas-row kn-task${task.completed ? ' is-done' : ''}"><span class="atlas-row__icon${task.completed ? ' atlas-row__icon--positive' : ''}">${icon(task.completed ? 'circle-check' : 'circle')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(task.title)}</p><p class="atlas-row__meta">${escapeHtml([task.required ? 'Required' : 'Optional', task.completed ? `Done${task.completed_at ? ` ${formatDate(task.completed_at)}` : ''}` : null, task.description].filter(Boolean).join(' · '))}</p>${linked.length ? `<p class="kn-task__links">${linked.map((article) => `<a href="#knowledge/${encodeURIComponent(article.article_id)}" data-knowledge-open="${escapeHtml(article.article_id)}">${icon('book-open')}${escapeHtml(article.title)}</a>`).join('')}</p>` : ''}</div>${canManage() && !linked.length ? `<div class="atlas-row__end"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-knowledge-link-task="${escapeHtml(task.id)}">${icon('plus')}Write an article</button></div>` : ''}</li>`;
+          return `<li class="atlas-row kn-task${task.completed ? ' is-done' : ''}"><span class="atlas-row__icon${task.completed ? ' atlas-row__icon--positive' : ''}">${icon(task.completed ? 'circle-check' : 'circle')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(task.title)}</p><p class="atlas-row__meta">${escapeHtml([task.required ? 'Required' : 'Optional', task.completed ? `Done${task.completed_at ? ` ${formatDate(task.completed_at)}` : ''}` : null, task.description].filter(Boolean).join(' · '))}</p>${linked.length ? `<p class="kn-task__links">${linked.map((article) => `<a href="#knowledge/${encodeURIComponent(article.article_id)}" data-knowledge-open="${escapeHtml(article.article_id)}">${icon('book-open')}${escapeHtml(article.title)}</a>`).join('')}</p>` : ''}</div>${canManage() && !linked.length ? `<div class="atlas-row__end"><span class="kn-row__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-knowledge-link-task="${escapeHtml(task.id)}">${icon('plus')}Write an article</button></span></div>` : ''}</li>`;
         }).join('')}</ul>` : ''}
       </section>
-      ${canManage() && team.length ? `<section class="kn-section"><h2 class="kn-section__title">Team onboarding progress</h2><div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact kn-table"><thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col" class="is-num">Required steps</th></tr></thead><tbody>${team.map((person) => `<tr><td><span class="cell-primary">${escapeHtml(person.name)}</span></td><td>${escapeHtml(humanize(person.role))}</td><td class="is-num">${Number(person.required_completed || 0)} of ${Number(person.required_total || 0)}</td></tr>`).join('')}</tbody></table></div></section>` : ''}`;
+      ${canManage() && team.length ? `<section class="kn-section"><h2 class="kn-section__title">Team onboarding progress</h2><div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact kn-table"><thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col" class="is-num">Required steps</th></tr></thead><tbody>${team.map((person) => `<tr><td><span class="cell-primary">${escapeHtml(person.name)}</span></td><td>${escapeHtml(humanize(person.role))}</td><td class="is-num"><span class="kn-steps">${stepsMeter(person.required_completed, person.required_total)}<span class="num">${Number(person.required_completed || 0)}<span class="kn-muted"> of ${Number(person.required_total || 0)}</span></span></span></td></tr>`).join('')}</tbody></table></div></section>` : ''}`;
+  }
+
+  // A quiet segment per step for a table cell (grey done, no labels: the
+  // figure beside it says it).
+  function stepsMeter(done, total) {
+    const count = Math.max(0, Math.min(12, Number(total) || 0));
+    const filled = Math.max(0, Math.min(count, Number(done) || 0));
+    return count ? `<span class="kn-steps__meter" aria-hidden="true">${Array(count).fill('').map((_, index) => `<i${index < filled ? ' class="is-on"' : ''}></i>`).join('')}</span>` : '';
   }
 
   function sourcesMarkup() {
@@ -464,7 +508,7 @@
   function listContentMarkup() {
     if (!state.snapshot) {
       if (state.error) return '';
-      return `<div class="kn-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(6)}<span class="sr-only">Loading Knowledge</span></div>`;
+      return `<div class="kn-skel" aria-busy="true">${skeletonRows(5)}<span class="sr-only">Loading Knowledge</span></div>`;
     }
     if (state.tab === 'required') return requiredMarkup();
     if (state.tab === 'training') return trainingMarkup();
@@ -477,13 +521,13 @@
 
   function articleMarkup() {
     if (state.detailLoading && !state.detail) {
-      return `<div class="kn-article kn-reading" aria-busy="true"><div class="atlas-skel atlas-skel--title"></div>${'<div class="atlas-skel atlas-skel--text"></div>'.repeat(6)}<span class="sr-only">Loading article</span></div>`;
+      return `<div class="kn-article kn-reading kn-article--loading" aria-busy="true"><span class="atlas-skel kn-skel__crumb"></span><span class="atlas-skel kn-skel__title"></span><span class="atlas-skel kn-skel__meta"></span>${'<span class="atlas-skel kn-skel__line"></span>'.repeat(3)}<span class="atlas-skel kn-skel__line kn-skel__line--short"></span>${'<span class="atlas-skel kn-skel__line"></span>'.repeat(2)}<span class="sr-only">Loading article</span></div>`;
     }
     if (!state.detail && state.detailError && !state.detailMissing) {
-      return `<div class="kn-reading"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a><div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">This article couldn’t be opened.</p><p class="atlas-alert__body">${escapeHtml(state.detailError)}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-kn-article-retry>Try again</button></div></div></div>`;
+      return `<div class="kn-reading"><nav class="kn-crumb" aria-label="Breadcrumb"><a class="kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a></nav><div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">This article couldn’t be opened.</p><p class="atlas-alert__body">${escapeHtml(state.detailError)}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-kn-article-retry>Try again</button></div></div></div>`;
     }
     if (!state.detail) {
-      return `<div class="kn-reading"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a><div class="atlas-empty"><div class="atlas-empty__icon">${icon('book-x')}</div><h1 class="atlas-empty__title">This article isn’t available</h1><p class="atlas-empty__text">${escapeHtml(state.detailError || 'It may have been retired, or it isn’t shared with your role.')}</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#knowledge">Back to Knowledge</a></div></div></div>`;
+      return `<div class="kn-reading"><nav class="kn-crumb" aria-label="Breadcrumb"><a class="kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a></nav><div class="atlas-empty"><div class="atlas-empty__icon">${icon('book-x')}</div><h1 class="atlas-empty__title">This article isn’t available</h1><p class="atlas-empty__text">${escapeHtml(state.detailError || 'It may have been retired, or it isn’t shared with your role.')}</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#knowledge">Back to Knowledge</a></div></div></div>`;
     }
     const detail = state.detail;
     const article = detail.article || {};
@@ -507,7 +551,7 @@
         ${article.status !== 'retired' ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-knowledge-retire>Retire</button>` : ''}
       </div>` : '';
     return `<article class="kn-article kn-reading" aria-labelledby="kn-article-title">
-      <a class="atlas-btn atlas-btn--ghost atlas-btn--sm kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a>
+      <nav class="kn-crumb" aria-label="Breadcrumb"><a class="kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a>${article.category_name ? `<span class="kn-crumb__sep" aria-hidden="true">/</span><span class="kn-crumb__here">${escapeHtml(article.category_name)}</span>` : ''}</nav>
       <header class="kn-article__head">
         <h1 class="kn-article__title" id="kn-article-title">${escapeHtml(version.title || article.title || 'Untitled')}</h1>
         <p class="kn-article__meta">${escapeHtml(meta)}</p>
@@ -518,8 +562,8 @@
       ${version.summary ? `<p class="kn-article__summary">${escapeHtml(version.summary)}</p>` : ''}
       <div class="kn-prose">${renderMarkdown(version.content, `${article.id}:${version.id}`)}</div>
       ${article.live_route && LIVE_ROUTES[article.live_route] ? `<a class="atlas-btn atlas-btn--secondary kn-live" href="${LIVE_ROUTES[article.live_route]}">${icon('arrow-up-right')}Open ${escapeHtml(humanize(article.live_route))}</a>` : ''}
-      <footer class="kn-article__foot">${readButton}${ask}${!detail.can_acknowledge && article.required && !draft ? `<p class="kn-done">${icon('circle-check')}You’ve read version ${Number(version.version_number || 1)}.</p>` : ''}</footer>
-      ${sources.length || manager ? `<section class="kn-section kn-article__section"><div class="kn-section__head"><h2 class="kn-section__title">Sources</h2>${manager ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-knowledge-add-source>${icon('plus')}Add source</button>` : ''}</div>${sources.length ? `<ul class="atlas-list kn-list">${sources.map((source) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon(source.source_type === 'google_drive' ? 'cloud' : source.source_type === 'atlas_module' ? 'layers' : 'file-text')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(source.source_label)}</p><p class="atlas-row__meta">${escapeHtml([humanize(source.source_type), manager ? source.source_version : null, manager ? (source.visible_to_staff ? 'Label shown to staff' : 'Managers only') : null].filter(Boolean).join(' · '))}</p></div>${manager ? `<div class="atlas-row__end">${source.source_url ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-knowledge-source-open="${escapeHtml(source.id)}" aria-label="Open ${escapeHtml(source.source_label)}">${icon('external-link')}</button>` : ''}<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-knowledge-source-edit="${escapeHtml(source.id)}" aria-label="Edit ${escapeHtml(source.source_label)}">${icon('pencil')}</button><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-knowledge-source-remove="${escapeHtml(source.id)}" aria-label="Remove ${escapeHtml(source.source_label)}">${icon('trash-2')}</button></div>` : ''}</li>`).join('')}</ul>` : '<p class="kn-note">No sources added.</p>'}</section>` : ''}
+      <footer class="kn-article__foot${readButton ? ' is-signoff' : ''}">${readButton ? `<div class="kn-signoff"><p class="kn-signoff__title">Required reading</p><p class="kn-signoff__text">Confirm you’ve read version ${Number(version.version_number || 1)}. Your manager sees the confirmation.</p></div>` : ''}${!detail.can_acknowledge && article.required && !draft ? `<p class="kn-done">${icon('circle-check')}You’ve read version ${Number(version.version_number || 1)}.</p>` : ''}${readButton || ask ? `<div class="kn-article__actions">${readButton}${ask}</div>` : ''}</footer>
+      ${sources.length || manager ? `<section class="kn-section kn-article__section"><div class="kn-section__head"><h2 class="kn-section__title">Sources</h2>${manager ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-knowledge-add-source>${icon('plus')}Add source</button>` : ''}</div>${sources.length ? `<ul class="atlas-list kn-list">${sources.map((source) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon(source.source_type === 'google_drive' ? 'hard-drives' : source.source_type === 'atlas_module' ? 'layers' : 'file-text')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(source.source_label)}</p><p class="atlas-row__meta">${escapeHtml([humanize(source.source_type), manager ? source.source_version : null, manager ? (source.visible_to_staff ? 'Label shown to staff' : 'Managers only') : null].filter(Boolean).join(' · '))}</p></div>${manager ? `<div class="atlas-row__end">${source.source_url ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-knowledge-source-open="${escapeHtml(source.id)}" aria-label="Open ${escapeHtml(source.source_label)}">${icon('external-link')}</button>` : ''}<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-knowledge-source-edit="${escapeHtml(source.id)}" aria-label="Edit ${escapeHtml(source.source_label)}">${icon('pencil')}</button><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-knowledge-source-remove="${escapeHtml(source.id)}" aria-label="Remove ${escapeHtml(source.source_label)}">${icon('trash-2')}</button></div>` : ''}</li>`).join('')}</ul>` : '<p class="kn-note">No sources added.</p>'}</section>` : ''}
       ${manager && !draft ? `<section class="kn-section kn-article__section"><h2 class="kn-section__title">Who has read this version</h2>${acknowledgements.length ? `<ul class="atlas-list kn-list">${acknowledgements.map((item) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon atlas-row__icon--positive">${icon('circle-check')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(item.user_label)}</p><p class="atlas-row__meta">${escapeHtml(humanize(item.user_role))} · ${escapeHtml(formatDateTime(item.acknowledged_at))}</p></div></li>`).join('')}</ul>` : '<p class="kn-note">No one has confirmed this version yet.</p>'}</section>` : ''}
       ${manager && history.length ? `<section class="kn-section kn-article__section"><h2 class="kn-section__title">Version history</h2><ul class="atlas-list kn-list">${history.map((item) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon num">v${Number(item.version_number)}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(item.title)}</p><p class="atlas-row__meta">${escapeHtml([humanize(item.state), formatDateTime(item.published_at || item.updated_at), item.change_note].filter(Boolean).join(' · '))}</p></div></li>`).join('')}</ul></section>` : ''}
     </article>
@@ -762,6 +806,7 @@
     if (!results) return;
     results.innerHTML = libraryListMarkup();
     paintIcons();
+    applyRatios(results);
   }
 
   function paint() {
@@ -781,6 +826,7 @@
       window.AtlasChrome?.setTabBarHidden?.('knowledge', false);
     }
     paintIcons();
+    applyRatios(view);
     if (searchFocused) {
       const input = view.querySelector('[data-knowledge-search]');
       input?.focus({ preventScroll: true });

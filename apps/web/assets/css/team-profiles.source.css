@@ -1,91 +1,200 @@
-/* Team (#team) — docs/design/Atlas_Experience_Redesign.md §7.10. Module layout
- * only: the page header, toolbar, table, row list, pills, sheets and dialogs
- * are the shared components. Shipped as team-profiles.bundle.css.gz
- * (`gzip -9n` of this file), installed by team-profiles-bootstrap.js. */
+/* Team (#team) — docs/design/Alcedo_Redesign_2026.md, Atlas_Experience_Redesign.md
+ * §7.10. Module layout only: the page header, toolbar, table, row list, pills,
+ * sheets and dialogs are the shared components. Shipped as
+ * team-profiles.bundle.css.gz (`gzip -9n` of this file), installed by
+ * team-profiles-bootstrap.js.
+ *
+ * The directory answers "who is working tonight, and who still needs
+ * something from me": today's shift is drawn on one shared evening axis (the
+ * column reads as the line-up), training is a segment per required step, and
+ * only what is missing carries colour. Each person keeps one hue (the Shifts
+ * --person-color) as a pale avatar tint with its own ink. */
 @layer atlas.modules {
 .team-host { display: block; }
-.team-toolbar { margin-top: var(--s-5); margin-bottom: var(--s-3); flex-wrap: wrap; }
+.team-toolbar { margin-top: var(--s-6); margin-bottom: var(--s-4); flex-wrap: wrap; }
+.team-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); min-width: 0; }
 .team-toolbar__role { width: auto; min-width: 140px; }
-.team-alert { margin-top: var(--s-4); }
-.team-skel { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
+.team-alert { margin-top: var(--s-5); }
 .team-muted { color: var(--text-3); }
-.team-ok { display: inline-flex; align-items: center; gap: 4px; color: var(--positive); font: var(--type-meta); }
-.team-ok svg { width: 14px; height: 14px; }
+.team-ok { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font: var(--type-meta); }
+.team-ok svg { width: 14px; height: 14px; color: var(--text-3); }
 .team-chevron { display: inline-grid; color: var(--text-3); }
 .team-chevron svg { width: var(--icon-sm); height: var(--icon-sm); }
 
+/* Avatar: a pale tint of the person's hue, initials in a dark ink of the same
+   hue (both mixed from --person-color, >= 4.5:1). A photo covers it. */
+.team-avatar[class*="atlas-person--"]:not(.has-profile-photo) {
+  background: color-mix(in srgb, var(--person-color) 15%, var(--bg));
+  color: color-mix(in srgb, var(--person-color) 52%, var(--text));
+  font-weight: 600;
+}
+.team-avatar.atlas-avatar--xl { font: 600 22px/1 var(--font-sans); letter-spacing: -0.01em; }
+
+/* A second fact in a row: a 6 px dot and the word in warning ink. */
+.team-flag { display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--warning); font: 500 13px/18px var(--font-sans); white-space: nowrap; }
+.team-flag::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--warning-icon); }
+
+/* Progress meters: one segment per step, or one bar filled by a transform. */
+.team-meter { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.team-meter > i { display: block; width: 10px; height: 4px; border-radius: 1px; background: var(--bg-muted); }
+.team-meter > i.is-on { background: var(--text-2); }
+.team-meter--bar { position: relative; width: 44px; height: 4px; overflow: hidden; border-radius: var(--r-pill); background: var(--bg-muted); }
+.team-meter--bar > i { position: absolute; inset: 0; width: auto; height: auto; border-radius: inherit; background: var(--text-2); transform: scaleX(0); transform-origin: left center; transition: transform var(--dur-2) var(--ease-out); }
+
+/* ---------- directory ---------- */
+.team-table { table-layout: auto; }
+.team-table th:nth-child(1) { width: 34%; }
+.team-table th:nth-child(2) { width: 13%; }
+.team-table th:nth-child(3) { width: 24%; }
+.team-table td { height: 60px; }
 .team-table__row { cursor: pointer; }
-.team-table__row.is-inactive .cell-primary { color: var(--text-2); }
+.team-table__row.is-inactive .cell-primary,
+.team-table__row.is-inactive .team-role { color: var(--text-3); }
+.team-table__row.is-inactive .team-avatar { opacity: .6; }
 .team-person { display: flex; align-items: center; gap: var(--s-3); min-width: 0; color: inherit; text-decoration: none; }
+.team-person:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); border-radius: var(--r-sm); }
 .team-person__text { display: grid; min-width: 0; }
-.team-person .cell-sub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.team-table td .atlas-pill + .atlas-pill { margin-left: 4px; }
+.team-person .cell-primary { font: 500 14px/20px var(--font-sans); }
+.team-person .cell-sub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: var(--type-meta); color: var(--text-3); }
+.team-role { color: var(--text-2); }
+.team-table td .team-role + .atlas-pill { margin-left: var(--s-2); }
+.team-progress { display: inline-flex; align-items: center; gap: var(--s-2); }
+.team-progress .num { font-variant-numeric: tabular-nums; }
+
+/* Today's shift: the time, then its bar on tonight's axis. The header names
+   the axis ends over the bar lane (generated content from custom properties
+   set by the script, so the header text stays "On shift today"). Time 88 +
+   gap 12 = the lane starts 100 px in. */
+.team-shift { display: grid; grid-template-columns: 88px minmax(72px, 1fr); align-items: center; gap: var(--s-3); }
+.team-shift .num { font: var(--type-body); font-variant-numeric: tabular-nums; }
+.team-shift__track { position: relative; height: 4px; border-radius: var(--r-pill); background: var(--bg-muted); }
+.team-shift__track > i { position: absolute; top: 0; bottom: 0; left: calc(var(--team-from, 0) * 100%); right: calc((1 - var(--team-to, 1)) * 100%); border-radius: inherit; background: var(--accent-brand); }
+.team-table-wrap[data-team-axis] th:nth-child(3)::before,
+.team-table-wrap[data-team-axis] th:nth-child(3)::after { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-3); font: 400 12px/16px var(--font-sans); font-variant-numeric: tabular-nums; }
+.team-table-wrap[data-team-axis] th:nth-child(3)::before { content: var(--team-axis-from, ''); left: calc(12px + 100px); }
+.team-table-wrap[data-team-axis] th:nth-child(3)::after { content: var(--team-axis-to, ''); right: 12px; }
+
+.team-lineup { justify-content: flex-start; gap: var(--s-4); padding: var(--s-3) 12px 0; }
+.team-lineup .num { color: var(--text); font-variant-numeric: tabular-nums; }
+.team-lineup__times { color: var(--text-3); }
 
 .team-list__row { gap: var(--s-3); }
+.team-list__row .team-flag { font-size: 12px; }
+
+/* Loading: the directory's rows at their real size. */
+.team-skel { display: grid; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.team-skel__row { display: flex; align-items: center; gap: var(--s-3); height: 60px; padding: 0 12px; border-top: 1px solid var(--line-subtle); }
+.team-skel__row:first-child { border-top: 0; }
+.team-skel__text { display: grid; gap: 6px; flex: 0 1 34%; }
+.team-skel__name { width: 46%; height: 12px; }
+.team-skel__sub { width: 70%; height: 10px; }
+.team-skel__cell { width: 88px; height: 12px; margin-left: 13%; }
+.team--detail .team-skel { border: 0; }
 
 /* ---------- profile (sheet on wider screens, page on phones) ---------- */
 .team-sheet__head { padding-bottom: 0; border-bottom: 0; }
-.team-detail { display: grid; align-content: start; gap: var(--s-6); }
-.team-detail__head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-2) var(--s-4); align-items: center; }
+.team-detail { display: grid; align-content: start; gap: 0; }
+.team-detail__head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-4) var(--s-4); align-items: center; padding-bottom: var(--s-6); }
 .team-detail__who { display: grid; justify-items: start; gap: 2px; min-width: 0; }
-.team-detail__name { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
-.team-detail__role { margin: 0; font: var(--type-meta); color: var(--text-2); }
+.team-detail__name { margin: 0; font: var(--type-title); letter-spacing: var(--track-title); color: var(--text); overflow-wrap: anywhere; }
+.team-detail__role { margin: 0; font: var(--type-body); color: var(--text-2); }
+.team-detail__facts { display: flex; flex-wrap: wrap; margin: 2px 0 0; font: var(--type-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.team-detail__facts > span + span::before { content: '·'; margin: 0 6px; }
+.team-detail__who > .atlas-pill { margin-top: var(--s-2); }
 .team-detail__actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .team-detail__actions:empty { display: none; }
-.team-detail__section { display: grid; gap: var(--s-2); padding-top: var(--s-5); border-top: 1px solid var(--line-subtle); }
+.team-detail__section { display: grid; gap: var(--s-3); padding: var(--s-5) 0; border-top: 1px solid var(--line); }
 .team-detail__section > .atlas-btn { justify-self: start; }
-.team-detail__title-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.team-detail__title-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); }
 .team-detail__title { margin: 0; font: var(--type-heading); color: var(--text); }
+.team-detail__title-row .num { font: var(--type-meta); font-variant-numeric: tabular-nums; }
 .team-detail__text { margin: 0; font: var(--type-body); color: var(--text-2); }
 .team-detail__hint { margin: 0; font: var(--type-caption); color: var(--text-3); }
-.team-detail__list { display: grid; gap: var(--s-2); margin: 0; }
-.team-detail__row { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--s-3); }
-.team-detail__row dt { font: var(--type-meta); color: var(--text-2); }
+.team-detail__list { display: grid; gap: 0; margin: 0; }
+.team-detail__row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--s-3); padding: 6px 0; }
+.team-detail__row dt { font: var(--type-meta); color: var(--text-3); padding-top: 1px; }
 .team-detail__row dd { margin: 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
 .team-detail a:not([class*="atlas-"]) { color: var(--accent-text); text-decoration: none; }
 .team-detail a.atlas-btn { color: inherit; }
-.team-contacts .atlas-row { padding-left: 0; padding-right: 0; }
+.team-contacts { margin: 0 calc(-1 * var(--s-3)); }
+.team-contacts .atlas-row { padding-left: var(--s-3); padding-right: var(--s-3); border-radius: var(--r-md); }
 
-.team-shifts { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
-.team-shifts li { display: grid; grid-template-columns: 96px 96px minmax(0, 1fr); gap: var(--s-2); font: var(--type-body); }
+/* Shifts this week: day, time, role; today in ink with a kingfisher word. */
+.team-shifts { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.team-shifts li { display: grid; grid-template-columns: 132px 104px minmax(0, 1fr); gap: var(--s-2); align-items: baseline; padding: 6px 0; font: var(--type-body); color: var(--text-2); }
+.team-shifts .num { color: var(--text); font-variant-numeric: tabular-nums; }
+.team-shifts__day { display: inline-flex; align-items: baseline; gap: var(--s-2); }
+.team-shifts li.is-today .team-shifts__day { color: var(--text); font-weight: 500; }
+.team-shifts__today { font: 500 12px/16px var(--font-sans); color: var(--accent-text); }
 
-.team-tasks { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.team-task { display: flex; align-items: flex-start; gap: var(--s-3); width: 100%; min-height: 44px; padding: var(--s-2); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
-.team-task:hover:not(:disabled) { background: var(--bg-subtle); }
+/* Onboarding: one segment per required step, kingfisher when done, all
+   positive once every step is done. */
+.team-onboarding__meter { display: block; }
+.team-meter--wide { display: flex; width: 100%; gap: 4px; }
+.team-meter--wide > i { flex: 1 1 0; width: auto; height: 6px; border-radius: 3px; }
+.team-meter--wide > i.is-on { background: var(--accent-brand); }
+.team-meter--wide:not(:has(> i:not(.is-on))) > i { background: var(--positive); }
+.team-meter--wide.team-meter--bar { height: 6px; }
+.team-meter--wide.team-meter--bar > i { background: var(--accent-brand); }
+
+.team-tasks { display: grid; gap: 0; margin: 0 calc(-1 * var(--s-2)); padding: 0; list-style: none; }
+.team-task { display: flex; align-items: flex-start; gap: var(--s-3); width: 100%; min-height: 48px; padding: var(--s-2); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text); text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
+.team-task:active:not(:disabled) { transform: scale(.99); }
+.team-task:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
 .team-task:disabled { cursor: default; opacity: 1; }
-.team-task__mark { display: grid; padding-top: 2px; color: var(--text-3); }
+.team-task__mark { display: grid; padding-top: 1px; color: var(--text-3); }
 .team-task.is-done .team-task__mark { color: var(--positive); }
 .team-task__mark svg { width: 18px; height: 18px; }
 .team-task__body { display: grid; min-width: 0; }
-.team-task__title { font: var(--type-label); }
-.team-task__meta { font: var(--type-caption); color: var(--text-2); }
-.team-history { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
-.team-history li { display: grid; font: var(--type-body); }
+.team-task__title { font: 500 14px/20px var(--font-sans); }
+.team-task.is-done .team-task__title { color: var(--text-2); }
+.team-task__meta { font: var(--type-caption); color: var(--text-3); }
+
+/* History: a quiet timeline, newest first. */
+.team-history { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.team-history li { position: relative; display: grid; gap: 2px; padding: 0 0 var(--s-3) var(--s-5); font: var(--type-body); }
+.team-history li::before { content: ''; position: absolute; left: 3px; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
+.team-history li::after { content: ''; position: absolute; left: 5.5px; top: 17px; bottom: 2px; width: 1px; background: var(--line); }
+.team-history li:last-child { padding-bottom: 0; }
+.team-history li:last-child::after { display: none; }
 .team-history .team-muted { font: var(--type-caption); }
-.team-access .atlas-form-foot { justify-content: space-between; }
+.team-access__tools { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-2); margin-left: calc(-1 * var(--s-3)); }
 
 /* ---------- remove / delete ---------- */
-.team-danger { border-top-color: var(--danger-ring, var(--line-subtle)); }
 .team-danger .team-detail__title { color: var(--danger); }
 .team-danger__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 
 .team-delete .atlas-dialog { max-width: 30rem; }
-.team-delete__who { display: flex; align-items: center; gap: var(--s-3); margin: 0 0 var(--s-3); }
+.team-delete__who { display: flex; align-items: center; gap: var(--s-3); margin: 0 0 var(--s-4); padding: var(--s-3); border-radius: var(--r-lg); background: var(--bg-subtle); }
 .team-delete__who > div { display: grid; gap: 2px; min-width: 0; }
-.team-delete__who strong { font: var(--type-label); color: var(--text); }
+.team-delete__who strong { font: 500 14px/20px var(--font-sans); color: var(--text); }
 .team-delete__who .team-muted { font: var(--type-caption); }
-.team-delete__warn { margin: 0 0 var(--s-3); font: var(--type-body); color: var(--danger); }
-.team-delete__label { margin: var(--s-3) 0 var(--s-1); font: var(--type-meta); color: var(--text-2); }
-.team-delete__list { display: grid; gap: var(--s-1); margin: 0 0 var(--s-2); padding-left: var(--s-4); }
+.team-delete__warn { margin: 0 0 var(--s-3); font: 500 14px/20px var(--font-sans); color: var(--danger); }
+.team-delete__label { margin: var(--s-4) 0 var(--s-1); font: var(--type-label); color: var(--text); }
+.team-delete__list { display: grid; gap: var(--s-1); margin: 0 0 var(--s-2); padding-left: var(--s-5); }
 .team-delete__list li { font: var(--type-body); color: var(--text-2); }
+.team-delete__list li::marker { color: var(--text-3); }
 .team-delete__list--danger li { color: var(--text); }
-.team-delete .atlas-field { margin-top: var(--s-3); }
+.team-delete .atlas-field { margin-top: var(--s-4); }
 
+@media (hover: hover) and (pointer: fine) {
+  .team-task:hover:not(:disabled) { background: var(--bg-hover); }
+}
+@media (max-width: 1279px) {
+  .team-table th:nth-child(1) { width: 40%; }
+}
 @media (max-width: 767px) {
-  .team-toolbar .atlas-search { flex: 1 1 100%; width: 100%; }
+  /* Search on its own row; the filters scroll sideways in one row under it. */
+  .team-toolbar { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .team-toolbar > .atlas-search { flex: 1 1 100%; width: 100%; }
+  .team-filters { flex-wrap: nowrap; width: calc(100% + 2 * var(--page-gutter)); margin: 0 calc(-1 * var(--page-gutter)); padding: 0 var(--page-gutter); overflow-x: auto; scrollbar-width: none; }
+  .team-filters > * { flex: none; }
+  .team-lineup { padding-inline: 0; }
   .team--detail { padding-top: var(--s-2); }
-  .team-detail__row { grid-template-columns: 96px minmax(0, 1fr); }
-  .team-shifts li { grid-template-columns: 88px 96px; }
-  .team-shifts li .team-muted { display: none; }
+  .team--detail .team-detail__head { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .team-detail__row { grid-template-columns: 104px minmax(0, 1fr); }
+  .team-shifts li { grid-template-columns: 112px 104px; }
+  .team-shifts li > .team-muted { display: none; }
+  .team-task { min-height: 52px; }
 }
 }
