@@ -1,0 +1,31 @@
+{
+  "note": "S111 state of every function S112 touches. Generated; do not hand-edit.",
+  "restored_functions": {
+    "atlas_private.booking_lifecycle_notify()": {
+      "src_md5": "2b03da051c6bea3c908aa13c331c5349",
+      "secdef": true,
+      "config": "search_path=\"\"",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}"
+    },
+    "public.atlas_public_booking_availability(p_date date, p_party_size integer, p_tz text)": {
+      "src_md5": "5e7839362c5031f31eb5f0d9dd469707",
+      "secdef": true,
+      "config": "search_path=\"\"",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}"
+    },
+    "public.atlas_public_booking_request(p_payload jsonb)": {
+      "src_md5": "39013189a957c4b78b9ee7f4fbba7736",
+      "secdef": true,
+      "config": "search_path=\"\"",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}"
+    }
+  },
+  "release_functions": [
+    "atlas_private.booking_public_free_seats(p_area_id uuid, p_start timestamp with time zone, p_end timestamp with time zone)",
+    "atlas_private.booking_public_has_run(p_area_id uuid, p_free integer[], p_party integer)",
+    "atlas_private.booking_public_reservation_seats(p_reservation_id uuid)",
+    "atlas_private.booking_public_seat_ids(p_area_id uuid, p_seats integer[])"
+  ],
+  "release_triggers": [],
+  "restored_constraints": {}
+}

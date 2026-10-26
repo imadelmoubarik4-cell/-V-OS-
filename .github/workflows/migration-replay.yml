@@ -90,5 +90,7 @@ jobs:
 
       - name: Run S111 personal-data retention acceptance (90 days after the visit guest details anonymised, linked inbox/outbox/push rows deleted, recent and future bookings untouched, no notifications fired, idempotent, 30-day minimum, sealed, counts-only run log)
         run: bash scripts/verify_s111_booking_personal_data_retention.sh
-      - name: Prove the S111, S110b, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S111 via the reviewed bundles)
+      - name: Run S112 direct-booking acceptance (owner stool numbering, owner switch off by default, booking_mode + seat_map, direct confirm on chosen or adjacent stools, seat_taken, corners and gap refused, idempotent, managers alerted)
+        run: bash scripts/verify_s112_public_direct_booking.sh
+      - name: Prove the S112, S111, S110b, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S112 via the reviewed bundles)
         run: bash scripts/release/verify_kanel_bookings_rollback.sh
