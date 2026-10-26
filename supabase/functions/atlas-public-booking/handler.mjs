@@ -18,10 +18,13 @@
 // returned. No staff auth, no cookies, no other guests' data.
 //
 //   GET  ?action=availability&date=YYYY-MM-DD&party_size=N
-//   POST ?action=request            {party_size, start_at, guest_name, guest_phone?, guest_email?, guest_requests?}
+//   POST ?action=request            {party_size, start_at, guest_name, guest_phone?, guest_email?, guest_requests?, seats?}
+//   POST ?action=book               same body; confirmed immediately while the owner switch
+//                                   booking_settings.public_instant_confirm is on (S112),
+//                                   otherwise requested. seats = the guest's stool numbers.
 //   GET  ?action=status&token=<public_token>
 
-export const FUNCTION_VERSION = "0.1.0";
+export const FUNCTION_VERSION = "0.3.0";
 export const LIMITS = Object.freeze({ jsonBytes: 16 * 1024 });
 
 export class ApiError extends Error {
@@ -38,6 +41,7 @@ export const MESSAGES = Object.freeze({
   invalid_request: "Some of the details weren’t valid. Check them and try again.",
   not_found: "We couldn’t find that booking.",
   conflict: "That time is no longer available. Please choose another.",
+  seat_taken: "Those stools were just booked. Please choose others.",
   rate_limited: "Too many requests. Please try again shortly.",
   disabled: "Online booking isn’t available right now.",
   unavailable: "Online booking is unavailable right now. Nothing was changed.",
@@ -86,7 +90,7 @@ export function errorResponse(error, env, origin) {
 }
 
 const HINTS = Object.freeze({
-  not_found: 404, conflict: 409, invalid_request: 400, unavailable: 503,
+  not_found: 404, conflict: 409, seat_taken: 409, invalid_request: 400, unavailable: 503,
   disabled: 503, rate_limited: 429,
 });
 export function mapRpcError(status, body) {
@@ -113,6 +117,17 @@ function envValue(env, name) {
 const invalid = (message = MESSAGES.invalid_request) => new ApiError(400, "invalid_request", message);
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+// The guest's chosen stools (S112): absent, or 1–4 distinct stool numbers 1–16.
+// The RPC still checks they exist, are online-bookable, adjacent in one section,
+// match the party size and are free.
+function guestSeats(value) {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw invalid();
+  if (!value.every((n) => Number.isInteger(n) && n >= 1 && n <= 16)) throw invalid();
+  if (new Set(value).size !== value.length) throw invalid();
+  return value.slice();
+}
 const TOKEN = /^[0-9a-f]{24,64}$/i;
 
 async function readJson(request) {
@@ -266,8 +281,9 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
       return svc.rpc("atlas_public_booking_status", { p_token: token });
     }
 
-    if (request.method === "POST" && action === "request") {
+    if (request.method === "POST" && (action === "request" || action === "book")) {
       const body = await readJson(request);
+      const seats = guestSeats(body.seats);
       const idem = request.headers.get("idempotency-key") || body.idempotency_key || null;
       const fp = await fingerprint(request, env);
       await rateGate(fp, "request");
@@ -281,6 +297,8 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
         tz: "Atlantic/Reykjavik",
         fingerprint: fp,
         idempotency_key: idem ? String(idem).slice(0, 128) : null,
+        booking_mode: action === "book" ? "direct" : "request",
+        ...(seats ? { seats } : {}),
       };
       return svc.rpc("atlas_public_booking_request", { p_payload: payload });
     }

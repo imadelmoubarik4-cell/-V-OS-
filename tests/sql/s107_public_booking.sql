@@ -144,7 +144,7 @@ declare
   t uuid;
   held_count integer;
 begin
-  -- Occupy sections B and C and most of A so only Bar 1-2 remain free, then two
+  -- Occupy every stool except Bar 1-2 (section L in the owner numbering), then two
   -- party-of-2 requests compete for that last pair.
   start_ts := (d::text || ' 18:00')::timestamp at time zone tz;
   for t in select id from atlas_private.booking_tables
@@ -163,7 +163,7 @@ begin
   exception when sqlstate '23505' then null; end;  -- atlas:conflict
   -- Bar 1 is held exactly once for THIS window (only the first request).
   select count(*) into held_count from atlas_private.booking_holds
-   where table_id = 'bb000000-0000-4000-8000-000000000001'
+   where table_id = (select id from atlas_private.booking_tables where label = 'Bar 1')
      and reason = 'web_pending' and expires_at > now() and start_at = start_ts;
   if held_count <> 1 then raise exception 's107: Bar 1 was held % times, expected 1', held_count; end if;
 end $conc$;
