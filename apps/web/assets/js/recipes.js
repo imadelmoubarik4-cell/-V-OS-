@@ -509,23 +509,42 @@
       </div>${category.menu}`;
   }
 
+  // A library tile is a spec card: the name, its category and glass, the
+  // build in miniature (what a bartender scans for), then the one status mark
+  // and its reason at the foot. No category icon in a box: the build is the
+  // recipe's face. Recipes with a photo show it above.
+  const TILE_PARTS = 4;
+  function tileBuildMarkup(recipe) {
+    const parts = recipe.recipe_ingredients || [];
+    if (!parts.length) return '<span class="recipe-tile__build recipe-tile__build--empty">No ingredients yet</span>';
+    const shown = parts.slice(0, parts.length > TILE_PARTS ? TILE_PARTS - 1 : TILE_PARTS);
+    const more = parts.length - shown.length;
+    return `<span class="recipe-tile__build">${shown.map((ingredient) => `<span class="recipe-tile__part"><span class="recipe-tile__qty num">${escape(quantityText(ingredient))}</span><span class="recipe-tile__item">${escape(ingredient.item_name || 'Ingredient')}</span></span>`).join('')}${more ? `<span class="recipe-tile__more">+${more} more</span>` : ''}</span>`;
+  }
+
   function tileMarkup(recipe) {
     const view = availabilityView(recipe);
     const category = categoryFor(recipe);
-    // No photo: a calm compact tile with the category's glass icon, never a
-    // large grey placeholder (review P2-3, spec §8.3 recipe lookup).
     const media = recipe.image_url
       ? `<span class="recipe-tile__media"><img class="recipe-tile__img" src="${escape(recipe.image_url)}" alt="" loading="lazy" decoding="async"></span>`
-      : `<span class="recipe-tile__glyph" aria-hidden="true"><i data-lucide="${escape(category.icon || 'martini')}"></i></span>`;
+      : '';
     return `<a class="recipe-tile${recipe.image_url ? '' : ' recipe-tile--plain'}" href="#recipes/${escape(encodeURIComponent(recipe.id))}" data-recipe-id="${escape(recipe.id)}">
         ${media}
         <span class="recipe-tile__body">
           <span class="recipe-tile__name">${escape(recipe.name)}</span>
           <span class="recipe-tile__meta"><span class="recipe-tile__category">${escape(category.name)}</span>${recipe.glassware ? `<span class="recipe-tile__glass"> · ${escape(recipe.glassware)}</span>` : ''}</span>
+          ${tileBuildMarkup(recipe)}
           <span class="recipe-tile__status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span></span>
           ${view.line && view.status.key !== 'ready' ? `<span class="recipe-tile__line">${escape(view.line)}</span>` : ''}
         </span>
       </a>`;
+  }
+
+  // One grid of spec cards, sorted by name; the category is on every card.
+  // (Category sections left lone cards beside empty columns.)
+  function gridMarkup(list) {
+    const plain = list.some((recipe) => recipe.image_url) ? '' : ' recipe-grid--plain';
+    return `<div class="recipe-grid${plain}">${list.map(tileMarkup).join('')}</div>`;
   }
 
   function listMarkup(list) {
@@ -561,7 +580,7 @@
     const head = window.AtlasShell.pageHead({ title: 'Recipes', sub: headSub(), actions });
     if (recipesHealth() === 'failed' && !recipes.length) return `${head}${loadFailedMarkup()}`;
     if ((!dataLoaded() || recipesHealth() === 'loading') && !recipes.length) {
-      return `${head}${toolbarMarkup(0)}<div class="recipe-grid" aria-busy="true" aria-label="Loading recipes">${Array.from({ length: 8 }, () => '<span class="recipe-tile recipe-tile--skeleton"><span class="atlas-skel atlas-skel--block recipe-tile__media"></span><span class="recipe-tile__body"><span class="atlas-skel atlas-skel--title"></span><span class="atlas-skel atlas-skel--text"></span></span></span>').join('')}</div>`;
+      return `${head}${toolbarMarkup(0)}<div class="recipe-grid" aria-busy="true" aria-label="Loading recipes">${Array.from({ length: 8 }, () => '<span class="recipe-tile recipe-tile--skeleton"><span class="recipe-tile__body"><span class="atlas-skel atlas-skel--title"></span><span class="atlas-skel atlas-skel--text"></span><span class="recipe-tile__build"><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--text"></span></span></span></span>').join('')}</div>`;
     }
     if (!recipes.length) {
       return `${head}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon"><i data-lucide="martini"></i></div><h3 class="atlas-empty__title">No recipes yet</h3><p class="atlas-empty__text">${manager ? 'Add your first recipe and link its ingredients to stock to see what you can serve.' : 'A manager adds recipes. They appear here with what you can serve tonight.'}</p>${manager ? '<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-recipe-new><i data-lucide="plus"></i>New recipe</button></div>' : ''}</div>`;
@@ -572,7 +591,7 @@
       const what = state.search ? `“${state.search}”` : 'these filters';
       content = `<div class="atlas-empty"><div class="atlas-empty__icon"><i data-lucide="search-x"></i></div><h3 class="atlas-empty__title">No recipes match ${escape(what)}</h3><p class="atlas-empty__text">Search looks at recipe names, categories, glassware and ingredients.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-recipe-clear>Clear filters</button></div></div>`;
     } else if (state.viewMode === 'list') content = listMarkup(list);
-    else content = `<div class="recipe-grid${list.some((recipe) => recipe.image_url) ? '' : ' recipe-grid--plain'}">${list.map(tileMarkup).join('')}</div>`;
+    else content = gridMarkup(list);
     const stale = dataLoaded() && !navigator.onLine
       ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="wifi-off"></i><div class="atlas-alert__content"><p class="atlas-alert__body">You\'re offline. Showing recipes and stock from the last time Alcedo loaded.</p></div></div>'
       : recipesHealth() === 'failed'
@@ -605,22 +624,38 @@
       : blockers.length
         ? `<div class="atlas-alert atlas-alert--info"><i data-lucide="info"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Why availability is unknown</p><p class="atlas-alert__body">${blockers.map((entry) => `${escape(entry.name)}: ${escape(entry.reason)}`).join('<br>')}</p></div></div>`
         : '';
+    // The build is the biggest thing on the sheet: the measure in a fixed
+    // column, the ingredient beside it. Stock is marked only where it needs
+    // attention (below par, out, not counted); a counted, healthy item is
+    // quiet. Cost per ingredient is for managers.
     const build = rows.length
       ? `<ul class="recipe-build">${rows.map(({ ingredient, availability, cost }) => {
           const item = availability.item;
           const name = item?.name || ingredient.item_name || 'Ingredient';
           const link = item?.id ? `<a href="#inventory/item/${escape(encodeURIComponent(item.id))}">${escape(name)}</a>` : escape(name);
-          return `<li class="recipe-build__row"><span class="recipe-build__qty num">${escape(quantityText(ingredient))}</span><span class="recipe-build__name">${link}</span><span class="recipe-build__end">${availability.reference ? '<span class="atlas-pill">Not stock-tracked</span>' : stockPill(item)}${manager ? `<span class="recipe-build__cost num">${cost.value == null ? '<span title="No cost or package size">—</span>' : formatIsk(cost.value)}</span>` : ''}</span></li>`;
+          const stock = availability.reference ? '<span class="atlas-pill">Not stock-tracked</span>' : stockPill(item);
+          const quiet = !availability.reference && item && ['ok', 'no_par'].includes(window.AtlasStockTruth?.stockStatus?.(item));
+          return `<li class="recipe-build__row"><span class="recipe-build__qty num">${escape(quantityText(ingredient))}</span><span class="recipe-build__name">${link}</span><span class="recipe-build__end">${quiet ? '' : stock}${manager ? `<span class="recipe-build__cost num">${cost.value == null ? '<span title="No cost or package size">—</span>' : formatIsk(cost.value)}</span>` : ''}</span></li>`;
         }).join('')}</ul>`
       : '<p class="recipe-muted">No ingredients yet.</p>';
+    // Glass and garnish come first: the bartender reaches for the glass
+    // before the bottles.
     const facts = [['Glass', recipe.glassware], ['Garnish', recipe.garnish], ['Makes', `${number(recipe.yield_quantity, 1)} ${recipe.yield_unit || 'serving'}`]];
+    const marginBar = costKnown && Number.isFinite(price) && price > 0
+      ? (() => {
+          const costShare = Math.max(0, Math.min(100, (financials.perServing / price) * 100));
+          return `<figure class="recipe-margin"><svg class="recipe-margin__bar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="recipe-margin__cost" x="0" y="0" width="${costShare.toFixed(2)}" height="8"></rect><rect class="recipe-margin__keep" x="${Math.min(100, costShare + 0.6).toFixed(2)}" y="0" width="${Math.max(0, 100 - costShare - 0.6).toFixed(2)}" height="8"></rect></svg>
+            <figcaption class="recipe-margin__legend"><span><span class="recipe-margin__key recipe-margin__key--cost" aria-hidden="true"></span>Cost</span><span><span class="recipe-margin__key recipe-margin__key--keep" aria-hidden="true"></span>Margin</span><span class="recipe-margin__price">Share of the menu price</span></figcaption></figure>`;
+        })()
+      : '';
     const money = manager ? `<section class="recipe-section" aria-labelledby="recipe-money-title">
         <h3 class="recipe-section__title" id="recipe-money-title">Cost and price</h3>
         <div class="atlas-stats recipe-stats">
-          <div class="atlas-stat"><p class="atlas-stat__label">Cost per serve</p><p class="atlas-stat__value">${costKnown ? formatIsk(financials.perServing) : '—'}</p><p class="atlas-stat__detail">${costKnown ? 'From linked item costs' : `${financials.incomplete} ${financials.incomplete === 1 ? 'ingredient has' : 'ingredients have'} no cost or pack size`}</p></div>
-          <div class="atlas-stat"><p class="atlas-stat__label">Menu price</p><p class="atlas-stat__value">${Number.isFinite(price) ? formatIsk(price) : '—'}</p><p class="atlas-stat__detail">${Number.isFinite(price) ? 'Set on this recipe' : 'Not set'}</p></div>
-          <div class="atlas-stat"><p class="atlas-stat__label">Theoretical margin</p><p class="atlas-stat__value">${costKnown && Number.isFinite(financials.margin) ? formatPercent(financials.margin) : '—'}</p><p class="atlas-stat__detail">${costKnown && Number.isFinite(financials.profit) ? `${formatIsk(financials.profit)} per serve` : 'Needs costs and a price'}</p></div>
+          <div class="atlas-stat"><p class="atlas-stat__label">Cost per serve</p><p class="atlas-stat__value${costKnown ? '' : ' is-empty'}">${costKnown ? formatIsk(financials.perServing) : '—'}</p><p class="atlas-stat__detail">${costKnown ? 'From linked item costs' : `${financials.incomplete} ${financials.incomplete === 1 ? 'ingredient has' : 'ingredients have'} no cost or pack size`}</p></div>
+          <div class="atlas-stat"><p class="atlas-stat__label">Menu price</p><p class="atlas-stat__value${Number.isFinite(price) ? '' : ' is-empty'}">${Number.isFinite(price) ? formatIsk(price) : '—'}</p><p class="atlas-stat__detail">${Number.isFinite(price) ? 'Set on this recipe' : 'Not set'}</p></div>
+          <div class="atlas-stat"><p class="atlas-stat__label">Theoretical margin</p><p class="atlas-stat__value${costKnown && Number.isFinite(financials.margin) ? '' : ' is-empty'}">${costKnown && Number.isFinite(financials.margin) ? formatPercent(financials.margin) : '—'}</p><p class="atlas-stat__detail">${costKnown && Number.isFinite(financials.profit) ? `${formatIsk(financials.profit)} per serve` : 'Needs costs and a price'}</p></div>
         </div>
+        ${marginBar}
         <p class="recipe-muted">Theoretical margin comes from recipe costs. Realised margin needs sales data, and no sales system is connected.</p>
       </section>` : '';
     const archive = manager ? `<section class="recipe-section recipe-manage">
@@ -631,9 +666,9 @@
     return `${recipe.image_url ? `<img class="recipe-photo" src="${escape(recipe.image_url)}" alt="${escape(recipe.name)}">` : ''}
       <div class="recipe-detail-status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span><span class="recipe-muted">${escape(servingsText(recipe))}</span></div>
       ${alert}
+      <dl class="recipe-facts">${facts.map(([label, value]) => `<div><dt>${label}</dt><dd${value ? '' : ' class="is-empty"'}>${escape(value || '—')}</dd></div>`).join('')}</dl>
       <section class="recipe-section" aria-labelledby="recipe-build-title"><h3 class="recipe-section__title" id="recipe-build-title">Build</h3>${build}</section>
       <section class="recipe-section" aria-labelledby="recipe-method-title"><h3 class="recipe-section__title" id="recipe-method-title">Method</h3>${methodMarkup(recipe.method)}</section>
-      <dl class="recipe-facts">${facts.map(([label, value]) => `<div><dt>${label}</dt><dd>${escape(value || '—')}</dd></div>`).join('')}</dl>
       ${recipe.notes ? `<section class="recipe-section"><h3 class="recipe-section__title">Notes</h3><p class="recipe-notes">${escape(recipe.notes)}</p></section>` : ''}
       ${money}${archive}`;
   }

@@ -351,6 +351,16 @@
     </section>`;
   }
 
+  // A list row carries one status mark: the ring's own stock dot before the
+  // name. In stock is the quiet state (the dot alone, its words for screen
+  // readers); any other state also says so in words.
+  function rowStock(status) {
+    const info = stockInfo(status);
+    return status === 'available'
+      ? `<span class="sr-only">${escape(info.label)}</span>`
+      : `<span class="flavor-map__row-stock flavor-map__row-stock--${escape(info.tone)}">${escape(info.label)}</span>`;
+  }
+
   function listMarkup() {
     const data = state.data;
     const edges = data.edges || [];
@@ -363,8 +373,8 @@
         const selected = edge.target === state.selected;
         return `<li class="flavor-map__row${selected ? ' is-selected' : ''}">
           <button type="button" class="flavor-map__row-main" data-flavor-select="${escape(node.slug)}" aria-pressed="${selected}" aria-controls="flavor-detail">
-            <span class="flavor-map__row-name">${escape(node.name)}</span>
-            <span class="flavor-map__row-meta"><span class="flavor-meter" aria-hidden="true"><span style="--flavor-weight:${Math.max(0, Math.min(1, Number(edge.strength) || 0)).toFixed(2)}"></span></span><span class="num">${percent(edge.strength)}</span>${evidencePill(edge.evidence_type)}${stockPill(node.stock_status)}</span>
+            <span class="flavor-map__row-name" data-stock="${escape(node.stock_status || 'unknown')}"><span class="flavor-map__dot" aria-hidden="true"></span><span class="flavor-map__row-label">${escape(node.name)}</span></span>
+            <span class="flavor-map__row-meta">${rowStock(node.stock_status)}${EVIDENCE[edge.evidence_type] ? `<span class="flavor-map__row-evidence">${escape(EVIDENCE[edge.evidence_type].label)}</span>` : ''}<span class="flavor-meter" aria-hidden="true"><span style="--flavor-weight:${Math.max(0, Math.min(1, Number(edge.strength) || 0)).toFixed(2)}"></span></span><span class="num flavor-map__row-strength">${percent(edge.strength)}</span></span>
           </button>
           <button type="button" class="atlas-icon-btn flavor-map__row-centre" data-flavor-center="${escape(node.slug)}" aria-label="Centre the map on ${escape(node.name)}" title="Centre the map on ${escape(node.name)}"><i data-lucide="locate-fixed"></i></button>
         </li>`;

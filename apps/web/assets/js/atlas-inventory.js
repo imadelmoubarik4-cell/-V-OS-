@@ -315,6 +315,7 @@
     if (dataStatus().items === 'loading' && !active.length) return 'Loading items…';
     const last = lastCountedAt();
     const count = `${active.length} active ${active.length === 1 ? 'item' : 'items'}`;
+    if (!active.length) return count;
     if (stockIncomplete()) return `${count} · stock figures incomplete`;
     return last ? `${count} · counted ${dateText(last, { long: true })}` : `${count} · not counted yet`;
   }
@@ -575,9 +576,27 @@
     return `<div class="inv__filters"><label class="atlas-search inv__search">${icon('search')}<input class="atlas-input" type="search" data-inv-search placeholder="Search items, suppliers or codes" aria-label="Search items, suppliers or codes" value="${esc(state.query)}" autocomplete="off"></label>
       <div class="atlas-toolbar inv__toolbar">
       ${chips.join('')}
-      <div class="atlas-toolbar__end"><span data-inv-count>${count === total ? `${total} ${total === 1 ? 'item' : 'items'}` : `${count} of ${total} items`}</span>
+      <div class="atlas-toolbar__end"><span class="inv__total" data-inv-total>${count === total ? `${total} ${total === 1 ? 'item' : 'items'}` : `${count} of ${total} items`}</span>
       <button type="button" class="atlas-icon-btn" data-inv-menu-trigger="tools" aria-label="More inventory actions">${icon('ellipsis')}</button></div>
     </div></div>${menus}`;
+  }
+
+  // Stock health: every active item in exactly one state, so the parts add up
+  // to the active count in the subline. A partition, not a filter: the chips
+  // below filter. Hidden while stock is unknown for everything (the info
+  // alert says so) or withheld.
+  const HEALTH = [['out', 'Out'], ['almost_out', 'Almost out'], ['below_par', 'Below par'], ['ok', 'In stock'], ['not_counted', 'Not counted']];
+  function healthHtml() {
+    const active = items().filter((item) => item.active !== false);
+    if (!active.length || dataStatus().items === 'error' || stockIncomplete() || neverCounted()) return '';
+    const counts = new Map();
+    active.forEach((item) => { const key = stockStatus(item).key; counts.set(key, (counts.get(key) || 0) + 1); });
+    const parts = HEALTH.map(([key, label]) => [key, label, counts.get(key) || 0]).filter(([, , n]) => n > 0);
+    const words = parts.map(([, label, n]) => `${n} ${label.toLowerCase()}`).join(', ');
+    return `<section class="inv-health" aria-label="Stock against par: ${esc(words)}">
+      <div class="inv-health__track" aria-hidden="true">${parts.map(([key, , n]) => `<span class="inv-health__seg" data-tone="${key}" data-inv-grow="${n}"></span>`).join('')}</div>
+      <ul class="inv-health__legend" aria-hidden="true">${parts.map(([key, label, n]) => `<li data-tone="${key}"><span class="inv-health__n">${n}</span>${esc(label)}</li>`).join('')}</ul>
+    </section>`;
   }
 
   function neverCounted() {
@@ -591,12 +610,18 @@
     return `<th${aria}${extra}><button type="button" class="atlas-th-sort" data-inv-sort="${key}">${esc(label)}${icon('chevron-down')}</button></th>`;
   }
 
-  function parBar(item, status) {
+  // The par track: on hand against par at the true ratio (capped at full). It
+  // is always neutral ink; the row's status pill is its one status mark. The
+  // width is applied after render through the CSSOM (no inline style markup).
+  function parBar(item, { wide = false } = {}) {
     const par = num(item.par_level);
     if (!par || !truth()?.known(item)) return '';
     const ratio = Math.max(0, Math.min(1, (num(item.quantity) || 0) / par));
-    const tone = status.tone === 'danger' ? ' atlas-par--danger' : status.tone === 'warning' ? ' atlas-par--warning' : '';
-    return `<span class="atlas-par${tone}" aria-hidden="true"><i style="width:${Math.round(ratio * 100)}%"></i></span>`;
+    return `<span class="atlas-par inv-par${wide ? ' inv-par--wide' : ''}" aria-hidden="true"><i data-inv-ratio="${Math.round(ratio * 1000) / 10}"></i></span>`;
+  }
+  function applyRatios(scope) {
+    scope?.querySelectorAll?.('[data-inv-ratio]').forEach((node) => { node.style.width = `${Number(node.dataset.invRatio) || 0}%`; });
+    scope?.querySelectorAll?.('[data-inv-grow]').forEach((node) => { node.style.flexGrow = String(Number(node.dataset.invGrow) || 0); });
   }
 
   function rowHtml(item) {
@@ -605,18 +630,20 @@
     const selected = state.selected.has(String(item.id));
     const manager = isManager();
     const counted = num(item.stock_baseline_at);
-    const onHand = known ? `${qty(item.quantity)}${parBar(item, status)}` : '<span class="inv__muted" title="No verified count yet">—</span>';
+    // On hand: the figure in ink, the unit muted, the par track under it.
+    const onHand = known ? `<span class="inv-qty"><span class="inv-qty__n">${qty(item.quantity)}</span><span class="inv-qty__unit">${esc(unitWord(item, item.quantity))}</span></span>${parBar(item)}` : '<span class="inv__muted" title="No verified count yet">—</span>';
+    const sub = known ? packLine(item) || unitWord(item) : [unitWord(item), packLine(item)].filter(Boolean).join(' · ');
     return `<tr data-inv-row="${esc(item.id)}"${selected ? ' class="is-selected"' : ''}>
       ${manager ? `<td class="col-check"><input type="checkbox" class="atlas-check" data-inv-select="${esc(item.id)}" aria-label="Select ${esc(item.name)}"${selected ? ' checked' : ''}></td>` : ''}
-      <td class="inv-col--name"><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}" title="${esc(item.name)}"><span class="cell-primary cell-clip">${esc(item.name)}</span><span class="cell-sub cell-clip">${esc([unitWord(item), packLine(item)].filter(Boolean).join(' · '))}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
-      <td class="inv-col--text" data-priority="3"><span class="cell-clip" title="${esc(item.category || '')}">${esc(item.category || '—')}</span></td>
-      ${manager ? `<td class="inv-col--text" data-priority="2"><span class="cell-clip" title="${esc(item.supplier || '')}">${esc(item.supplier || '—')}</span></td>` : ''}
+      <td class="inv-col--name"><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}" title="${esc(item.name)}"><span class="cell-primary cell-clip">${esc(item.name)}</span><span class="cell-sub cell-clip">${esc(sub)}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
+      <td class="inv-col--text" data-priority="3">${item.category ? `<span class="cell-clip" title="${esc(item.category)}">${esc(item.category)}</span>` : '<span class="inv__muted">—</span>'}</td>
+      ${manager ? `<td class="inv-col--text" data-priority="2">${item.supplier ? `<span class="cell-clip" title="${esc(item.supplier)}">${esc(item.supplier)}</span>` : '<span class="inv__muted">—</span>'}</td>` : ''}
       <td class="inv-col--text" data-priority="3">${locationCellHtml(item)}</td>
-      <td class="is-num">${onHand}</td>
-      <td class="is-num" data-priority="2">${num(item.par_level) ? qty(item.par_level) : '—'}</td>
+      <td class="is-num inv-cell--qty">${onHand}</td>
+      <td class="is-num inv-cell--par" data-priority="2">${num(item.par_level) ? qty(item.par_level) : '—'}</td>
       <td class="inv-col--status">${statusPill(status)}</td>
       ${manager ? `<td class="is-num" data-priority="2">${money(item.cost_price)}</td>` : ''}
-      <td data-priority="3">${counted ? esc(dateText(counted)) : '—'}</td>
+      <td class="inv-cell--date" data-priority="3">${counted ? esc(dateText(counted)) : '<span class="inv__muted">—</span>'}</td>
       <td class="col-actions"><button type="button" class="atlas-icon-btn row-action" data-inv-row-menu="${esc(item.id)}" aria-label="Actions for ${esc(item.name)}">${icon('ellipsis')}</button></td>
     </tr>`;
   }
@@ -656,6 +683,9 @@
       body.innerHTML = loadFailedHtml('Inventory couldn’t be loaded.', 'Nothing was changed and your items are safe. Check your connection and try again.');
       return;
     }
+    // First run: nothing to search, filter or total yet; the empty state and
+    // its first action stand where the list will be.
+    if (!all.length) { body.innerHTML = `<div class="inv__first-run">${emptyItemsHtml(0)}</div>`; return; }
     const alerts = [];
     if (dataStatus().items === 'error') {
       alerts.push(alertHtml('danger', 'Inventory couldn’t be loaded.', all.length ? `Showing the items loaded ${state.lastLoadedAt ? `at ${clock()?.formatTime?.(state.lastLoadedAt) || ''}` : 'earlier'}. Nothing was changed.` : 'Nothing was changed. Check your connection and try again.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-retry>Try again</button>'));
@@ -688,7 +718,8 @@
       ${visible.length ? '' : emptyItemsHtml(scopeTotal)}</div>`;
     const list = `<ul class="atlas-table-list inv__list" aria-label="Items">${visible.map(listRowHtml).join('')}</ul>${visible.length ? '' : `<div class="inv__list-empty">${emptyItemsHtml(scopeTotal)}</div>`}`;
     const foot = `<div class="atlas-table-foot"><span>${state.status === 'below-par' ? `Showing ${visible.length} below-par ${visible.length === 1 ? 'item' : 'items'}` : `${visible.length} ${visible.length === 1 ? 'item' : 'items'}`}</span><span>Quantities are from the last verified count plus recorded movements.</span></div>`;
-    body.innerHTML = `${alerts.join('')}${bulk || toolbarHtml(visible.length, scopeTotal)}${table}${list}${foot}`;
+    body.innerHTML = `${alerts.join('')}${healthHtml()}${bulk || toolbarHtml(visible.length, scopeTotal)}${table}${list}${foot}`;
+    applyRatios(body);
     const selectAll = body.querySelector('[data-inv-select-all]');
     if (selectAll && selectAll.hasAttribute('data-indeterminate')) selectAll.indeterminate = true;
     bindMenus(body);
@@ -831,9 +862,13 @@
     const used = recipesUsing(item);
     const history = movements().filter((entry) => String(entry.item_id) === String(item.id)).slice(0, 10);
     const counts = history.filter((entry) => entry.movement_type === 'count');
+    const par = num(item.par_level);
+    // The hero carries on hand and, when there is a count and a par, the par
+    // track labelled at both ends; each figure is shown once. Assistive tech
+    // reads the hero as one phrase ("On hand: 1 bottle").
+    const onHand = ['On hand', known ? `${qty(item.quantity)} ${unitWord(item, item.quantity)}` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown (stock figures incomplete)' : 'Not counted'];
     const facts = [
-      ['On hand', known ? `${qty(item.quantity)} ${unitWord(item, item.quantity)}` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown (stock figures incomplete)' : 'Not counted'],
-      ['Par', num(item.par_level) ? `${qty(item.par_level)} ${unitWord(item, item.par_level)}` : 'Not set'],
+      known && par ? null : ['Par', par ? `${qty(item.par_level)} ${unitWord(item, item.par_level)}` : 'Not set'],
       manager ? ['Supplier', item.supplier || 'Not set'] : null,
       manager ? ['Unit cost', num(item.cost_price) !== null ? money(item.cost_price) : 'Not set'] : null,
       ['Pack', [packLine({ ...item, bin_location: null }), num(item.units_per_case) ? `${qty(item.units_per_case)} per case` : ''].filter(Boolean).join(' · ') || 'Not set'],
@@ -858,7 +893,7 @@
       ? `<ul class="atlas-list inv-detail__history">${history.map((entry) => {
         const change = num(entry.quantity_change) || 0;
         const [label] = MOVEMENT_TYPES[entry.movement_type] || [String(entry.movement_type || 'Change').replace(/_/g, ' ')];
-        return `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${esc(label)}</p><p class="atlas-row__meta">${esc(dateTimeText(entry.created_at))}${entry.note ? ` · ${esc(entry.note)}` : ''}</p></div><div class="atlas-row__end"><span class="atlas-row__value num">${change > 0 ? '+' : ''}${qty(change)}</span></div></li>`;
+        return `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${esc(label)}</p><p class="atlas-row__meta">${esc(dateTimeText(entry.created_at))}${entry.note ? ` · ${esc(entry.note)}` : ''}</p></div><div class="atlas-row__end"><span class="atlas-row__value inv-change num">${change > 0 ? '+' : ''}${qty(change)}</span></div></li>`;
       }).join('')}</ul>`
       : '<p class="inv__muted">No recorded movements yet.</p>';
     return `<span class="atlas-sheet__grabber" aria-hidden="true"></span>
@@ -866,7 +901,9 @@
         <button type="button" class="atlas-icon-btn" data-inv-detail-menu aria-label="More actions for ${esc(item.name)}">${icon('ellipsis')}</button>
         <button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
       <div class="atlas-sheet__body">
-        <div class="inv-detail__hero"><p class="inv-detail__figure num">${known ? esc(qty(item.quantity)) : '—'}<span class="inv-detail__unit">${known ? esc(unitWord(item, item.quantity)) : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown' : 'Not counted'}</span></p><p class="inv-detail__hint">${known ? `Last verified count plus recorded movements${num(item.par_level) ? ` · par ${qty(item.par_level)}` : ''}.` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? `Stock figures are incomplete — ${esc(missingStockText())} couldn’t load. Try again.` : 'Quantities appear after the first verified count.'}</p></div>
+        <div class="inv-detail__hero${known ? '' : ' is-unknown'}"><p class="sr-only">${esc(onHand.join(': '))}</p><p class="inv-detail__label" aria-hidden="true">${esc(onHand[0])}</p><p class="inv-detail__figure num" aria-hidden="true">${known ? esc(qty(item.quantity)) : ''}<span class="inv-detail__unit">${known ? esc(unitWord(item, item.quantity)) : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown' : 'Not counted'}</span></p>
+          ${known && par ? `<div class="inv-detail__track">${parBar(item, { wide: true })}<p class="inv-detail__scale"><span>0</span><span>Par ${esc(qty(par))} ${esc(unitWord(item, par))}</span></p></div>` : ''}
+          <p class="inv-detail__hint">${known ? 'Last verified count plus recorded movements.' : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? `Stock figures are incomplete — ${esc(missingStockText())} couldn’t load. Try again.` : 'Quantities appear after the first verified count.'}</p></div>
         <dl class="inv-detail__facts">${facts.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>
         ${manager && num(item.par_level) !== null ? '<p class="inv__muted inv-detail__note">Par levels are changed in <a href="#data/pars">Data › Par levels</a>.</p>' : manager ? '<p class="inv__muted inv-detail__note">Set a par level in <a href="#data/pars">Data › Par levels</a>.</p>' : ''}
         ${locationSection}
@@ -901,6 +938,7 @@
     const item = itemById(id);
     if (detail && detail.id === String(id) && document.body.contains(detail.overlay.host)) {
       detail.overlay.panel.innerHTML = item ? detailHtml(item) : '';
+      applyRatios(detail.overlay.panel);
       bindDetail(item);
       return;
     }
@@ -929,6 +967,7 @@
       }
     });
     overlay.panel.setAttribute('aria-labelledby', 'inv-detail-title');
+    applyRatios(overlay.panel);
     detail = { id: String(id), overlay };
     state.detailId = String(id);
     bindDetail(item);
@@ -1392,7 +1431,7 @@
         <span class="inv-loc-chip">${esc(loc.code)}</span>
         <div class="inv-loc-row__text"><p class="inv-loc-row__name">${esc(loc.name)}${archived ? ' <span class="atlas-pill">Archived</span>' : ''}</p>${loc.description ? `<p class="inv-loc-row__desc">${esc(loc.description)}</p>` : ''}</div>
       </div>
-      <div class="inv-loc-row__meta"><span class="inv__muted">${count} ${count === 1 ? 'item' : 'items'}</span></div>
+      <div class="inv-loc-row__meta"><span class="num">${count}</span> ${count === 1 ? 'item' : 'items'}</div>
       <div class="inv-loc-row__actions">
         ${!archived ? `<button type="button" class="atlas-icon-btn" data-inv-location-up="${esc(loc.id)}" aria-label="Move ${esc(loc.name)} up">${icon('chevron-up')}</button><button type="button" class="atlas-icon-btn" data-inv-location-down="${esc(loc.id)}" aria-label="Move ${esc(loc.name)} down">${icon('chevron-down')}</button>` : ''}
         <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-location-edit="${esc(loc.id)}">Edit</button>
@@ -1538,7 +1577,7 @@
       title: `Storage for ${item.name}`,
       desc: 'Choose where this item is stored. Location never changes its quantity.',
       body: `<form class="atlas-form" id="inv-location-picker" novalidate><div data-inv-form-alert></div>
-        <label class="atlas-search"><input class="atlas-input" type="search" data-loc-search placeholder="Search locations" aria-label="Search locations" autocomplete="off"></label>
+        <label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" data-loc-search placeholder="Search locations" aria-label="Search locations" autocomplete="off"></label>
         <div class="inv-loc-picker" data-loc-list></div></form>`,
       foot: '<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary" form="inv-location-picker" data-inv-submit>Save locations</button>'
     }), { label: `Storage for ${item.name}` });
@@ -1606,9 +1645,19 @@
   // ---------------------------------------------------------------------------
   // Movements and waste
   // ---------------------------------------------------------------------------
+  // A movement's type is a kind, not a status: plain grey words, one set. The
+  // sign on the change carries the direction.
   function movementPill(type) {
-    const [label, tone] = MOVEMENT_TYPES[type] || [String(type || 'Change').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()), 'neutral'];
-    return `<span class="atlas-pill${tone && tone !== 'neutral' ? ` atlas-pill--${tone}` : ''}">${esc(label)}</span>`;
+    const [label] = MOVEMENT_TYPES[type] || [String(type || 'Change').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())];
+    return `<span class="inv-move-type" data-type="${esc(type || '')}">${esc(label)}</span>`;
+  }
+  // A signed change with the item's unit muted after it ("+24 bottles").
+  function changeHtml(entry, { abs = false } = {}) {
+    const raw = num(entry.quantity_change) || 0;
+    const change = abs ? Math.abs(raw) : raw;
+    const item = itemById(entry.item_id);
+    const unit = item ? unitWord(item, change) : '';
+    return `<span class="inv-figure"><span class="inv-change num">${!abs && change > 0 ? '+' : ''}${qty(change)}</span>${unit ? `<span class="inv-qty__unit">${esc(unit)}</span>` : ''}</span>`;
   }
 
   function movementsFailedHtml(what) {
@@ -1635,10 +1684,10 @@
         ${state.movementType ? chip((MOVEMENT_TYPES[state.movementType] || [state.movementType])[0], { active: true, clear: 'movementType' }) : chip('Type', { menu: 'mtype' })}
         <div class="atlas-toolbar__end">${list.length} ${list.length === 1 ? 'movement' : 'movements'}</div>
       </div>${menuHtml('mtype', types.map((type) => ['movementType', type, (MOVEMENT_TYPES[type] || [type])[0]]))}
-      <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Date</th><th>Item</th><th>Type</th><th class="is-num">Change</th><th data-priority="2">Note</th></tr></thead>
-      <tbody>${shown.map((entry) => { const change = num(entry.quantity_change) || 0; return `<tr${focusAttrs(entry)}><td>${esc(dateTimeText(entry.created_at))}</td><td><a href="#inventory/item/${encodeURIComponent(entry.item_id)}" class="cell-primary">${esc(entry.item_name || 'Inventory item')}</a></td><td>${movementPill(entry.movement_type)}</td><td class="is-num">${change > 0 ? '+' : ''}${qty(change)}</td><td data-priority="2" class="inv__note">${esc(entry.note || '—')}</td></tr>`; }).join('')}</tbody></table>
+      <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table inv-ledger"><thead><tr><th class="inv-col--when">Date</th><th>Item</th><th class="inv-col--type">Type</th><th class="is-num inv-col--change">Change</th><th class="inv-col--note" data-priority="2">Note</th></tr></thead>
+      <tbody>${shown.map((entry) => `<tr${focusAttrs(entry)}><td class="inv-cell--when">${esc(dateTimeText(entry.created_at))}</td><td><a href="#inventory/item/${encodeURIComponent(entry.item_id)}" class="cell-primary">${esc(entry.item_name || 'Inventory item')}</a></td><td>${movementPill(entry.movement_type)}</td><td class="is-num">${changeHtml(entry)}</td><td data-priority="2" class="inv__note">${entry.note ? esc(entry.note) : '<span class="inv__muted">—</span>'}</td></tr>`).join('')}</tbody></table>
       ${list.length ? '' : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('history')}</div><h3 class="atlas-empty__title">${movements().length ? 'No movements match' : 'No movements yet'}</h3><p class="atlas-empty__text">${movements().length ? 'Clear the search or type filter.' : 'Deliveries, counts, adjustments and waste appear here as they’re recorded.'}</p></div>`}</div>
-      <ul class="atlas-table-list">${shown.slice(0, 200).map((entry) => { const change = num(entry.quantity_change) || 0; return `<li${focusAttrs(entry)}><a class="atlas-table-list__row" href="#inventory/item/${encodeURIComponent(entry.item_id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.item_name || 'Inventory item')}</div><div class="atlas-table-list__meta">${esc(dateTimeText(entry.created_at))}${entry.note ? ` · ${esc(entry.note)}` : ''}</div></div><div class="atlas-table-list__value">${change > 0 ? '+' : ''}${qty(change)}<br>${movementPill(entry.movement_type)}</div></a></li>`; }).join('')}</ul>
+      <ul class="atlas-table-list">${shown.slice(0, 200).map((entry) => `<li${focusAttrs(entry)}><a class="atlas-table-list__row" href="#inventory/item/${encodeURIComponent(entry.item_id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.item_name || 'Inventory item')}</div><div class="atlas-table-list__meta">${esc(dateTimeText(entry.created_at))}${entry.note ? ` · ${esc(entry.note)}` : ''}</div></div><div class="atlas-table-list__value inv-list-value">${changeHtml(entry)}${movementPill(entry.movement_type)}</div></a></li>`).join('')}</ul>
       <div class="atlas-table-foot"><span>${list.length > 300 ? 'Showing the latest 300' : ''}</span><span>Every restock, count, adjustment and waste record, newest first.</span></div>`;
     bindMenus(body);
   }
@@ -1647,10 +1696,10 @@
     if (inputHealth('movements') === 'loading' && !movements().length) { body.innerHTML = loadingRowsHtml(); return; }
     if (inputHealth('movements') === 'failed') { body.innerHTML = movementsFailedHtml('Waste records'); return; }
     const list = movements().filter((entry) => entry.movement_type === 'waste');
-    body.innerHTML = `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Date</th><th>Item</th><th class="is-num">Quantity</th><th>Reason</th></tr></thead>
-      <tbody>${list.map((entry) => `<tr><td>${esc(dateTimeText(entry.created_at))}</td><td class="cell-primary">${esc(entry.item_name || 'Inventory item')}</td><td class="is-num">${qty(Math.abs(num(entry.quantity_change) || 0))}</td><td class="inv__note">${esc(entry.note || 'Waste')}</td></tr>`).join('')}</tbody></table>
+    body.innerHTML = `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table inv-ledger"><thead><tr><th class="inv-col--when">Date</th><th>Item</th><th class="is-num inv-col--change">Quantity</th><th class="inv-col--note">Reason</th></tr></thead>
+      <tbody>${list.map((entry) => `<tr><td class="inv-cell--when">${esc(dateTimeText(entry.created_at))}</td><td class="cell-primary">${esc(entry.item_name || 'Inventory item')}</td><td class="is-num">${changeHtml(entry, { abs: true })}</td><td class="inv__note">${esc(entry.note || 'Waste')}</td></tr>`).join('')}</tbody></table>
       ${list.length ? '' : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('trash-2')}</div><h3 class="atlas-empty__title">No waste recorded</h3><p class="atlas-empty__text">Only waste you record appears here. Alcedo never treats other adjustments as waste.</p><button type="button" class="atlas-btn atlas-btn--secondary" data-inv-waste>Record waste</button></div>`}</div>
-      <ul class="atlas-table-list">${list.map((entry) => `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.item_name || 'Inventory item')}</div><div class="atlas-table-list__meta">${esc(dateTimeText(entry.created_at))} · ${esc(entry.note || 'Waste')}</div></div><div class="atlas-table-list__value">${qty(Math.abs(num(entry.quantity_change) || 0))}</div></div></li>`).join('')}</ul>
+      <ul class="atlas-table-list">${list.map((entry) => `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.item_name || 'Inventory item')}</div><div class="atlas-table-list__meta">${esc(dateTimeText(entry.created_at))} · ${esc(entry.note || 'Waste')}</div></div><div class="atlas-table-list__value inv-list-value">${changeHtml(entry, { abs: true })}</div></div></li>`).join('')}</ul>
       <div class="atlas-table-foot"><span>${list.length} ${list.length === 1 ? 'record' : 'records'}</span><span>Recording waste lowers stock straight away.</span></div>`;
   }
 
@@ -1822,7 +1871,7 @@
       const heading = selected ? (detection.band === 'high' && !preset ? 'Likely match' : 'Chosen match') : 'Which product is this?';
       const others = (detection.candidates || []).filter((entry) => String(entry.item_id) !== String(selected));
       ctl.showSheet(`<div class="atlas-capture-result" data-capture-result="identify">
-        <div class="atlas-capture-result__head">${item?.image_url ? `<img class="atlas-capture-result__img" src="${esc(item.image_url)}" alt="">` : `<span class="atlas-capture-result__img" aria-hidden="true">${icon('package')}</span>`}
+        <div class="atlas-capture-result__head">${item?.image_url ? `<img class="atlas-capture-result__img" src="${esc(item.image_url)}" alt="">` : ''}
           <div class="atlas-capture-result__text"><p class="atlas-capture-result__kicker">${heading}</p><h3 class="atlas-capture-result__title">${esc(item?.name || 'Choose the product')}</h3><p class="atlas-capture-muted">${esc([item?.brand, item?.category, packLine(item || {})].filter(Boolean).join(' · ') || 'Nothing changes until you choose.')}</p></div>
           ${R().band(detection, candidate)}</div>
         ${item ? `<dl class="atlas-capture-facts"><div><dt>In Alcedo</dt><dd>${item.active === false ? 'Yes · inactive' : 'Yes'}</dd></div><div><dt>Verified stock</dt><dd>${known ? `${qty(item.quantity)} ${esc(unitWord(item))}` : 'Not counted'}</dd></div>${isManager() ? `<div><dt>Supplier</dt><dd>${esc(item.supplier || item.supplier_name || 'Not set')}</dd></div>` : ''}</dl>` : ''}
@@ -1920,7 +1969,7 @@
     onChoose.usedFor = onChoose.usedFor || options.usedFor || 'identify';
     const candidates = detection?.candidates || [];
     ctl.showSheet(`<div class="atlas-capture-result" data-capture-result="unknown">
-      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('scan-search')}</span><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">Alcedo couldn’t tell which item this is.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
+      <div class="atlas-capture-result__head"><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">Alcedo couldn’t tell which item this is.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
       ${detection ? `<details class="atlas-capture-more" open><summary>What Alcedo could read</summary>${R().fields(detection, { keys: ['identity', 'brand', 'variant', 'category', 'package_type', 'unit_size', 'barcode'] }) || '<p class="atlas-capture-muted">Nothing readable. Try a closer photo of the label.</p>'}</details>` : ''}
       <div class="atlas-capture__actions atlas-capture__actions--grid">
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-unknown="retry">${icon('scan-line')}Retry scan</button>
@@ -2032,7 +2081,7 @@
     const ref = recognitionRef(result, detection);
     const matches = (detection.candidates || []).filter((candidate) => (candidate.percent ?? 0) >= 60);
     ctl.showSheet(`<div class="atlas-capture-result" data-capture-result="add_product">
-      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('file-plus')}</span><div class="atlas-capture-result__text"><p class="atlas-capture-result__kicker">Draft from the photo</p><h3 class="atlas-capture-result__title">${esc(draft.name || 'Unnamed product')}</h3><p class="atlas-capture-muted">${esc([draft.category, draft.package_size].filter(Boolean).join(' · ') || 'Check every field before saving.')}</p></div></div>
+      <div class="atlas-capture-result__head"><div class="atlas-capture-result__text"><p class="atlas-capture-result__kicker">Draft from the photo</p><h3 class="atlas-capture-result__title">${esc(draft.name || 'Unnamed product')}</h3><p class="atlas-capture-muted">${esc([draft.category, draft.package_size].filter(Boolean).join(' · ') || 'Check every field before saving.')}</p></div></div>
       ${R().fields(detection, { keys: ['identity', 'brand', 'variant', 'category', 'package_type', 'unit_size', 'package_size', 'barcode'] })}
       <h4 class="atlas-capture-subhead">Possible existing matches</h4>
       ${matches.length ? R().candidates({ ...detection, candidates: matches }, { action: 'Use existing item' }) : '<p class="atlas-capture-muted">No existing item looks like this one.</p>'}
