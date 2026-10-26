@@ -151,8 +151,11 @@ test('Reports and Settings stay inside the shared responsive content rail', () =
   // S88 Reports: an .atlas-page with module layout only (spec §7.12).
   assert.match(reportsCss, /@layer atlas\.modules \{/);
   assert.match(readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8'), /<div class="atlas-page reports-page/);
-  // S88 Team A (spec §7.15): section nav 220 px + one reading column; one column on phones.
-  assert.match(settingsCss, /\.settings-layout \{ display: grid; grid-template-columns: 220px minmax\(0, var\(--reading-max\)\)/);
+  // S88 Team A (spec §7.15): section nav 220 px + one bounded content column; one column on phones.
+  // 2026 redesign: settings rows are a label column beside a panel (taste app-screens §8.2), so the
+  // content column is capped at 960 px on .settings-content instead of the 720 px reading measure.
+  assert.match(settingsCss, /\.settings-layout \{ display: grid; grid-template-columns: 220px minmax\(0, 1fr\)/);
+  assert.match(settingsCss, /\.settings-content \{[^}]*max-width: 960px;/);
   assert.match(settingsCss, /@media \(max-width: 767px\)[\s\S]*\.settings-layout, \.settings--single \.settings-layout \{ grid-template-columns: minmax\(0, 1fr\)/);
 });
 

@@ -1,61 +1,254 @@
-/* Settings (#settings/<section>) incl. System health — docs/design/
- * Atlas_Experience_Redesign.md §7.15. Module layout only: section nav + a
- * 720 px content column; fields, toggles, checks, pills, alerts, tables and
- * dialogs are atlas-components.css. Replaces settings-workspace.css (S87),
- * system-workspace.css and their legacy fragments. */
+/* Settings (#settings/<section>) incl. System health — Basalt & Kingfisher
+ * (docs/design/Alcedo_Redesign_2026.md; taste app-screens §8.2). Module layout
+ * only: fields, toggles, checks, pills, alerts, tables, sheets and dialogs are
+ * atlas-components.css.
+ *
+ * Composition: one view per area. A 220 px area nav (vertical underline tabs:
+ * a 1px rule, a 2px ink indicator, no icons) beside the area. Each area is a
+ * head, then rows split by full-width 1px rules with 32 px above and below.
+ * A row is a 248 px label column (title with its status beside it, a grey
+ * description, its facts or a preview of what the setting produces) next to a
+ * white panel that holds the controls. One save model: every editable panel
+ * has one Save, in a footer that docks to the bottom of the screen and shows
+ * only while the panel has unsaved changes.
+ *
+ * Grid at 1440: sheet 1156 = nav 220 + 48 + content 888;
+ * content 888 = label 248 + 40 + panel 600. Under 1280 the label stacks above
+ * its panel; under 768 the nav is its own screen and panels lose their frame. */
 @layer atlas.modules {
-.settings-layout { display: grid; grid-template-columns: 220px minmax(0, var(--reading-max)); gap: var(--s-10); align-items: start; margin-top: var(--s-6); }
-.settings--single .settings-layout { grid-template-columns: minmax(0, var(--reading-max)); }
+.settings-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--s-12); align-items: start; margin-top: var(--s-8); }
+.settings--single .settings-layout { grid-template-columns: minmax(0, 1fr); }
+.settings-content { display: flex; flex-direction: column; min-width: 0; max-width: 960px; }
 
-/* Section nav */
-.settings-nav { position: sticky; top: calc(var(--topbar-h) + var(--s-4)); }
-.settings-nav ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.settings-nav__group { margin: var(--s-4) 0 var(--s-1); padding: 0 var(--s-3); font: var(--type-caption); font-weight: 500; color: var(--text-3); }
+/* ---------- Area nav: vertical underline tabs ---------- */
+.settings-nav { position: sticky; top: calc(var(--topbar-h) + var(--s-6)); }
+.settings-nav ul { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--line); }
+.settings-nav__group { margin: var(--s-6) 0 var(--s-1); padding-left: var(--s-4); font: var(--type-caption); color: var(--text-3); }
+.settings-nav__group:first-child { margin-top: 0; }
 .settings-nav__link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
-  padding: 0 var(--s-3);
-  border-radius: var(--r-md);
+  min-height: 32px;
+  margin: 1px 0;
+  padding: 0 var(--s-3) 0 var(--s-4);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
   color: var(--text-2);
-  font: var(--type-label);
-  font-size: 14px;
+  font: var(--type-body);
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
 }
-.settings-nav__link > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
-.settings-nav__link > svg:last-child { display: none; margin-left: auto; color: var(--text-3); }
-.settings-nav__link:hover { background: var(--bg-muted); color: var(--text); text-decoration: none; }
-.settings-nav__link[aria-current="page"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
-.settings-nav__link:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+/* The indicator sits on the rule, as wide as the rule's stroke plus one. */
+.settings-nav__link::before { content: ''; position: absolute; top: 6px; bottom: 6px; left: -1px; width: 2px; border-radius: 1px; background: transparent; }
+.settings-nav__link > svg { display: none; width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-2); }
+.settings-nav__link[aria-current="page"] { color: var(--text); font-weight: 500; }
+.settings-nav__link[aria-current="page"]::before { background: var(--text); }
+.settings-nav__link:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) {
+  .settings-nav__link:hover { background: var(--bg-hover); color: var(--text); text-decoration: none; }
+}
 
-/* Content */
-.settings-content { display: flex; flex-direction: column; gap: var(--s-6); min-width: 0; }
-.settings-section__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); }
+/* ---------- Area head ---------- */
+.settings-section__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); padding-bottom: var(--s-6); }
 .settings-section__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
 .settings-section__title:focus { outline: none; }
-.settings-section__sub { margin: var(--s-1) 0 0; font: var(--type-meta); color: var(--text-2); }
-.settings-subhead { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.settings-subhead h3 { margin: 0; font: var(--type-heading); color: var(--text); }
-.settings-muted { margin: 0; font: var(--type-meta); color: var(--text-2); }
-.settings-muted > svg, .settings-readonly > svg { width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; }
-.settings-readonly { margin: 0; font: var(--type-caption); color: var(--text-2); white-space: nowrap; }
+.settings-section__sub { max-width: 64ch; margin: var(--s-1) 0 0; font: var(--type-body); color: var(--text-2); }
+.settings-section__actions { display: flex; flex: none; flex-wrap: wrap; gap: var(--s-2); }
+.settings-lede { max-width: 64ch; margin: 0 0 var(--s-6); font: var(--type-body); color: var(--text-2); }
 
-.settings-form { display: flex; flex-direction: column; gap: var(--s-4); padding: var(--s-5); }
-.settings-form__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); }
+/* ---------- Rows: label column beside a panel ---------- */
+.settings-row { display: grid; grid-template-columns: minmax(0, 248px) minmax(0, 1fr); gap: var(--s-4) var(--s-10); align-items: start; padding: var(--s-8) 0; border-top: 1px solid var(--line); }
+.settings-row:last-child { padding-bottom: var(--s-2); }
+.settings-row--empty { grid-template-columns: minmax(0, 1fr); }
+/* The title's first line sits level with the panel's first line (20 px in). */
+.settings-row__label { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; padding-top: var(--s-5); }
+.settings-row__heading { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); }
 .settings-form__title { margin: 0; font: var(--type-heading); color: var(--text); }
-.settings-form__sub { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
-.settings-form__meta { margin: 0; font: var(--type-caption); color: var(--text-2); }
-.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
-.settings-field--full { grid-column: 1 / -1; }
-.settings-inline { display: flex; flex-wrap: wrap; gap: var(--s-4); }
-.settings-inline-check { display: inline-flex; align-items: center; gap: var(--s-2); font: var(--type-body); color: var(--text); cursor: pointer; }
-.settings-check { display: flex; align-items: flex-start; gap: var(--s-3); cursor: pointer; }
-.settings-check > .atlas-check { margin-top: 2px; }
-.settings-check__label { display: block; font: 500 14px/20px var(--font-sans); color: var(--text); }
-.settings-check__help { display: block; font: var(--type-caption); color: var(--text-2); }
-.settings-hours__tap { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.settings-form__sub { margin: 0; font: var(--type-body); color: var(--text-2); }
+.settings-row__meta { display: flex; flex-direction: column; gap: 2px; }
+.settings-form__meta { margin: 0; font: var(--type-caption); color: var(--text-3); }
+.settings-readonly { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: var(--type-caption); color: var(--text-2); }
+.settings-readonly > svg { width: 14px; height: 14px; flex: none; }
+.settings-row__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
+.settings-row__note { margin-top: var(--s-2); }
 
+.settings-row__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+/* A panel whose content runs edge to edge (a table, a list of rows). */
+.settings-row__panel--flush { gap: 0; padding: 0; overflow: clip; }
+.settings-row__panels { display: flex; flex-direction: column; gap: var(--s-3); min-width: 0; }
+.settings-panel__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 44px; padding: var(--s-1) var(--s-2) var(--s-1) var(--s-5); border-bottom: 1px solid var(--line); }
+.settings-panel__note { margin: 0; font: var(--type-meta); color: var(--text-2); }
+.settings-panel__empty { padding: var(--s-6) var(--s-5); }
+.settings-panel__inset { padding: var(--s-4); }
+.settings-row__panel--flush > .settings-form-feedback { padding: var(--s-3) var(--s-5); border-top: 1px solid var(--line-subtle); }
+/* An empty block keeps its frame: one sentence in a dashed box. */
+.settings-row__panel--flush > .atlas-table-wrap { border: 0; border-radius: 0; }
+.settings-row__panel--flush > .atlas-table-wrap:not(.settings-hours) .atlas-table tr > :first-child { padding-left: var(--s-5); }
+.settings-row__panel--flush > .atlas-table-wrap:not(.settings-hours) .atlas-table tr > :last-child { padding-right: var(--s-5); }
+.settings-row__panel--flush > .atlas-table-wrap:not(.settings-hours) .atlas-table td { white-space: normal; }
+.settings-empty { margin: 0; padding: var(--s-4) var(--s-5); border: 1px dashed var(--line-strong); border-radius: var(--r-lg); font: var(--type-body); color: var(--text-2); }
+.settings-row__panel--flush > .settings-empty { border: 0; border-radius: 0; }
+
+/* ---------- Inside a panel ---------- */
+.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.settings-grid > .atlas-field { align-content: start; }
+.settings-field--full { grid-column: 1 / -1; }
+.settings-inline { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
+.settings-inline-check { display: inline-flex; align-items: center; gap: var(--s-2); min-height: 32px; font: var(--type-body); color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.settings-muted { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; font: var(--type-meta); color: var(--text-2); }
+.settings-muted > svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--text-3); }
+.settings-steps-note { margin: 0; font: var(--type-meta); color: var(--text-2); }
+.settings-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+/* Destructive actions go last, pushed to the far end. Disconnect repeats on
+   every connected account, so it stays grey until pointed at (red is a signal,
+   not a texture); the one Remove authenticator is red. */
+.settings-actions > [data-integration-action="disconnect"], .settings-actions__destructive { margin-left: auto; }
+.settings-actions > [data-integration-action="disconnect"] { color: var(--text-2); }
+.settings-actions__destructive { color: var(--danger); }
+@media (hover: hover) and (pointer: fine) {
+  .settings-actions > [data-integration-action="disconnect"]:hover:not(:disabled) { color: var(--danger); }
+}
+
+/* A list of ticks: one ruled list, help in grey under each label. */
+.settings-checks { display: flex; flex-direction: column; border-top: 1px solid var(--line-subtle); }
+.settings-checks:first-child { border-top: 0; }
+.settings-check { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line-subtle); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.settings-check:last-child { padding-bottom: 0; border-bottom: 0; }
+.settings-checks:first-child > .settings-check:first-child { padding-top: 0; }
+.settings-check > .atlas-check { margin-top: 2px; }
+.settings-check__label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font: 500 14px/20px var(--font-sans); color: var(--text); }
+.settings-check__help { display: block; margin-top: 2px; font: var(--type-caption); color: var(--text-2); }
+.settings-switches { display: flex; flex-direction: column; gap: var(--s-4); }
+.settings-switches + .settings-grid, .settings-grid + .settings-switches { padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
+
+/* Facts: label left, value right, on row rules. */
+.settings-facts { display: grid; margin: 0; }
+.settings-facts > div { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: var(--s-3); padding: 10px 0; border-top: 1px solid var(--line-subtle); }
+.settings-facts > div:first-child { padding-top: 0; border-top: 0; }
+.settings-facts > div:last-child { padding-bottom: 0; }
+.settings-grid + .settings-facts { padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
+.settings-facts dt { font: var(--type-meta); color: var(--text-2); }
+.settings-facts dd { margin: 0; font: var(--type-body); color: var(--text); font-variant-numeric: tabular-nums; }
+.settings-facts[aria-busy="true"] > div > .atlas-skel:last-child { width: 60%; }
+
+.settings-caption { padding: var(--s-2) 0; font: var(--type-caption); color: var(--text-2); text-align: left; caption-side: top; }
+.settings-form-feedback { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; font: var(--type-meta); }
+.settings-form-feedback > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-top: 1px; }
+.settings-form-feedback.is-success { color: var(--positive); }
+.settings-form-feedback.is-error { color: var(--danger); }
+
+/* A state statement: the one line that says where things stand. */
+.settings-state { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; font: var(--type-body); color: var(--text); }
+.settings-state > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-top: 2px; color: var(--text-2); }
+.settings-state.is-on > svg { color: var(--positive); }
+.settings-state.is-off > svg { color: var(--warning-icon); }
+.settings-state.is-error > svg { color: var(--danger); }
+/* What the setting produces, in a stone well. */
+.settings-produces { display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: 10px var(--s-3); border-radius: var(--r-md); background: var(--bg-subtle); font: var(--type-meta); color: var(--text-2); }
+.settings-produces > svg { width: 14px; height: 14px; flex: none; color: var(--text-3); }
+.settings-produces strong { font-weight: 500; color: var(--text); }
+.settings .num { font-variant-numeric: tabular-nums; }
+
+/* ---------- Save: the panel's footer, docked while it has changes ---------- */
+.settings-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  margin: var(--s-1) calc(-1 * var(--s-5)) calc(-1 * var(--s-5));
+  padding: var(--s-3) var(--s-5);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  background: var(--surface);
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+@starting-style {
+  .settings-savebar { opacity: 0; transform: translateY(var(--move-sm)); }
+}
+.settings-savebar[hidden] { display: none; }
+.settings-row__panel--flush > .settings-savebar { margin: 0; }
+.settings-savebar__text { display: inline-flex; align-items: center; gap: var(--s-2); margin-right: auto; font: var(--type-label); color: var(--text-2); }
+.settings-savebar__text::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--highlight); }
+
+/* ---------- Venue: the letterhead preview ---------- */
+.settings-preview { min-width: 0; margin: var(--s-4) 0 0; padding: 0; }
+.settings-preview__caption { margin-bottom: var(--s-2); font: var(--type-caption); color: var(--text-3); }
+.settings-letterhead { display: grid; gap: 2px; padding: var(--s-4); border: 1px solid var(--line); border-top: 2px solid var(--text); border-radius: var(--r-sm); background: var(--surface); }
+.settings-letterhead__name { margin: 0 0 var(--s-1); font: var(--type-heading); color: var(--text); overflow-wrap: anywhere; }
+.settings-letterhead__place { font-weight: 400; color: var(--text-2); }
+.settings-letterhead__line { margin: 0; font: var(--type-caption); color: var(--text-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.settings-letterhead :is(.settings-letterhead__name, .settings-letterhead__line).is-empty { color: var(--text-3); font-weight: 400; }
+
+/* ---------- Opening hours ---------- */
+/* The week on Home: one 06:00-06:00 track per day, the open span in the one
+   hue, last orders as a notch, midnight as a hairline. */
+.settings-week__days { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.settings-week__day { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: var(--s-2); }
+.settings-week__name { font: var(--type-caption); color: var(--text-2); }
+.settings-week__day.is-today .settings-week__name { font-weight: 600; color: var(--text); }
+.settings-week__track { position: relative; height: 14px; border-radius: 3px; background: var(--bg-subtle); }
+.settings-week__track::after { content: ''; position: absolute; top: 0; bottom: 0; left: 75%; width: 1px; background: var(--line-strong); }
+.settings-week__bar { position: absolute; top: 0; bottom: 0; left: calc(var(--from, 0) * 100%); width: calc((var(--to, 0) - var(--from, 0)) * 100%); border-radius: 3px; background: var(--accent-brand); }
+.settings-week__tick { position: absolute; z-index: 1; top: 0; bottom: 0; left: calc(var(--at, 0) * 100%); width: 2px; margin-left: -1px; background: var(--surface); }
+.settings-week__bar[hidden], .settings-week__tick[hidden], .settings-week__closed[hidden] { display: none; }
+.settings-week__closed { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 6px; font: 400 12px/14px var(--font-sans); color: var(--text-3); }
+.settings-week__axis { display: flex; justify-content: space-between; margin: 6px 0 0 36px; font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+.settings-hours__empty { margin: var(--s-4) var(--s-5) 0; }
+.settings-hours.atlas-table-wrap { border: 0; border-radius: 0; background: transparent; }
+.settings-hours .atlas-table { table-layout: fixed; min-width: 560px; }
+.settings-hours__day { width: 92px; }
+.settings-hours__check { width: 64px; }
+.settings-hours .atlas-table th, .settings-hours .atlas-table td { padding-left: var(--s-2); padding-right: var(--s-2); }
+.settings-hours .atlas-table tr > :first-child { padding-left: var(--s-5); }
+.settings-hours .atlas-table td { height: 48px; }
+.settings-hours .atlas-input { width: 100%; min-width: 0; padding-left: var(--s-2); padding-right: var(--s-1); font-variant-numeric: tabular-nums; }
+/* The table is narrow; typing and arrow keys set the time, so the picker icon
+   makes room for 12-hour values such as "05:00 PM". */
+.settings-hours .atlas-input::-webkit-calendar-picker-indicator { display: none; }
+.settings-hours th[scope="row"] { font: 500 14px/20px var(--font-sans); color: var(--text); white-space: nowrap; }
+.settings-hours thead th { white-space: normal; overflow-wrap: normal; }
+.settings-hours__tap { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; cursor: pointer; }
+/* A day's problem sits in a row directly under that day. */
+.settings-hours .atlas-table .settings-hours__problem > td { height: auto; padding-top: var(--s-2); padding-bottom: var(--s-3); white-space: normal; }
+
+/* Offers: one panel per offer under the row's label, read as one line
+   (name, days and hours, state) that opens to edit. */
+.settings-offer { padding-top: var(--s-4); padding-bottom: var(--s-4); }
+.settings-offer__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.settings-offer__head::-webkit-details-marker { display: none; }
+.settings-offer__head:focus-visible { border-radius: var(--r-xs); outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.settings-offer__end { display: inline-flex; flex: none; align-items: center; gap: var(--s-3); }
+.settings-offer__chevron { display: inline-flex; color: var(--text-3); transition: transform var(--dur-2) var(--ease-out); }
+.settings-offer__chevron > svg { width: var(--icon-sm); height: var(--icon-sm); }
+.settings-offer__details[open] .settings-offer__chevron { transform: rotate(180deg); }
+.settings-offer__body { display: flex; flex-direction: column; gap: var(--s-4); margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
+.settings-offer__body > .settings-savebar { margin-bottom: calc(-1 * var(--s-4)); }
+.settings-offer__title { margin: 0; font: var(--type-heading); color: var(--text); }
+.settings-offer__when { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
+.settings-offer.is-new { border-color: var(--line-strong); }
+.settings-days { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin: 0; padding: 0; border: 0; }
+.settings-days > legend { width: 100%; margin-bottom: var(--s-1); }
+
+/* The desktop table runs compact 32 px time fields; touch keeps the shared 44. */
+@media (pointer: fine) and (min-width: 1024px) {
+  .settings-hours .atlas-input { height: var(--control-sm); }
+}
 /* Touch: every Settings control is at least 44 px (spec §6). A checkbox's
    target is its label (shared buttons are 44 px on touch already). */
 @media (pointer: coarse) {
@@ -63,85 +256,122 @@
   .settings-check, .settings-inline-check { min-height: 44px; align-items: center; }
   .settings-check > .atlas-check { margin-top: 0; }
 }
-.settings-days { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: 0; padding: 0; border: 0; }
-.settings-days > legend { width: 100%; margin-bottom: var(--s-2); }
-.settings-facts { display: grid; gap: var(--s-2); margin: 0; }
-.settings-facts > div { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: var(--s-3); }
-.settings-facts dt { font: var(--type-meta); color: var(--text-2); }
-.settings-facts dd { margin: 0; font: var(--type-body); color: var(--text); }
-.settings-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.settings-list { display: flex; flex-direction: column; gap: var(--s-2); margin: 0; padding: 0; list-style: none; font: var(--type-body); }
-.settings-list > li { display: flex; align-items: center; gap: var(--s-2); }
-.settings-list svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
-.settings-caption { padding: var(--s-2) 0; font: var(--type-caption); color: var(--text-2); text-align: left; caption-side: top; }
-.settings-form-feedback { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-meta); }
-.settings-form-feedback > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
-.settings-form-feedback.is-success { color: var(--positive); }
-.settings-form-feedback.is-error { color: var(--danger); }
 
-/* Save bar: sticky at the bottom of its form while it has unsaved changes. */
-.settings-savebar {
-  position: sticky;
-  bottom: var(--s-4);
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--s-2);
-  margin: 0 calc(-1 * var(--s-2));
-  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-pop);
-}
-.settings-savebar[hidden] { display: none; }
-.settings-savebar__text { margin-right: auto; font: var(--type-label); color: var(--text-2); }
+/* ---------- Team access ---------- */
+.settings-permissions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s-4); margin: 0; padding: 0; list-style: none; }
+.atlas-pill.settings-used { height: 20px; }
 
-/* Opening hours editor */
-.settings-hours .atlas-table { table-layout: fixed; min-width: 600px; }
-.settings-hours__day { width: 100px; }
-.settings-hours__check { width: 64px; }
-.settings-hours .atlas-table td { padding-left: var(--s-2); padding-right: var(--s-2); }
-.settings-hours .atlas-input { width: 100%; min-width: 0; padding-left: var(--s-2); padding-right: var(--s-1); }
-/* The table is narrow; typing and arrow keys set the time, so the picker icon
-   makes room for 12-hour values such as "05:00 PM". */
-.settings-hours .atlas-input::-webkit-calendar-picker-indicator { display: none; }
-.settings-hours th[scope="row"] { font: 500 14px/20px var(--font-sans); white-space: nowrap; }
-.settings-hours thead th { white-space: normal; overflow-wrap: normal; }
-/* A day's problem sits in a row directly under that day. */
-.settings-hours .atlas-table .settings-hours__problem > td { height: auto; padding-top: var(--s-2); padding-bottom: var(--s-2); white-space: normal; }
-.settings-grid > .atlas-field { align-content: start; }
+/* ---------- Notifications: the alerts as they arrive ---------- */
+.settings-notices { display: flex; flex-direction: column; gap: var(--s-2); margin: 0; padding: var(--s-4); list-style: none; }
+.settings-notice { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) var(--s-4); border-radius: var(--r-xl); background: var(--bg-subtle); }
+.settings-notice__mark { display: inline-flex; flex: none; margin-top: 2px; color: var(--text-2); }
+.settings-notice__mark > svg { width: var(--icon-sm); height: var(--icon-sm); }
+.settings-notice__text { display: flex; flex-direction: column; min-width: 0; }
+.settings-notice__app { font: var(--type-caption); color: var(--text-3); }
+.settings-notice__title { font: 500 14px/20px var(--font-sans); color: var(--text); }
+.settings-notice__from { font: var(--type-meta); color: var(--text-2); }
+.settings-device-notifications .settings-actions { padding-top: var(--s-1); }
 
-/* Team access */
-.settings-permissions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2) var(--s-4); margin: 0; padding: 0; list-style: none; }
-
-/* Integrations */
-.settings-providers { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+/* ---------- Integrations ---------- */
+.settings-providers { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .settings-provider { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4) var(--s-5); border-top: 1px solid var(--line-subtle); }
 .settings-provider:first-child { border-top: 0; }
+.settings-provider--loading { gap: var(--s-2); }
 .settings-provider__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); }
 .settings-provider__name { margin: 0; font: var(--type-heading); color: var(--text); }
-.settings-provider__status, .settings-provider__facts { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
-.settings-needs { font: var(--type-meta); color: var(--text-2); }
-.settings-needs > summary { width: fit-content; font: var(--type-label); color: var(--accent-text); cursor: pointer; }
+.settings-provider__status { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
+.settings-provider__facts { margin: 0; font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.settings-needs, .settings-provider__events { font: var(--type-meta); color: var(--text-2); }
+.settings-needs > summary, .settings-provider__events > summary { width: fit-content; font: var(--type-label); color: var(--accent-text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.settings-needs > summary:focus-visible, .settings-provider__events > summary:focus-visible { border-radius: var(--r-xs); outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .settings-needs > p { margin: var(--s-2) 0 0; }
+.settings-needs > ul { margin: var(--s-2) 0 0; padding-left: var(--s-5); }
+.settings-needs code { font: 400 12px/16px var(--font-mono); color: var(--text); overflow-wrap: anywhere; }
 .settings-apikey { display: flex; align-items: flex-end; gap: var(--s-2); }
 .settings-apikey > .atlas-field { flex: 1 1 auto; }
+/* S94B: publishing capability list, platform review control, recent activity
+   and the Page / account / location picker sheet (docs/marketing/research/
+   08-ux-spec.md §12). The sheet, radios and avatars are atlas-components.css. */
+.settings-provider__can { display: flex; flex-direction: column; gap: var(--s-1); margin: 0; padding: 0; list-style: none; font: var(--type-meta); color: var(--text-2); }
+.settings-provider__can > li { display: flex; align-items: flex-start; gap: var(--s-2); }
+.settings-provider__can > li > svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-3); }
+.settings-review__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-2); }
+.settings-review__row > .atlas-select { flex: 1 1 200px; max-width: 280px; }
+.settings-provider__events > ul { display: flex; flex-direction: column; gap: 2px; margin: var(--s-2) 0 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+.settings-picker { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+.settings-picker__option { align-items: center; gap: var(--s-3); min-height: var(--touch); padding: var(--s-2) var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
+.settings-picker__option:has(input:checked) { border-color: var(--accent-brand); background: var(--accent-soft); }
+.settings-picker__option.is-disabled { cursor: not-allowed; background: var(--bg-hover); color: var(--text-3); }
+.settings-picker__option.is-disabled .settings-picker__name { color: var(--text-2); }
+.settings-picker__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.settings-picker__name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font: var(--type-label); color: var(--text); overflow-wrap: anywhere; }
+.settings-picker__meta { font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; }
+@media (hover: hover) and (pointer: fine) {
+  .settings-picker__option:not(.is-disabled):hover { border-color: var(--line-strong); }
+}
 
-/* Security */
-.settings-security { display: flex; flex-direction: column; gap: var(--s-4); }
-.settings-capabilities { display: flex; flex-direction: column; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
-.settings-capabilities > li { display: flex; gap: var(--s-3); }
-.settings-capabilities > li > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-top: 2px; color: var(--text-2); }
+/* ---------- Security ---------- */
+.settings-security { display: flex; flex-direction: column; }
+.settings-capabilities { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.settings-capabilities > li { display: flex; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--line-subtle); }
+.settings-capabilities > li:first-child { padding-top: 0; border-top: 0; }
+.settings-capabilities > li:last-child { padding-bottom: 0; }
+.settings-capabilities > li > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-top: 2px; color: var(--text-3); }
 .settings-capabilities strong { display: block; font: 500 14px/20px var(--font-sans); color: var(--text); }
 .settings-capabilities span > span { display: block; font: var(--type-meta); color: var(--text-2); }
+.settings-row--mfa .settings-actions { padding-top: var(--s-1); }
 
-/* System health (assets/js/system-workspace.js) */
-.settings-system { display: flex; flex-direction: column; gap: var(--s-4); }
+/* ---------- Two-factor enrolment (atlas-mfa-enroll.js) ----------
+   Shared by the Settings dialog and the sign-in step (both index.html). Three
+   numbered steps hang from one hairline; the key is the one mono string. */
+.settings-mfa-dialog__desc { margin: var(--s-1) 0 0; font: var(--type-body); color: var(--text-2); }
+.settings-mfa-dialog .atlas-dialog__body { margin-top: 0; }
+.atlas-mfa-enroll { min-width: 0; color: var(--text); text-align: left; }
+.atlas-mfa-enroll__steps { margin: var(--s-5) 0 0; padding: 0; list-style: none; counter-reset: atlas-mfa-step; }
+.atlas-mfa-enroll__step { position: relative; min-width: 0; padding: 0 0 var(--s-6) 36px; counter-increment: atlas-mfa-step; }
+.atlas-mfa-enroll__step:last-child { padding-bottom: 0; }
+.atlas-mfa-enroll__step::before { content: counter(atlas-mfa-step); position: absolute; top: 0; left: 0; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); font: 500 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); }
+.atlas-mfa-enroll__step:not(:last-child)::after { content: ''; position: absolute; top: 26px; bottom: 4px; left: 11px; width: 1px; background: var(--line); }
+.atlas-mfa-enroll__step-title { margin: 1px 0 0; font: 500 14px/20px var(--font-sans); color: var(--text); }
+.atlas-mfa-enroll__step-text { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
+.atlas-mfa-enroll__pair { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-5); margin-top: var(--s-3); }
+.atlas-mfa-enroll__qr { flex: none; padding: var(--s-2); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); line-height: 0; }
+.atlas-mfa-enroll__qr > img { display: block; width: 152px; height: 152px; image-rendering: pixelated; }
+.atlas-mfa-enroll__secret { display: grid; gap: var(--s-2); flex: 1 1 180px; min-width: 0; justify-items: start; }
+.atlas-mfa-enroll__secret-label { font: var(--type-caption); color: var(--text-3); }
+.atlas-mfa-enroll__key { display: flex; flex-wrap: wrap; gap: 2px 10px; max-width: 100%; padding: var(--s-2) var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font: 500 14px/22px var(--font-mono); color: var(--text); user-select: all; }
+.atlas-mfa-enroll__form { display: grid; gap: var(--s-4); max-width: 320px; margin-top: var(--s-3); }
+.atlas-mfa-enroll__step-title + .atlas-mfa-enroll__form { margin-top: var(--s-3); }
+.atlas-mfa-enroll__form > .atlas-field > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atlas-mfa-enroll .atlas-input.atlas-mfa-enroll__code { width: 100%; height: var(--control-lg); padding: 0 var(--s-3); font: 500 20px/28px var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: .32em; }
+.atlas-mfa-enroll__code::placeholder { color: var(--text-3); letter-spacing: .32em; }
+.atlas-mfa-enroll__submit { width: 100%; }
+.atlas-mfa-enroll > .atlas-btn { margin-top: var(--s-3); }
+
+/* ---------- Activity ---------- */
+.settings-activity { margin: 0; padding: 0; list-style: none; }
+.settings-activity__row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); min-height: 56px; padding: 10px var(--s-5); border-top: 1px solid var(--line-subtle); }
+.settings-activity__row:first-child { border-top: 0; }
+.settings-activity__body { min-width: 0; }
+.settings-activity__title { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
+.settings-activity__who { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
+.settings-activity__when { flex: none; font: var(--type-meta); color: var(--text-2); text-align: right; white-space: nowrap; }
+
+/* ---------- Loading: the rows at their real size ---------- */
+.settings-row--loading .settings-row__label { gap: 10px; }
+.settings-skel--heading { width: 160px; height: 20px; margin-bottom: var(--s-2); }
+.settings-skel--title { width: 120px; height: 16px; }
+.settings-skel--short { width: 40%; }
+.settings-skel--wide { width: 360px; max-width: 100%; }
+.settings-skel--control { height: var(--control-md); border-radius: var(--r-sm); }
+.settings-skel--button { width: 168px; height: var(--control-sm); margin-top: var(--s-3); }
+.settings-skel-field { display: grid; gap: var(--s-2); }
+
+/* ---------- System health (assets/js/system-workspace.js) ---------- */
+.settings-system { display: flex; flex-direction: column; gap: var(--s-5); padding-top: var(--s-6); border-top: 1px solid var(--line); }
 .sys-summary { display: flex; flex-direction: column; gap: var(--s-3); }
 .sys-summary__state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
-.sys-summary__checked { font: var(--type-caption); color: var(--text-2); }
+.sys-summary__checked { font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .sys-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); margin: 0; }
 .sys-facts > div { display: flex; flex-direction: column; gap: 2px; }
 .sys-facts dt { font: var(--type-caption); color: var(--text-2); }
@@ -152,73 +382,98 @@
 .sys-toolbar .atlas-tabs { flex: 1 1 auto; min-width: 0; }
 .sys-body { display: flex; flex-direction: column; gap: var(--s-4); }
 .sys-block { display: flex; flex-direction: column; gap: var(--s-3); }
+.sys-block + .sys-block { padding-top: var(--s-5); border-top: 1px solid var(--line-subtle); }
 .sys-block__title { margin: 0; font: var(--type-heading); color: var(--text); }
 .sys-filters { margin-bottom: var(--s-1); }
 .sys-note, .sys-foot, .sys-muted { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-meta); color: var(--text-2); }
-.sys-note > svg { width: 14px; height: 14px; flex: none; }
+.sys-note > svg { width: 14px; height: 14px; flex: none; color: var(--text-3); }
+.sys-foot { padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); color: var(--text-3); }
 .sys-warn { color: var(--warning); }
 
-/* Phone: section list screen → section screen (back chevron in the top bar). */
-@media (max-width: 1023px) {
-  .settings-layout { grid-template-columns: 180px minmax(0, 1fr); gap: var(--s-6); }
+/* ---------- Tablet and small laptop: the label stacks above its panel ---------- */
+@media (max-width: 1279px) {
+  .settings-layout { grid-template-columns: 184px minmax(0, 1fr); gap: var(--s-8); }
+  .settings-row { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); padding: var(--s-6) 0; }
+  .settings-row__label { max-width: 64ch; padding-top: 0; }
+  .settings-preview { max-width: 420px; }
   .sys-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1023px) {
   /* Opening hours: one block per day with labelled fields. */
   .settings-hours .atlas-table { min-width: 0; table-layout: auto; }
   .settings-hours .atlas-input::-webkit-calendar-picker-indicator { display: block; }
   .settings-hours thead, .settings-hours colgroup { display: none; }
   .settings-hours tbody, .settings-hours tr { display: block; }
-  .settings-hours tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2) var(--s-3); padding: var(--s-3); border-top: 1px solid var(--line-subtle); }
+  .settings-hours tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2) var(--s-3); padding: var(--s-4) var(--s-5); border-top: 1px solid var(--line-subtle); }
   .settings-hours tr:first-child { border-top: 0; }
   .settings-hours .atlas-table th[scope="row"], .settings-hours .atlas-table td { display: flex; flex-direction: column; gap: 4px; height: auto; padding: 0; border: 0; background: transparent; }
+  .settings-hours .atlas-table tr > :first-child { padding-left: 0; }
   .settings-hours .atlas-table th[scope="row"] { position: static; grid-column: 1 / -1; }
   .settings-hours td::before { content: attr(data-label); font: var(--type-caption); color: var(--text-2); }
   .settings-hours .settings-hours__problem { padding-top: 0; border-top: 0; }
   .settings-hours .atlas-table .settings-hours__problem > td { grid-column: 1 / -1; }
   .settings-hours .settings-hours__problem > td::before { display: none; }
-  .settings-hours td[data-label="Open"], .settings-hours td[data-label="Next day"] { flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: var(--s-2); }
-  .settings-hours td[data-label="Open"], .settings-hours td[data-label="Next day"] { grid-column: 1 / -1; }
+  /* Four columns: the day with its two ticks on one line, then opens and
+     closes, then last orders and the kitchen. */
+  .settings-hours tr.settings-hours-row { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
+  .settings-hours .atlas-table .settings-hours-row > th[scope="row"] { grid-row: 1; grid-column: 1 / 3; align-self: center; }
+  .settings-hours td[data-label="Open"], .settings-hours td[data-label="Next day"] { grid-row: 1; flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: var(--s-2); }
+  .settings-hours td[data-label="Open"] { grid-column: 3; }
+  .settings-hours td[data-label="Next day"] { grid-column: 4; }
+  .settings-hours td[data-label="Opens"] { grid-row: 2; grid-column: 1 / 3; }
+  .settings-hours td[data-label="Closes"] { grid-row: 2; grid-column: 3 / 5; }
+  .settings-hours td[data-label="Last orders"] { grid-row: 3; grid-column: 1 / 3; }
+  .settings-hours td[data-label="Kitchen"] { grid-row: 3; grid-column: 3 / 5; }
 }
+
+/* ---------- Phone: the area list is a screen; panels lose their frame ---------- */
 @media (max-width: 767px) {
   .settings-layout, .settings--single .settings-layout { grid-template-columns: minmax(0, 1fr); margin-top: var(--s-4); }
   .settings.has-section .settings-nav { display: none; }
   .settings.is-list .settings-content { display: none; }
+  .settings.has-section .page-head { display: none; }
   .settings-nav { position: static; }
-  .settings-nav ul { gap: 0; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
-  .settings-nav__group { margin: 0; padding: var(--s-4) var(--s-4) var(--s-1); background: var(--bg-subtle); }
-  .settings-nav__link { min-height: 52px; padding: 0 var(--s-4); border-radius: 0; border-top: 1px solid var(--line-subtle); color: var(--text); font-size: 15px; }
-  .settings-nav__link > svg:last-child { display: block; }
-  .settings-nav__link[aria-current="page"] { box-shadow: none; }
+  .settings-nav ul { border-left: 0; }
+  .settings-nav__group { margin: var(--s-6) 0 var(--s-2); padding-left: 0; }
+  .settings-nav__group:first-child { margin-top: 0; }
+  .settings-nav__link { min-height: 52px; margin: 0; padding: 0; border-radius: 0; border-top: 1px solid var(--line-subtle); color: var(--text); font-size: 15px; }
+  .settings-nav__group + li > .settings-nav__link { border-top: 0; }
+  .settings-nav__link::before { display: none; }
+  .settings-nav__link > svg { display: block; }
+  .settings-nav__link > svg:last-child { margin-left: auto; color: var(--text-3); }
+  .settings-nav__link[aria-current="page"] { font-weight: 400; }
+  .settings-section__head { flex-direction: column; align-items: stretch; padding-bottom: var(--s-5); }
+  .settings-section__actions > .atlas-btn { flex: 1 1 auto; }
+  .settings-row { padding: var(--s-6) 0; }
+  .settings-row__panel { padding: 0; border: 0; border-radius: 0; overflow: visible; }
+  .settings-row__panel--flush { margin: 0 calc(-1 * var(--page-gutter)); border-top: 1px solid var(--line-subtle); border-bottom: 1px solid var(--line-subtle); }
+  .settings-panel__bar { padding-left: var(--page-gutter); padding-right: var(--s-1); }
+  .settings-provider, .settings-activity__row, .settings-row__panel--flush > .settings-form-feedback { padding-left: var(--page-gutter); padding-right: var(--page-gutter); }
+  .settings-hours tr { padding: var(--s-4) var(--page-gutter); }
+  .settings-hours__empty { margin: var(--s-3) var(--page-gutter) 0; }
+  .settings-notices { padding: var(--s-3) var(--page-gutter); }
+  .settings-panel__empty { padding: var(--s-5) var(--page-gutter); }
+  .settings-offer { padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--r-lg); }
   .settings-grid, .settings-permissions { grid-template-columns: minmax(0, 1fr); }
-  .settings-form { padding: var(--s-4); }
   .settings-facts > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .settings-savebar { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--s-2)); }
+  .settings-savebar { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); margin: var(--s-2) calc(-1 * var(--page-gutter)) 0; padding: var(--s-2) var(--page-gutter); border-radius: 0; }
+  .settings-offer__body > .settings-savebar { margin: var(--s-2) calc(-1 * var(--s-4)) calc(-1 * var(--s-4)); padding: var(--s-2) var(--s-4); border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  .settings-row__panel--flush > .settings-savebar { margin: 0; }
   .settings-savebar > .atlas-btn { flex: 1 1 0; }
   .settings-savebar__text { display: none; }
   .settings-apikey { flex-direction: column; align-items: stretch; }
-  .sys-toolbar { flex-direction: column; align-items: stretch; }
-}
-
-/* ---- S94B Integrations ---- */
-/* Publishing capability list, platform review control, recent activity and
- * the Page / account / location picker sheet (docs/marketing/research/
- * 08-ux-spec.md §12). Tokens only; the sheet, radios and avatars are
- * atlas-components.css. */
-.settings-provider__can { display: flex; flex-direction: column; gap: var(--s-1); margin: 0; padding: 0; list-style: none; font: var(--type-meta); color: var(--text-2); }
-.settings-provider__can > li { display: flex; align-items: flex-start; gap: var(--s-2); }
-.settings-provider__can > li > svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-3); }
-.settings-review__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-2); }
-.settings-review__row > .atlas-select { flex: 1 1 200px; max-width: 280px; }
-.settings-provider__events { font: var(--type-meta); color: var(--text-2); }
-.settings-provider__events > summary { width: fit-content; font: var(--type-label); color: var(--accent-text); cursor: pointer; }
-.settings-provider__events > ul { display: flex; flex-direction: column; gap: 2px; margin: var(--s-2) 0 0; padding: 0; list-style: none; }
-.settings-picker { display: flex; flex-direction: column; gap: var(--s-1); margin: 0; padding: 0; border: 0; min-width: 0; }
-.settings-picker__option { align-items: center; gap: var(--s-3); min-height: var(--touch); padding: var(--s-2) var(--s-3); border: 1px solid var(--line-subtle); border-radius: var(--r-md); }
-.settings-picker__option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-.settings-picker__option.is-disabled { cursor: not-allowed; color: var(--text-3); }
-.settings-picker__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.settings-picker__name { font: var(--type-label); color: var(--text); overflow-wrap: anywhere; }
-.settings-picker__meta { font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; }
-@media (max-width: 767px) {
+  .settings-actions > .atlas-btn { flex: 1 1 auto; }
+  .settings-actions > [data-integration-action="disconnect"], .settings-actions__destructive { flex: 0 1 auto; }
   .settings-review__row > .atlas-select { max-width: none; }
+  .settings-activity__row { align-items: flex-start; }
+  /* The state pill shares the name's line; the status line runs full width. */
+  .settings-provider__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--s-3); }
+  .settings-provider__head > div { display: contents; }
+  .settings-provider__head > .atlas-pill { grid-row: 1; grid-column: 2; }
+  .settings-provider__name { grid-column: 1; align-self: center; }
+  .settings-provider__status { grid-column: 1 / -1; margin-top: 0; }
+  .sys-toolbar { flex-direction: column; align-items: stretch; }
+  .atlas-mfa-enroll__qr > img { width: 176px; height: 176px; }
+  .atlas-mfa-enroll__form { max-width: none; }
 }
 }

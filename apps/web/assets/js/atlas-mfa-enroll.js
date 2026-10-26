@@ -89,26 +89,39 @@
 
     const qr = enrollment.totp?.qr_code || '';
     const secret = enrollment.totp?.secret || '';
+    // Three numbered steps on one rule: the app, the code to scan (or the key
+    // to type, in groups of four so it can be read aloud), then the 6 digits.
+    // The key's groups are spans without spaces, so its text stays the key.
+    const groups = (secret.match(/.{1,4}/g) || []).map((group) => `<span>${esc(group)}</span>`).join('');
     container.innerHTML = `<div class="atlas-mfa-enroll" data-atlas-mfa-enroll>
       <ol class="atlas-mfa-enroll__steps">
-        <li>Open an authenticator app (Google Authenticator, 1Password, Authy, Microsoft Authenticator).</li>
-        <li>Scan this code, or type the setup key by hand.</li>
-        <li>Enter the 6-digit code the app shows.</li>
+        <li class="atlas-mfa-enroll__step">
+          <p class="atlas-mfa-enroll__step-title">Open an authenticator app</p>
+          <p class="atlas-mfa-enroll__step-text">Google Authenticator, 1Password, Authy or Microsoft Authenticator.</p>
+        </li>
+        <li class="atlas-mfa-enroll__step">
+          <p class="atlas-mfa-enroll__step-title">Scan this code, or type the setup key by hand</p>
+          <div class="atlas-mfa-enroll__pair">
+            ${qr ? `<div class="atlas-mfa-enroll__qr"><img src="${esc(qr)}" alt="QR code to add Alcedo to your authenticator app" width="200" height="200"></div>` : ''}
+            <div class="atlas-mfa-enroll__secret">
+              <span class="atlas-mfa-enroll__secret-label" id="atlas-mfa-secret-label">Setup key</span>
+              <code class="atlas-mfa-enroll__key" data-mfa-secret aria-labelledby="atlas-mfa-secret-label">${groups}</code>
+              <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-mfa-enroll__copy" data-mfa-copy aria-label="Copy setup key">Copy key</button>
+            </div>
+          </div>
+        </li>
+        <li class="atlas-mfa-enroll__step">
+          <p class="atlas-mfa-enroll__step-title">Enter the 6-digit code the app shows</p>
+          <form class="atlas-mfa-enroll__form" novalidate data-mfa-form>
+            <div class="atlas-field">
+              <label for="atlas-mfa-code">6-digit code</label>
+              <input class="atlas-input atlas-mfa-enroll__code" id="atlas-mfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required aria-describedby="atlas-mfa-code-error" placeholder="000000">
+              <p class="atlas-field__error" id="atlas-mfa-code-error" role="alert" hidden></p>
+            </div>
+            <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-mfa-enroll__submit">Verify and finish</button>
+          </form>
+        </li>
       </ol>
-      ${qr ? `<div class="atlas-mfa-enroll__qr"><img src="${esc(qr)}" alt="QR code to add Alcedo to your authenticator app" width="200" height="200"></div>` : ''}
-      <div class="atlas-mfa-enroll__secret">
-        <span class="atlas-mfa-enroll__secret-label" id="atlas-mfa-secret-label">Setup key</span>
-        <code data-mfa-secret aria-labelledby="atlas-mfa-secret-label">${esc(secret)}</code>
-        <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-mfa-copy aria-label="Copy setup key">Copy</button>
-      </div>
-      <form class="atlas-mfa-enroll__form" novalidate data-mfa-form>
-        <div class="atlas-field">
-          <label for="atlas-mfa-code">6-digit code</label>
-          <input class="atlas-input" id="atlas-mfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required aria-describedby="atlas-mfa-code-error">
-          <p class="atlas-field__error" id="atlas-mfa-code-error" role="alert" hidden></p>
-        </div>
-        <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-mfa-enroll__submit">Verify and finish</button>
-      </form>
     </div>`;
 
     const form = container.querySelector('[data-mfa-form]');
@@ -124,10 +137,12 @@
     };
 
     container.querySelector('[data-mfa-copy]')?.addEventListener('click', async (event) => {
+      // currentTarget is cleared once the handler awaits; keep the button.
+      const button = event.currentTarget;
       try {
         await navigator.clipboard?.writeText(secret);
-        event.currentTarget.textContent = 'Copied';
-        window.setTimeout(() => { if (event.currentTarget) event.currentTarget.textContent = 'Copy'; }, 1500);
+        button.textContent = 'Copied';
+        window.setTimeout(() => { button.textContent = 'Copy key'; }, 1500);
       } catch (_) {
         // Clipboard blocked: the key is already visible to type by hand.
       }
