@@ -54,8 +54,8 @@
     showEarlier: false,
     weekStart: null,
     monthStart: null,
-    week: { workspace: null, key: null, loading: false, error: null, serial: 0 },
-    month: { workspace: null, key: null, loading: false, error: null, serial: 0 },
+    week: { workspace: null, key: null, loading: false, error: null, serial: 0, inFlight: null, inFlightKey: null },
+    month: { workspace: null, key: null, loading: false, error: null, serial: 0, inFlight: null, inFlightKey: null },
     staff: null,
     submitting: false,
     availabilityPersonId: null,
@@ -415,30 +415,43 @@
     if (!key) return;
     if (!options.force && state.week.key === key && state.week.workspace) return;
     const slot = state.week;
+    // Coalesce concurrent loads of the same week: a second render() or roster-change
+    // before the first response reuses the in-flight request instead of firing a
+    // duplicate snapshot. A forced load always starts fresh.
+    if (!options.force && slot.inFlight && slot.inFlightKey === key) return slot.inFlight;
     const serial = ++slot.serial;
     slot.loading = true;
     if (!options.silent) slot.error = null;
     if (slot.key !== key) slot.workspace = null;
     paint();
-    try {
-      const payload = await api('snapshot', { params: { week_start: key } });
-      if (serial !== slot.serial) return;
-      if (!payload?.workspace) throw new ShiftsError('Shifts are temporarily unavailable.', 0);
-      slot.workspace = payload.workspace;
-      slot.key = key;
-      state.staff = payload.staff || state.staff;
-      slot.error = null;
-      state.failedAt = 0;
-      publishToday();
-    } catch (error) {
-      if (serial !== slot.serial) return;
-      slot.error = shown(error, 'Shifts couldn’t be loaded. Your rota is safe; check the connection and try again.');
-      state.failedAt = Date.now();
-    } finally {
-      if (serial === slot.serial) {
-        slot.loading = false;
-        paint();
+    const run = (async () => {
+      try {
+        const payload = await api('snapshot', { params: { week_start: key } });
+        if (serial !== slot.serial) return;
+        if (!payload?.workspace) throw new ShiftsError('Shifts are temporarily unavailable.', 0);
+        slot.workspace = payload.workspace;
+        slot.key = key;
+        state.staff = payload.staff || state.staff;
+        slot.error = null;
+        state.failedAt = 0;
+        publishToday();
+      } catch (error) {
+        if (serial !== slot.serial) return;
+        slot.error = shown(error, 'Shifts couldn’t be loaded. Your rota is safe; check the connection and try again.');
+        state.failedAt = Date.now();
+      } finally {
+        if (serial === slot.serial) {
+          slot.loading = false;
+          paint();
+        }
       }
+    })();
+    slot.inFlight = run;
+    slot.inFlightKey = key;
+    try {
+      return await run;
+    } finally {
+      if (slot.inFlight === run) { slot.inFlight = null; slot.inFlightKey = null; }
     }
   }
 
@@ -447,27 +460,38 @@
     if (!key) return;
     if (!options.force && state.month.key === key && state.month.workspace) return;
     const slot = state.month;
+    // Coalesce concurrent loads of the same month (see loadWeek).
+    if (!options.force && slot.inFlight && slot.inFlightKey === key) return slot.inFlight;
     const serial = ++slot.serial;
     slot.loading = true;
     if (!options.silent) slot.error = null;
     if (slot.key !== key) slot.workspace = null;
     paint();
-    try {
-      const payload = await api('month-snapshot', { params: { month_start: key } });
-      if (serial !== slot.serial) return;
-      if (!payload?.workspace) throw new ShiftsError('Shifts are temporarily unavailable.', 0);
-      slot.workspace = payload.workspace;
-      slot.key = key;
-      state.staff = payload.staff || state.staff;
-      slot.error = null;
-    } catch (error) {
-      if (serial !== slot.serial) return;
-      slot.error = shown(error, 'Shifts couldn’t be loaded. Your rota is safe; check the connection and try again.');
-    } finally {
-      if (serial === slot.serial) {
-        slot.loading = false;
-        paint();
+    const run = (async () => {
+      try {
+        const payload = await api('month-snapshot', { params: { month_start: key } });
+        if (serial !== slot.serial) return;
+        if (!payload?.workspace) throw new ShiftsError('Shifts are temporarily unavailable.', 0);
+        slot.workspace = payload.workspace;
+        slot.key = key;
+        state.staff = payload.staff || state.staff;
+        slot.error = null;
+      } catch (error) {
+        if (serial !== slot.serial) return;
+        slot.error = shown(error, 'Shifts couldn’t be loaded. Your rota is safe; check the connection and try again.');
+      } finally {
+        if (serial === slot.serial) {
+          slot.loading = false;
+          paint();
+        }
       }
+    })();
+    slot.inFlight = run;
+    slot.inFlightKey = key;
+    try {
+      return await run;
+    } finally {
+      if (slot.inFlight === run) { slot.inFlight = null; slot.inFlightKey = null; }
     }
   }
 
