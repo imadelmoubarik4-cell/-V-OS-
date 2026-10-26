@@ -19,9 +19,10 @@
 //
 //   GET  ?action=availability&date=YYYY-MM-DD&party_size=N
 //   POST ?action=request            {party_size, start_at, guest_name, guest_phone?, guest_email?, guest_requests?}
+//   POST ?action=book               -> confirmed immediately with adjacent stools
 //   GET  ?action=status&token=<public_token>
 
-export const FUNCTION_VERSION = "0.1.0";
+export const FUNCTION_VERSION = "0.2.0";
 export const LIMITS = Object.freeze({ jsonBytes: 16 * 1024 });
 
 export class ApiError extends Error {
@@ -266,7 +267,7 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
       return svc.rpc("atlas_public_booking_status", { p_token: token });
     }
 
-    if (request.method === "POST" && action === "request") {
+    if (request.method === "POST" && (action === "request" || action === "book")) {
       const body = await readJson(request);
       const idem = request.headers.get("idempotency-key") || body.idempotency_key || null;
       const fp = await fingerprint(request, env);
@@ -281,6 +282,7 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
         tz: "Atlantic/Reykjavik",
         fingerprint: fp,
         idempotency_key: idem ? String(idem).slice(0, 128) : null,
+        booking_mode: action === "book" ? "direct" : "request",
       };
       return svc.rpc("atlas_public_booking_request", { p_payload: payload });
     }
