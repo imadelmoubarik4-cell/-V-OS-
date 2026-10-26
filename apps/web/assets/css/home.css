@@ -1,135 +1,201 @@
-/* Home (#home) — docs/design/Atlas_Experience_Redesign.md §7.1, reference
- * docs/design/atlas-reference.html (#s-home). Module layout only: rows,
- * sections, pills, avatars, badges and buttons are atlas-components.css.
- * Replaces the Home rules of the inline <style>, home-polish(-baseline),
- * atlas-glass, polish-pass2, s34-preproduction and s38-app-remediation
- * fragments, and brain.css (the retired Brain page). */
+/* Home (#home) — the team home. docs/design/Alcedo_Redesign_2026.md
+ * ("Basalt & Kingfisher"); module layout only: rows, sections, pills,
+ * avatars, badges, cards and buttons are atlas-components.css.
+ *
+ * One question: what needs doing before service tonight?
+ *   greeting (the app's one 26 px display line) + the one primary
+ *   [ Needs attention (first, biggest)  | Tonight: hours + crew ]
+ *   [ Today's briefing (quiet panel)    |   (shares both edges) ]
+ *   [ Stock | Recipes | Purchasing — one divided strip           ]
+ * No resting shadows, no tinted icon tiles, no keyframes (motion is
+ * transitions only; the page header enters with the shell). */
 @layer atlas.modules {
 /* ---------- header ---------- */
 .home-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-6); }
 .home-head__text { min-width: 0; }
 .home-head__actions { display: flex; gap: var(--s-2); flex: none; }
-.home-date { margin: 0; font: var(--type-label); color: var(--text-2); }
+.home-date { margin: 0; font: var(--type-label); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .home-greeting {
-  margin: 6px 0 0;
+  margin: var(--s-1) 0 0;
   font: var(--type-display);
   letter-spacing: var(--track-display);
-  font-variation-settings: 'opsz' 72;
   color: var(--text);
 }
-.home-context { display: flex; flex-wrap: wrap; gap: 6px var(--s-4); margin: 10px 0 0; font: var(--type-body); color: var(--text-2); }
-.home-context__part { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.home-context { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-5); margin: var(--s-2) 0 0; font: var(--type-body); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.home-context__part { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .home-context__part > svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-3); }
 .home-context__link { font: var(--type-label); color: var(--accent-text); }
 .home-context__note { color: var(--text-2); }
-.home-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-3); }
-.home-dot--warning { background: var(--warning-icon); box-shadow: 0 0 0 3px var(--warning-soft); }
-.home-dot--positive { background: var(--positive); box-shadow: 0 0 0 3px var(--positive-soft); }
-.home-dot--neutral { background: var(--text-3); box-shadow: 0 0 0 3px var(--neutral-soft); }
+/* The venue's state in one dot: open (positive), opening soon (warning), closed (grey). */
+.home-dot { width: 8px; height: 8px; flex: none; border-radius: var(--r-pill); background: var(--text-3); }
+.home-dot--warning { background: var(--warning-icon); }
+.home-dot--positive { background: var(--positive); }
+.home-dot--neutral { background: var(--text-3); }
 
-/* ---------- needs attention ---------- */
-.home-attention .atlas-section__title { display: flex; align-items: center; gap: var(--s-2); }
-.home-attention__all { color: var(--text-2); }
-/* Attention rows are row links (.atlas-row__link, atlas-components.css). */
-.home-skel-title { width: 36%; }
-.home-skel-meta { width: 56%; margin-top: var(--s-2); }
-
-/* ---------- grid: briefing + glance | tonight + timeline ---------- */
-.home-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s-10); margin-top: var(--s-10); }
-.home-grid__main, .home-grid__side { display: flex; flex-direction: column; gap: var(--s-6); min-width: 0; }
+/* ---------- grid: attention + briefing | Tonight, then the strip ---------- */
+/* 1156 at 1440: 780 + 24 + 352. Tonight stretches to the main column so the
+   two share their top and bottom edges; a short main column (nothing needs
+   attention) keeps its own height rather than stretching a card over air. */
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 352px;
+  grid-template-areas: "main side" "glance glance";
+  gap: var(--s-6);
+  margin-top: var(--s-6);
+}
+.home-grid__main { grid-area: main; align-self: start; display: flex; flex-direction: column; gap: var(--s-6); min-width: 0; }
+.home-head + .home-attention { margin-top: var(--s-6); }
 .home-muted { margin: 0; font: var(--type-body); color: var(--text-2); }
 .home-muted .atlas-btn { margin-left: var(--s-2); vertical-align: middle; }
 .home-muted + .atlas-btn { margin-top: var(--s-3); }
 
-/* ALCEDO: the daily briefing is the Home summary/hero — a deep-teal panel with
-   ivory text and an orange accent, like the website's dark cards. */
-.home-briefing { padding: var(--s-5) var(--s-5) var(--s-4); background: var(--accent); border-color: var(--accent-hover); color: var(--atlas-snow); box-shadow: var(--shadow-pop); }
-.home-briefing__head { display: flex; align-items: center; gap: var(--s-2); }
-.home-briefing__head > svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--highlight); }
-.home-briefing__head h2 { margin: 0; font: var(--type-heading); color: var(--atlas-snow); }
-.home-briefing__time { margin-left: auto; font: var(--type-caption); color: rgba(248, 245, 237, .72); }
-.home-briefing__text { margin-top: 10px; font: var(--type-body-lg); color: var(--atlas-snow); }
-.home-briefing__text p { margin: 0; }
-.home-briefing__text p + p { margin-top: var(--s-2); }
-.home-briefing__muted { color: rgba(248, 245, 237, .72); }
-.home-briefing__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-top: 14px; padding-top: var(--s-3); border-top: 1px solid rgba(248, 245, 237, .16); }
-.home-briefing__sources { display: flex; align-items: center; gap: 6px; font: var(--type-caption); color: rgba(248, 245, 237, .72); }
-.home-briefing__sources > svg { width: 14px; height: 14px; color: var(--highlight); }
-/* Follow-up action reads on the teal panel: ivory ghost button. */
-.home-briefing .atlas-btn--ghost { color: var(--atlas-snow); }
-.home-briefing .atlas-btn--ghost:hover:not(:disabled, [aria-disabled="true"]),
-.home-briefing .atlas-btn--ghost:active:not(:disabled, [aria-disabled="true"]) { background: rgba(248, 245, 237, .14); }
+/* ---------- needs attention ---------- */
+.home-attention .atlas-section__head { align-items: center; min-height: 32px; margin-bottom: var(--s-3); }
+.home-attention__all { margin-right: calc(-1 * var(--s-2)); color: var(--text-2); }
+/* The answer block: two-line rows on a 60 px pitch, the title one step up. */
+.home-attention .atlas-row { min-height: 60px; padding: 10px var(--s-4); }
+.home-row .home-row__open { font: 500 15px/22px var(--font-sans); }
+.home-row .atlas-row__meta { margin-top: 1px; }
+.home-row .atlas-row__end > .atlas-btn { min-width: 112px; }
+.home-skel-title { width: 36%; }
+.home-skel-meta { width: 56%; margin-top: var(--s-2); }
 
-.home-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.home-glance__item { display: flex; flex-direction: column; min-width: 0; padding: var(--s-5) var(--s-6) var(--s-5) 0; color: inherit; text-decoration: none; }
-.home-glance__item + .home-glance__item { padding-left: var(--s-6); border-left: 1px solid var(--line); }
+/* ---------- today's briefing: a quiet white panel, the AI mark small ---------- */
+.home-briefing { padding: var(--s-4) var(--s-5) var(--s-2); }
+.home-briefing__head { display: flex; align-items: center; gap: var(--s-2); min-height: 20px; }
+.home-briefing__head > svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-3); }
+.home-briefing__head h2 { margin: 0; font: var(--type-heading); color: var(--text); }
+.home-briefing__time { margin-left: auto; font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.home-briefing__text { margin: var(--s-3) 0 var(--s-3); font: var(--type-body); line-height: 22px; color: var(--text); text-wrap: pretty; }
+.home-briefing__text p { margin: 0; max-width: 68ch; }
+.home-briefing__text p + p { margin-top: var(--s-2); color: var(--text-2); }
+.home-briefing__muted { color: var(--text-2); }
+.home-briefing__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-top: var(--s-2); border-top: 1px solid var(--line-subtle); }
+.home-briefing__sources { display: flex; align-items: center; gap: 6px; min-width: 0; font: var(--type-caption); color: var(--text-3); }
+.home-briefing__sources > svg { width: 14px; height: 14px; flex: none; color: var(--positive); }
+.home-briefing__foot > .atlas-btn { flex: none; margin-right: calc(-1 * var(--s-2)); }
+
+/* ---------- Tonight: the night's arc over the crew ---------- */
+.home-tonight { grid-area: side; display: flex; flex-direction: column; min-width: 0; }
+/* The heading sits on the attention heading's line, so the two cards share their top edge;
+   the card fills the column so they share the bottom edge too. */
+.home-tonight .atlas-section__head { align-items: center; min-height: 32px; margin-bottom: var(--s-3); }
+.home-tonight__card { flex: 1 1 auto; padding: var(--s-1) var(--s-5) var(--s-5); }
+.home-tonight__part { margin-top: var(--s-4); }
+.home-tonight__part + .home-tonight__part { padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
+.home-tonight__label { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); font: var(--type-label); color: var(--text-2); }
+.home-tonight__count { font: var(--type-label); color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* Timeline: time | rail | event. Past events grey and filled, the current
+   one in the one hue; the rail runs between the marks. */
+.home-timeline { margin: 0; padding: 0; list-style: none; }
+.home-timeline__row { display: grid; grid-template-columns: 44px 12px minmax(0, 1fr); align-items: start; column-gap: var(--s-3); padding-bottom: var(--s-4); }
+.home-timeline__row:last-child { padding-bottom: 0; }
+.home-timeline__row time { font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); }
+.home-timeline__mark { position: relative; align-self: stretch; }
+.home-timeline__mark::before { content: ''; position: absolute; top: 6px; left: 2px; z-index: 1; width: 8px; height: 8px; box-sizing: border-box; border: 1.5px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); }
+.home-timeline__row:not(:last-child) .home-timeline__mark::after { content: ''; position: absolute; top: 16px; bottom: -6px; left: 5.5px; width: 1px; background: var(--line); }
+.home-timeline__row.is-done time { color: var(--text-3); }
+.home-timeline__row.is-done .home-timeline__label { color: var(--text-2); }
+.home-timeline__row.is-done .home-timeline__mark::before { border-color: var(--text-3); background: var(--text-3); }
+.home-timeline__row.is-now .home-timeline__mark::before { border-color: var(--accent-brand); background: var(--accent-brand); }
+.home-timeline__row.is-now time,
+.home-timeline__row.is-now .home-timeline__label { font-weight: 600; }
+.home-timeline__label { display: flex; flex-direction: column; min-width: 0; font: var(--type-body); color: var(--text); }
+.home-timeline__label small { font: var(--type-meta); color: var(--text-2); }
+/* The checklist hanging off opening or closing: its words over its ticks. */
+.home-timeline__check { display: grid; gap: 6px; margin-top: var(--s-1); padding: var(--s-2) 10px; border: 1px solid var(--line); border-radius: var(--r-md); font: var(--type-meta); font-weight: 400; color: var(--text-2); text-decoration: none; transition: border-color var(--dur-1) ease, background-color var(--dur-1) ease; }
+.home-timeline__check:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.home-timeline__check.is-complete { color: var(--positive-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .home-timeline__check:hover { border-color: var(--line-strong); background: var(--bg-hover); color: var(--text); text-decoration: none; }
+}
+.home-ticks { display: flex; gap: 3px; }
+.home-ticks > i { flex: 1 1 0; height: 4px; border-radius: 2px; background: var(--bg-muted); }
+.home-ticks > i.is-done { background: var(--accent-brand); }
+.home-ticks.is-complete > i { background: var(--positive); }
+
+/* Crew: avatar | name and role | shift, the shift times on one right edge. */
+.home-staff { display: flex; flex-direction: column; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+.home-staff[aria-busy="true"] { gap: var(--s-4); }
+.home-staff[aria-busy="true"] > .atlas-skel:nth-child(2) { width: 70%; }
+.home-staff__row { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+.home-staff__who { display: flex; flex-direction: column; min-width: 0; }
+.home-staff__name { display: flex; align-items: center; gap: var(--s-2); font: 500 14px/20px var(--font-sans); color: var(--text); }
+.home-staff__role { font: var(--type-caption); color: var(--text-2); }
+.home-staff__time { margin-left: auto; font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text-2); white-space: nowrap; }
+.home-staff__row.is-mine .home-staff__time { color: var(--text); }
+
+/* ---------- the figures: one container split by 1 px dividers ---------- */
+.home-glance { grid-area: glance; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+.home-glance__item { display: flex; flex-direction: column; min-width: 0; padding: var(--s-4) var(--s-5) var(--s-5); color: inherit; text-decoration: none; transition: background-color var(--dur-1) ease; -webkit-tap-highlight-color: transparent; }
+.home-glance__item + .home-glance__item { border-left: 1px solid var(--line); }
 .home-glance__item:hover { text-decoration: none; }
-.home-glance__item:hover .home-glance__link { color: var(--accent-text); }
-.home-glance__label { display: flex; align-items: center; gap: var(--s-2); font: var(--type-label); color: var(--text-2); }
-.home-glance__label > svg { width: var(--icon-sm); height: var(--icon-sm); }
+.home-glance__item:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.home-glance__top { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 20px; }
+.home-glance__label { font: var(--type-label); color: var(--text-2); }
+.home-glance__link { display: inline-flex; align-items: center; gap: 4px; font: var(--type-meta); color: var(--text-3); white-space: nowrap; }
+.home-glance__link > svg { width: 14px; height: 14px; transition: transform var(--dur-1) var(--ease-out); }
 .home-glance__value { margin-top: var(--s-2); font: var(--type-kpi); letter-spacing: var(--track-kpi); font-variant-numeric: tabular-nums; color: var(--text); }
 .home-glance__value small { margin-left: 6px; font: var(--type-body); letter-spacing: 0; color: var(--text-2); }
-.home-glance__value--text { font: 500 20px/32px var(--font-sans); letter-spacing: 0; }
-.home-glance__detail { margin-top: var(--s-1); font: var(--type-meta); color: var(--text-2); }
-.home-glance__link { display: inline-flex; align-items: center; gap: 4px; margin-top: var(--s-3); font: var(--type-label); color: var(--text-2); }
-.home-glance__link > svg { width: 14px; height: 14px; }
+.home-glance__value--text { font: 500 20px/32px var(--font-sans); letter-spacing: -0.01em; }
+/* Missing or loading: a grey dash, not ink at full value size; the line keeps its height. */
+.home-glance__value.is-empty { font-size: 20px; color: var(--text-3); }
+.home-glance__detail { margin-top: 2px; font: var(--type-meta); color: var(--text-2); }
 /* A tile whose source failed to load (never an empty-state claim). */
 .home-glance__retry { align-self: flex-start; margin-top: var(--s-2); margin-left: calc(-1 * var(--s-2)); }
-
-.home-col__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
-.home-col__head h2 { margin: 0; font: var(--type-heading); color: var(--text); }
-.home-staff { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.home-staff__row { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.home-staff__who { display: flex; flex-direction: column; min-width: 0; }
-.home-staff__name { font: 500 14px/20px var(--font-sans); color: var(--text); }
-.home-staff__role { font: var(--type-caption); color: var(--text-2); }
-.home-staff__time { margin-left: auto; font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); white-space: nowrap; }
-
-.home-timeline { margin: 0; padding: 0; list-style: none; }
-.home-timeline__row { display: grid; grid-template-columns: 48px 16px minmax(0, 1fr); align-items: start; gap: 10px; padding: 6px 0; }
-.home-timeline__row time { font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text-2); }
-.home-timeline__mark { position: relative; display: grid; place-items: center; height: 20px; }
-.home-timeline__mark::before { content: ''; position: relative; z-index: 1; width: 9px; height: 9px; border: 1.5px solid var(--line-strong); border-radius: 50%; background: var(--surface); }
-.home-timeline__row:not(:last-child) .home-timeline__mark::after { content: ''; position: absolute; top: 14px; width: 1px; height: 30px; background: var(--line); }
-.home-timeline__row.is-done .home-timeline__mark::before { border-color: var(--text-2); background: var(--text-2); }
-.home-timeline__row.is-now .home-timeline__mark::before { border-color: var(--accent-brand); background: var(--accent-brand); box-shadow: 0 0 0 3px var(--accent-soft); }
-.home-timeline__label { display: flex; flex-direction: column; min-width: 0; font: var(--type-body); color: var(--text); }
-.home-timeline__label small { font: var(--type-caption); color: var(--text-2); }
-.home-timeline__check { font: var(--type-caption); color: var(--text-2); }
-.home-timeline__check:hover { color: var(--accent-text); }
-
-/* Touch: small buttons on Home grow to 44 px (spec §6; the design system's .atlas-btn--sm is 40 px). */
+@media (hover: hover) and (pointer: fine) {
+  a.home-glance__item:hover { background: var(--bg-hover); }
+  a.home-glance__item:hover .home-glance__link { color: var(--text); }
+  a.home-glance__item:hover .home-glance__link > svg { transform: translateX(2px); }
+}
+a.home-glance__item:active { background: var(--bg-muted); }
 
 /* ---------- responsive ---------- */
+/* Rail widths (1024-1279): the side column narrows. */
 @media (max-width: 1279px) {
-  .home-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-8); }
+  .home-grid { grid-template-columns: minmax(0, 1fr) 320px; }
 }
-@media (max-width: 1023px) and (min-width: 768px) {
-  .home-glance__item { padding-right: var(--s-4); }
-  .home-glance__item + .home-glance__item { padding-left: var(--s-4); }
+/* Below 1024 one column, in the order of the next question: what needs me,
+   the figures, tonight, then the briefing. */
+@media (max-width: 1023px) {
+  .home-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "attention" "glance" "side" "briefing"; }
+  .home-grid__main { display: contents; }
+  .home-grid .home-attention { grid-area: attention; }
+  .home-grid .home-briefing { grid-area: briefing; }
 }
 @media (max-width: 767px) {
   .home-head { flex-direction: column; align-items: stretch; gap: var(--s-4); }
-  .home-head__actions { display: none; }
-  .home-greeting { font-size: 28px; line-height: 34px; }
-  .home-context { gap: var(--s-1) var(--s-3); }
-  .home-grid { margin-top: var(--s-8); gap: var(--s-8); }
+  .home-head__actions > .atlas-btn { flex: 1 1 auto; }
+  .home-context { flex-direction: column; gap: var(--s-1); }
+  .home-grid { gap: var(--s-6); margin-top: var(--s-6); }
+  .home-head + .home-attention { margin-top: var(--s-6); }
+  .home-attention .atlas-row { min-height: 64px; padding: var(--s-3) 14px; }
+  .home-row .home-row__open { font-size: 16px; }
   .home-row .atlas-row__end > .atlas-btn { display: none; }
-  .home-glance { grid-template-columns: minmax(0, 1fr); border-bottom: 0; }
+  .home-briefing { padding: var(--s-4) var(--s-4) var(--s-2); }
+  .home-briefing__text { font: var(--type-body); }
+  .home-briefing__sources { display: none; }
+  .home-briefing__foot { justify-content: flex-end; }
+  .home-tonight__card { padding: 0 var(--s-4) var(--s-4); }
+  /* The strip becomes a divided list: label and detail left, figure right. */
+  .home-glance { grid-template-columns: minmax(0, 1fr); }
   .home-glance__item,
-  .home-glance__item + .home-glance__item {
+  .home-glance__item--failed {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     column-gap: var(--s-3);
-    padding: var(--s-4) 0;
-    border-left: 0;
-    border-bottom: 1px solid var(--line);
+    min-height: 64px;
+    padding: var(--s-3) var(--s-4);
   }
-  .home-glance__label { grid-column: 1; }
+  .home-glance__item + .home-glance__item { border-left: 0; border-top: 1px solid var(--line); }
+  .home-glance__top { grid-column: 1; min-height: 0; }
+  .home-glance__link { display: none; }
   .home-glance__value { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; font-size: 22px; line-height: 28px; text-align: right; }
   .home-glance__value--text { font-size: 16px; line-height: 24px; }
+  .home-glance__value.is-empty { font-size: 18px; }
   .home-glance__detail { grid-column: 1; }
-  .home-glance__link { display: none; }
+  .home-glance__retry { grid-column: 1 / -1; }
 }
 }

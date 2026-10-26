@@ -77,23 +77,23 @@ strong, b { font-weight: 600; }
 a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
-/* Icons: lucide (pinned 0.454.0) is the only icon set. Outline at 1.5 stroke;
-   size classes for new markup (legacy rules size their own icons). */
-svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
+/* Icons: the ALCEDO set (assets/js/alcedo-icons.js) is the only icon set:
+   Phosphor Regular geometry on a 256 grid, drawn as filled paths in
+   currentColor. Size an icon with width/height from the --icon-* tokens and
+   colour it with color; there is no stroke to set. A placeholder renders at
+   24 px (its width/height attributes) until a rule sizes it. Inline icons sit
+   on the text's optical centre; in flex rows align-items does the work. */
+svg.alcedo-icon, svg.lucide { flex: none; fill: currentColor; vertical-align: -.1875em; }
 .icon, .atlas-icon {
   width: var(--icon-sm);
   height: var(--icon-sm);
   flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: var(--icon-stroke);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vertical-align: middle;
+  fill: currentColor;
+  vertical-align: -.1875em;
 }
 .icon--md, .atlas-icon--md { width: var(--icon-md); height: var(--icon-md); }
 .icon--lg, .atlas-icon--lg { width: var(--icon-lg); height: var(--icon-lg); }
-.icon--xl, .atlas-icon--xl { width: var(--icon-xl); height: var(--icon-xl); stroke-width: var(--icon-stroke-xl); }
+.icon--xl, .atlas-icon--xl { width: var(--icon-xl); height: var(--icon-xl); }
 
 /* Focus: always visible for keyboard users — 2 px kingfisher outline, 2 px offset. */
 :where(button, a[href], input, select, textarea, summary, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [tabindex]):focus-visible {

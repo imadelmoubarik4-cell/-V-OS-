@@ -476,7 +476,8 @@
     const afterLastOrders = Boolean(next && next.type === 'closes' && next.businessDate === venue.today());
     const target = afterLastOrders ? ops.closing : ops.opening;
     if (!target || ['completed', 'skipped'].includes(target.status)) return '';
-    return `<a class="atlas-btn atlas-btn--secondary" href="#operations/${encodeURIComponent(target.id)}">${icon('list-checks')}${afterLastOrders ? 'Closing checklist' : 'Opening checklist'}</a>`;
+    // The screen's most frequent job, so its one filled primary.
+    return `<a class="atlas-btn atlas-btn--primary" href="#operations/${encodeURIComponent(target.id)}">${icon('list-checks')}${afterLastOrders ? 'Closing checklist' : 'Opening checklist'}</a>`;
   }
 
   function headMarkup() {
@@ -707,17 +708,19 @@
         : { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: '—', unit: '', detail: state.shifts.status === 'ready' ? 'No shifts published for you' : state.shifts.status === 'error' ? 'Shifts couldn’t be loaded' : 'Loading shifts', link: 'View shifts' });
     }
     // A tile whose source failed says so and offers Try again: never an
-    // empty-state claim ("No items yet") for data that didn't load.
+    // empty-state claim ("No items yet") for data that didn't load. Figures
+    // are type, not tiles: label over value, no icon; a missing value is a
+    // grey dash (never ink at full value size).
+    const valueClass = (block) => `home-glance__value${block.text ? ' home-glance__value--text' : ''}${block.value === '—' ? ' is-empty' : ''}`;
     return `<section class="home-glance" aria-label="At a glance">${blocks.map((block) => block.failed ? `<div class="home-glance__item home-glance__item--failed" data-home-glance-failed>
-      <span class="home-glance__label">${icon(block.icon)}${escape(block.label)}</span>
-      <span class="home-glance__value">${escape(block.value)}</span>
+      <span class="home-glance__top"><span class="home-glance__label">${escape(block.label)}</span></span>
+      <span class="${valueClass(block)}">${escape(block.value)}</span>
       <span class="home-glance__detail">${escape(block.detail)}</span>
       <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm home-glance__retry" data-home-reload>${icon('refresh-cw')}Try again</button>
     </div>` : `<a class="home-glance__item" href="${escape(block.href)}">
-      <span class="home-glance__label">${icon(block.icon)}${escape(block.label)}</span>
-      <span class="home-glance__value${block.text ? ' home-glance__value--text' : ''}">${escape(block.value)}${block.unit ? `<small>${escape(block.unit)}</small>` : ''}</span>
+      <span class="home-glance__top"><span class="home-glance__label">${escape(block.label)}</span><span class="home-glance__link">${escape(block.link)}${icon('arrow-right')}</span></span>
+      <span class="${valueClass(block)}">${escape(block.value)}${block.unit ? `<small>${escape(block.unit)}</small>` : ''}</span>
       <span class="home-glance__detail">${escape(block.detail)}</span>
-      <span class="home-glance__link">${escape(block.link)}${icon('arrow-right')}</span>
     </a>`).join('')}</section>`;
   }
 
@@ -734,10 +737,33 @@
         return `<li class="home-staff__row${row.mine ? ' is-mine' : ''}"><span class="atlas-avatar atlas-avatar--sm" aria-hidden="true">${escape(initials)}</span><span class="home-staff__who"><span class="home-staff__name">${escape(row.name)}${row.mine ? ' <span class="atlas-pill atlas-pill--info atlas-pill--plain">You</span>' : ''}</span>${row.role || row.note ? `<span class="home-staff__role">${escape([row.role, row.note].filter(Boolean).join(' · '))}</span>` : ''}</span><span class="home-staff__time">${escape(row.time)}</span></li>`;
       }).join('')}</ul>${!tonight.published && isManager() ? '<p class="home-muted">This week isn’t published yet.</p>' : ''}`;
     }
-    return `<section class="home-col" aria-labelledby="home-tonight-title">
-      <div class="home-col__head"><h2 id="home-tonight-title">Tonight</h2><a class="atlas-section__link" href="#shifts">Shifts</a></div>
+    const count = tonight && !tonight.error && tonight.rows.length ? `<span class="home-tonight__count">${tonight.rows.length}</span>` : '';
+    return `<section class="home-tonight__part" aria-labelledby="home-crew-title">
+      <h3 class="home-tonight__label" id="home-crew-title">On shift${count}</h3>
       ${body}
     </section>`;
+  }
+
+  // One step per required item (capped), filled for the ones done: the
+  // checklist as ticks, the same mark Operations draws.
+  function ticksMarkup(done, total) {
+    const all = Math.max(0, Math.min(24, number(total)));
+    if (!all) return '';
+    const filled = Math.max(0, Math.min(all, number(done)));
+    return `<span class="home-ticks${filled === all ? ' is-complete' : ''}" aria-hidden="true">${'<i class="is-done"></i>'.repeat(filled)}${'<i></i>'.repeat(all - filled)}</span>`;
+  }
+
+  // Tonight: the night's arc (opening hours, with the checklists hanging off
+  // opening and closing) over the crew on shift. One panel, the right column.
+  function tonightPanelMarkup() {
+    if (isViewer()) return '';
+    return `<aside class="home-tonight" aria-labelledby="home-tonight-title">
+      <div class="atlas-section__head"><h2 class="atlas-section__title" id="home-tonight-title">Tonight</h2><a class="atlas-section__link" href="#shifts">Shifts</a></div>
+      <div class="atlas-card home-tonight__card">
+        ${timelineMarkup()}
+        ${tonightMarkup()}
+      </div>
+    </aside>`;
   }
 
   function timelineMarkup() {
@@ -762,7 +788,8 @@
           const done = number(routine.progress?.completed);
           const total = number(routine.progress?.required);
           const text = routine.status === 'completed' ? `${label} done${routine.completed_by_label ? ` · ${routine.completed_by_label}` : ''}` : `${label} ${done} of ${total} done`;
-          return `<a class="atlas-hit home-timeline__check" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}</a>`;
+          const ticks = routine.status === 'completed' ? ticksMarkup(total, total) : ticksMarkup(done, total);
+          return `<a class="atlas-hit home-timeline__check${routine.status === 'completed' ? ' is-complete' : ''}" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}${ticks}</a>`;
         };
         const rowClass = { past: 'is-done', current: 'is-now', future: '' };
         body = `<ol class="home-timeline">${entries.map((entry) => {
@@ -771,8 +798,8 @@
         }).join('')}</ol>`;
       }
     }
-    return `<section class="home-col" aria-labelledby="home-hours-title">
-      <div class="home-col__head"><h2 id="home-hours-title">Opening and closing</h2></div>
+    return `<section class="home-tonight__part" aria-labelledby="home-hours-title">
+      <h3 class="home-tonight__label" id="home-hours-title">Opening and closing</h3>
       <div id="home-timeline">${body}</div>
     </section>`;
   }
@@ -783,12 +810,18 @@
     if (root.style.display === 'none' && shell()?.current?.() !== 'dashboard') return;
     const focused = document.activeElement && root.contains(document.activeElement) ? focusSelector(document.activeElement) : null;
     const viewer = isViewer();
+    // Needs attention is the first and biggest block. Beside it, Tonight shares
+    // its top and bottom edges; the briefing sits under the attention list and
+    // the figures close the page as one divided strip. Viewers get the
+    // attention rows only.
+    const attention = attentionMarkup();
     root.innerHTML = `<div class="home${viewer ? ' home--viewer' : ''}">
       ${headMarkup()}
-      ${attentionMarkup()}
+      ${viewer ? attention : ''}
       ${viewer ? '' : `<div class="home-grid">
-        <div class="home-grid__main">${briefingMarkup()}${glanceMarkup()}</div>
-        <div class="home-grid__side">${tonightMarkup()}${timelineMarkup()}</div>
+        <div class="home-grid__main">${attention}${briefingMarkup()}</div>
+        ${tonightPanelMarkup()}
+        ${glanceMarkup()}
       </div>`}
     </div>`;
     if (focused) root.querySelector(focused)?.focus();

@@ -47,6 +47,7 @@
     // UI
     section: 'today',
     pending: new Set(),
+    justTicked: null, // 'routineId:itemId' of the item just ticked, for one render (its tick settles in)
     itemErrors: {},
     pageMessage: null,
     deviceImport: null,
@@ -412,12 +413,14 @@
     return today?.lastOrder || null;
   }
 
-  function checklistMeta(routine, type) {
+  // dueText: false when the time is already shown beside it (Today's group
+  // heading names opening and last orders).
+  function checklistMeta(routine, type, { dueText = true } = {}) {
     const progress = progressOf(routine);
     const parts = [`${progress.completed} of ${progress.required} done`];
     if (routine.status === 'completed' && routine.completed_at) parts.push(`completed ${formatWhen(routine.completed_at)}${routine.completed_by_label ? ` by ${routine.completed_by_label}` : ''}`);
-    else if (type === 'opening' && clock()?.state?.().today?.open) parts.push(`before opening at ${clock().state().today.open}`);
-    else if (type === 'closing' && lastOrdersTime()) parts.push(`after last orders at ${lastOrdersTime()}`);
+    else if (type === 'opening' && clock()?.state?.().today?.open) { if (dueText) parts.push(`before opening at ${clock().state().today.open}`); }
+    else if (type === 'closing' && lastOrdersTime()) { if (dueText) parts.push(`after last orders at ${lastOrdersTime()}`); }
     else if (routine.due_time) parts.push(`due ${String(routine.due_time).slice(0, 5)}`);
     const who = whoTicked(routine);
     if (who && routine.status !== 'completed') parts.push(who);
@@ -460,8 +463,19 @@
 
   // ---------- markup ----------
 
-  function progressBar(percent, label) {
-    return `<span class="ops-progress atlas-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}" aria-label="${escape(label)}"><span style="width:${Math.max(0, Math.min(100, percent))}%"></span></span>`;
+  // Progress as ticks: one segment per required item, filled for the ones
+  // done (a checklist reads as its own items, not as a percentage). `marks`
+  // maps segments to items in order (detail view); past 24 items, or with
+  // nothing required, it is a plain bar. role=progressbar carries the figure.
+  function progressBar(done, total, label, { complete = false, marks = null } = {}) {
+    const all = Math.max(0, number(total));
+    const filled = Math.max(0, Math.min(all, number(done)));
+    const percent = all ? Math.round((filled / all) * 100) : (complete ? 100 : 0);
+    const finished = complete || (all > 0 && filled === all);
+    const aria = `role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-label="${escape(label)}"`;
+    if (!all || all > 24) return `<span class="ops-progress atlas-progress${finished ? ' is-complete' : ''}" ${aria}><span style="width:${percent}%"></span></span>`;
+    const segments = Array.isArray(marks) && marks.length === all ? marks : Array.from({ length: all }, (_, index) => (index < filled ? 'is-done' : ''));
+    return `<span class="ops-progress ops-ticks${finished ? ' is-complete' : ''}" ${aria}>${segments.map((mark) => `<i${mark ? ` class="${mark}"` : ''}></i>`).join('')}</span>`;
   }
 
   function todayRowMarkup(row) {
@@ -477,7 +491,7 @@
       return `<li class="atlas-row ops-row">
         <span class="atlas-row__icon ${outside ? 'atlas-row__icon--danger' : done ? 'atlas-row__icon--positive' : 'atlas-row__icon--warning'}">${icon('thermometer')}</span>
         <div class="atlas-row__body"><a class="atlas-row__link ops-row__open" href="#operations/temperature">Temperature log</a><p class="atlas-row__meta">${escape(`${logged} of ${plural(required, 'point', 'points')} logged today`)}${outside ? escape(` · ${outside} out of range`) : ''}</p></div>
-        ${progressBar(required ? (logged / required) * 100 : 0, 'Temperature readings logged')}
+        ${progressBar(logged, required, 'Temperature readings logged')}
         <div class="ops-row__status">${pill}</div>
         <div class="atlas-row__end">${action}<span class="atlas-row__chevron">${icon('chevron-right')}</span></div>
       </li>`;
@@ -487,13 +501,13 @@
     const route = `#operations/${encodeURIComponent(routine.id)}`;
     const editable = checklistEditable(routine);
     const label = routine.status === 'completed' || routine.status === 'skipped' || !editable ? 'View' : progress.completed > 0 ? 'Continue' : 'Open';
-    const meta = row.kind === 'checklist' ? checklistMeta(routine, row.type)
+    const meta = row.kind === 'checklist' ? checklistMeta(routine, row.type, { dueText: false })
       : [routine.description, routine.due_time ? `Due ${String(routine.due_time).slice(0, 5)}` : null, `${progress.completed} of ${progress.required} done`].filter(Boolean).join(' · ');
     const tone = routine.status === 'completed' ? 'positive' : routine.status === 'overdue' ? 'danger' : progress.completed ? 'warning' : '';
     return `<li class="atlas-row ops-row">
       <span class="atlas-row__icon${tone ? ` atlas-row__icon--${tone}` : ''}">${icon(row.kind === 'checklist' ? 'list-checks' : 'calendar-check')}</span>
       <div class="atlas-row__body"><a class="atlas-row__link ops-row__open" href="${route}">${escape(row.name)}</a><p class="atlas-row__meta">${escape(meta)}</p></div>
-      ${progressBar(progress.percent, `${row.name} progress`)}
+      ${progressBar(progress.completed, progress.required, `${row.name} progress`, { complete: routine.status === 'completed' })}
       <div class="ops-row__status">${statusPill(routine)}</div>
       <div class="atlas-row__end"><a class="atlas-btn atlas-btn--${label === 'View' ? 'ghost' : 'secondary'} atlas-btn--sm" href="${route}">${label}</a><span class="atlas-row__chevron">${icon('chevron-right')}</span></div>
     </li>`;
@@ -523,8 +537,27 @@
     return `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escape(text)}</p></div>${notConfigured ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ops-retry>Try again</button></div>'}</div>`;
   }
 
+  // Loading: the final rows at their real pitch, each value a flat grey bar.
   function skeletonRows(count = 4) {
-    return `<ul class="atlas-list atlas-card ops-list" aria-busy="true">${'<li class="atlas-row"><span class="atlas-skel atlas-skel--circle"></span><div class="atlas-row__body"><span class="atlas-skel atlas-skel--text ops-skel-title"></span><span class="atlas-skel atlas-skel--text ops-skel-meta"></span></div></li>'.repeat(count)}</ul><span class="sr-only">Loading checklists</span>`;
+    return `<ul class="atlas-list atlas-card ops-list ops-list--loading" aria-busy="true">${'<li class="atlas-row ops-row"><span class="atlas-skel ops-skel-icon"></span><div class="atlas-row__body"><span class="atlas-skel atlas-skel--text ops-skel-title"></span><span class="atlas-skel atlas-skel--text ops-skel-meta"></span></div><span class="atlas-skel ops-skel-ticks"></span></li>'.repeat(count)}</ul><span class="sr-only">Loading checklists</span>`;
+  }
+
+  // Today follows the night: what must be done before opening, what runs
+  // through the day, and what closes the night after last orders.
+  function todayGroups(rows) {
+    const opens = clock()?.state?.().today?.open || null;
+    const groups = [
+      { key: 'before', title: 'Before opening', time: opens, rows: [] },
+      { key: 'during', title: 'During the day', time: null, rows: [] },
+      { key: 'after', title: 'After last orders', time: lastOrdersTime(), rows: [] }
+    ];
+    rows.forEach((row) => {
+      const group = row.kind === 'checklist' ? (row.type === 'opening' ? groups[0] : groups[2]) : groups[1];
+      group.rows.push(row);
+    });
+    const due = (row) => (row.kind === 'routine' && row.routine.due_time ? String(row.routine.due_time) : row.kind === 'temperature' ? '' : '99');
+    groups[1].rows.sort((a, b) => due(a).localeCompare(due(b)));
+    return groups.filter((group) => group.rows.length);
   }
 
   function todayMarkup() {
@@ -535,9 +568,13 @@
       ? `<div class="atlas-alert atlas-alert--warning" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__title">Opening and closing checklists aren’t set up on the server yet</p><p class="atlas-alert__body">They appear here once they are. Alcedo never keeps a checklist on one device.</p></div></div>`
       : '';
     if (!rows.length) {
-      return `${notSetUp}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3>No checklists today</h3><p>${canManage() ? 'Routines you schedule appear here on their day.' : 'Checklists your manager schedules appear here on their day.'}</p>${canManage() ? '<a class="atlas-btn atlas-btn--secondary" href="#operations/schedule">Set up routines in Schedule</a>' : ''}</div>`;
+      return `${notSetUp}<div class="atlas-empty ops-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3>No checklists today</h3><p>${canManage() ? 'Routines you schedule appear here on their day.' : 'Checklists your manager schedules appear here on their day.'}</p>${canManage() ? '<a class="atlas-btn atlas-btn--secondary" href="#operations/schedule">Set up routines in Schedule</a>' : ''}</div>`;
     }
-    return `${notSetUp}<ul class="atlas-list atlas-card ops-list">${rows.map(todayRowMarkup).join('')}</ul>
+    const groups = todayGroups(rows).map((group) => `<section class="ops-group" aria-labelledby="ops-group-${group.key}">
+        <h2 class="ops-group__title" id="ops-group-${group.key}">${escape(group.title)}${group.time ? `<span class="ops-group__time">${escape(group.time)}</span>` : ''}</h2>
+        <ul class="atlas-list atlas-card ops-list">${group.rows.map(todayRowMarkup).join('')}</ul>
+      </section>`).join('');
+    return `${notSetUp}${groups}
       <p class="ops-foot">Shared with the team. Every tick records who and when${state.checklists?.business_date ? ` for ${escape(businessDateLabel(state.checklists.business_date))}` : ''}.</p>`;
   }
 
@@ -548,22 +585,83 @@
     const who = item.completed && item.completed_by_label
       ? `${item.completed_by_label}${item.completed_at ? ` · ${formatWhen(item.completed_at)}` : ''}`
       : '';
-    return `<li class="ops-check${item.completed ? ' is-done' : ''}${pending ? ' is-pending' : ''}">
+    // The whole row is the checkbox (a wet thumb finds it); the tick is drawn
+    // in CSS so the one just ticked can settle in (.is-just-done). The note is
+    // a separate icon button at the row's end.
+    const justDone = item.completed && state.justTicked === key;
+    const noteLabel = item.note ? 'Edit note' : 'Add note';
+    return `<li class="ops-check${item.completed ? ' is-done' : ''}${pending ? ' is-pending' : ''}${justDone ? ' is-just-done' : ''}">
       <button type="button" class="ops-check__toggle" role="checkbox" aria-checked="${item.completed ? 'true' : 'false'}" data-ops-tick="${escape(item.id)}"${editable && !pending ? '' : ' disabled aria-disabled="true"'}>
-        <span class="ops-check__box" aria-hidden="true">${item.completed ? icon('check') : ''}</span>
-        <span class="ops-check__label">${escape(item.label)}${item.required === false ? ' <span class="ops-check__optional">Optional</span>' : ''}</span>
-        ${who ? `<span class="ops-check__who">${escape(who)}</span>` : ''}
+        <span class="ops-check__box" aria-hidden="true"></span>
+        <span class="ops-check__text">
+          <span class="ops-check__label">${escape(item.label)}${item.required === false ? ' <span class="ops-check__optional">Optional</span>' : ''}</span>
+          ${who ? `<span class="ops-check__who">${escape(who)}</span>` : ''}
+        </span>
       </button>
-      ${item.note ? `<p class="ops-check__note">${icon('message-square-text')}${escape(item.note)}</p>` : ''}
-      ${error ? `<p class="ops-check__error" role="alert">${escape(error)}</p>` : ''}
-      ${editable ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm ops-check__note-btn" data-ops-note="${escape(item.id)}">${item.note ? 'Edit note' : 'Add note'}</button>` : ''}
+      ${editable ? `<button type="button" class="atlas-icon-btn ops-check__note-btn${item.note ? ' has-note' : ''}" data-ops-note="${escape(item.id)}" aria-label="${escape(`${noteLabel}: ${item.label}`)}" title="${noteLabel}">${icon(item.note ? 'message-square-text' : 'note-pencil')}</button>` : ''}
+      ${item.note ? `<p class="ops-check__note">${icon('message-square-text')}<span>${escape(item.note)}</span></p>` : ''}
+      ${error ? `<p class="ops-check__error" role="alert">${icon('circle-alert')}<span>${escape(error)}</span></p>` : ''}
     </li>`;
+  }
+
+  // The sign-off column: what is left (the screen's answer) and the one
+  // primary. On a phone the buttons stick above the tab bar.
+  function signoffMarkup(routine, progress, editable) {
+    const left = Math.max(0, progress.required - progress.completed);
+    const type = routine.routine_type;
+    const due = type === 'opening' && clock()?.state?.().today?.open ? `Due before opening at ${clock().state().today.open}.`
+      : type === 'closing' && lastOrdersTime() ? `After last orders at ${lastOrdersTime()}.`
+        : routine.due_time ? `Due by ${String(routine.due_time).slice(0, 5)}.` : '';
+    let figure; let text; let tone = '';
+    if (!canWrite()) {
+      figure = left ? `${left}<small>left</small>` : `${progress.completed}<small>of ${progress.required}</small>`;
+      text = '<p class="ops-detail__readonly">View only — your role can’t tick checklists.</p>';
+    } else if (routine.status === 'completed') {
+      tone = 'positive';
+      figure = 'Done';
+      text = `<p class="ops-detail__readonly">Completed${routine.completed_by_label ? ` by ${escape(routine.completed_by_label)}` : ''}${routine.completed_at ? ` · ${escape(formatWhen(routine.completed_at))}` : ''}</p>`;
+    } else if (routine.status === 'skipped') {
+      figure = 'Skipped';
+      text = '<p class="ops-detail__readonly">Skipped. The reason is kept in the history.</p>';
+    } else if (state.checklists?.editable === false && ['opening', 'closing'].includes(type)) {
+      figure = left ? `${left}<small>left</small>` : 'Done';
+      text = '<p class="ops-detail__readonly">This checklist day is closed.</p>';
+    } else if (left) {
+      figure = `${left}<small>left</small>`;
+      text = `<p class="ops-signoff__text">${escape(`${plural(left, 'required item', 'required items')} to tick.`)}${due ? ` ${escape(due)}` : ''}</p>`;
+    } else {
+      tone = 'positive';
+      figure = 'All ticked';
+      text = '<p class="ops-signoff__text">Complete it so the team sees it’s done, with your name and the time.</p>';
+    }
+    const foot = editable
+      ? `<div class="ops-detail__foot"><span class="ops-detail__left">${left ? escape(`${left} left`) : 'All ticked'}</span>${canManage() ? '<button type="button" class="atlas-btn atlas-btn--ghost" data-ops-skip>Skip with reason</button>' : ''}<button type="button" class="atlas-btn atlas-btn--primary" data-ops-complete>Complete checklist</button></div>`
+      : '';
+    return `<aside class="ops-detail__aside${foot ? ' has-foot' : ''}" aria-label="Sign-off">
+      <div class="ops-signoff${tone ? ` ops-signoff--${tone}` : ''}">
+        <p class="ops-signoff__label">Sign-off</p>
+        <p class="ops-signoff__figure">${figure}</p>
+        ${text}
+      </div>
+      ${foot}
+    </aside>`;
+  }
+
+  // The checklist's own header: it is the page (h1, the focus target after
+  // navigation); on a phone the top bar names it and has the back button.
+  function detailHead(title, meta = '', extra = '', date = '') {
+    return `<a class="atlas-btn atlas-btn--ghost atlas-btn--sm ops-back" href="#operations">${icon('chevron-left')}Today</a>
+      <header class="ops-detail__head">
+        <h1 class="ops-detail__title" id="ops-detail-title" tabindex="-1">${escape(title)}</h1>
+        ${meta || date ? `<p class="ops-detail__meta">${date ? `<span class="ops-detail__date">${escape(date)}${meta ? ' · ' : ''}</span>` : ''}${escape(meta)}</p>` : ''}
+        ${extra}
+      </header>`;
   }
 
   function detailMarkup(routine) {
     if (!routine) {
-      if (state.status === 'loading' || state.status === 'idle') return skeletonRows(6);
-      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3>This checklist isn’t on today’s list</h3><p>It may belong to another day, or it was replaced.</p><a class="atlas-btn atlas-btn--secondary" href="#operations">Back to today</a></div>`;
+      if (state.status === 'loading' || state.status === 'idle') return `<div class="ops-detail ops-detail--plain">${detailHead('Checklist', '', '', businessDateLabel(state.checklists?.business_date))}<div class="ops-detail__list">${skeletonRows(6)}</div></div>`;
+      return `<div class="ops-detail ops-detail--plain">${detailHead('Checklist')}<div class="atlas-empty ops-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3>This checklist isn’t on today’s list</h3><p>It may belong to another day, or it was replaced.</p><a class="atlas-btn atlas-btn--secondary" href="#operations">Back to today</a></div></div>`;
     }
     const editable = checklistEditable(routine);
     const progress = progressOf(routine);
@@ -573,23 +671,20 @@
       if (!groups.has(section)) groups.set(section, []);
       groups.get(section).push(item);
     });
-    const who = whoTicked(routine);
-    const readOnly = !canWrite() ? '<p class="ops-detail__readonly">View only — your role can’t tick checklists.</p>'
-      : ['completed', 'skipped'].includes(routine.status) ? `<p class="ops-detail__readonly">${routine.status === 'completed' ? `Completed${routine.completed_by_label ? ` by ${escape(routine.completed_by_label)}` : ''}${routine.completed_at ? ` · ${escape(formatWhen(routine.completed_at))}` : ''}` : 'Skipped'}</p>`
-        : state.checklists?.editable === false && ['opening', 'closing'].includes(routine.routine_type) ? '<p class="ops-detail__readonly">This checklist day is closed.</p>' : '';
-    const foot = editable
-      ? `<div class="ops-detail__foot">${canManage() ? '<button type="button" class="atlas-btn atlas-btn--ghost" data-ops-skip>Skip with reason</button>' : ''}<button type="button" class="atlas-btn atlas-btn--primary" data-ops-complete>Complete checklist</button></div>`
-      : '';
+    // One tick segment per required item, in list order, so the bar mirrors the list.
+    const required = (routine.items || []).filter((item) => item.required !== false);
+    const marks = required.length === progress.required
+      ? required.map((item) => (item.completed ? `is-done${state.justTicked === `${routine.id}:${item.id}` ? ' is-just-done' : ''}` : ''))
+      : null;
+    const date = businessDateLabel(state.checklists?.business_date);
+    const meta = checklistMeta(routine, routine.routine_type);
+    const bar = progressBar(progress.completed, progress.required, `${routine.name} progress`, { complete: routine.status === 'completed', marks });
     return `<div class="ops-detail">
-      <a class="atlas-btn atlas-btn--ghost atlas-btn--sm ops-back" href="#operations">${icon('chevron-left')}Today</a>
-      <header class="ops-detail__head">
-        <h2 class="ops-detail__title" id="ops-detail-title" tabindex="-1">${escape(routine.name)}</h2>
-        <p class="ops-detail__meta">${escape(`${progress.completed} of ${progress.required} done`)}${who ? ` · ${escape(who)}` : ''}</p>
-        ${progressBar(progress.percent, `${routine.name} progress`)}
-        ${readOnly}
-      </header>
-      ${[...groups.entries()].map(([section, list]) => `${section ? `<h3 class="ops-detail__section">${escape(section)}</h3>` : ''}<ul class="ops-checks" aria-label="${escape(section || routine.name)}">${list.map((item) => itemMarkup(routine, item, editable)).join('')}</ul>`).join('')}
-      ${foot}
+      ${detailHead(routine.name, meta, bar, date)}
+      ${signoffMarkup(routine, progress, editable)}
+      <div class="ops-detail__list">
+        ${[...groups.entries()].map(([section, list]) => `${section ? `<h2 class="ops-detail__section">${escape(section)}</h2>` : ''}<ul class="ops-checks" aria-label="${escape(section || routine.name)}">${list.map((item) => itemMarkup(routine, item, editable)).join('')}</ul>`).join('')}
+      </div>
     </div>`;
   }
 
@@ -607,30 +702,47 @@
       return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('thermometer')}</div><h3>No temperature points yet</h3><p>Fridges and freezers you log appear here once a manager adds them.</p></div>`;
     }
     const unconfigured = number(tempSummary.range_unconfigured_points);
+    // One card per fridge or freezer: the reading is the figure, drawn
+    // against its target band; the action sits on the card that needs it.
     return `${unconfigured ? `<div class="atlas-alert atlas-alert--warning" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">${escape(`${plural(unconfigured, 'point has', 'points have')} no target range yet. Readings are saved, but Alcedo can’t say whether they are in range until a manager sets one.`)}</p></div></div>` : ''}
-    <div class="atlas-table-wrap atlas-table-wrap--responsive ops-temp"><table class="atlas-table">
-      <thead><tr><th scope="col">Point</th><th scope="col">Target range</th><th scope="col" class="is-num">Today</th><th scope="col">Logged</th><th scope="col">Status</th><th scope="col" class="col-actions"><span class="sr-only">Actions</span></th></tr></thead>
-      <tbody>${points.map((point) => {
-        const log = point.latest_log;
-        const status = tempStatusPill(log);
-        return `<tr>
-          <td><span class="cell-primary">${escape(point.name)}</span>${point.location ? `<span class="cell-sub">${escape(point.location)}</span>` : ''}</td>
-          <td>${escape(rangeText(point))}</td>
-          <td class="is-num">${log ? escape(temperatureText(log.temperature_c)) : '<span class="ops-muted">—</span>'}</td>
-          <td>${log ? escape(`${log.logged_by_label ? `${log.logged_by_label} · ` : ''}${formatWhen(log.reading_at)}`) : '<span class="ops-muted">Not logged today</span>'}</td>
-          <td>${status}</td>
-          <td class="col-actions"><div class="ops-temp__actions">${canWrite() ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ops-log="${escape(point.id)}">${log ? 'Log again' : 'Log reading'}</button>` : ''}${canManage() ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-ops-range="${escape(point.id)}">Edit range</button>` : ''}</div></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>
-    <ul class="atlas-table-list ops-temp-list">${points.map((point) => {
-      // Phone (<768): one row per point, nothing cut at the edge.
+    <ul class="ops-points-grid ops-temp" aria-label="Temperature points">${points.map((point) => {
       const log = point.latest_log;
+      const value = log ? Number(log.temperature_c) : NaN;
+      const out = log?.range_status === 'outside_range';
+      const reading = log && Number.isFinite(value)
+        ? `<p class="ops-point__value${out ? ' is-out' : ''}">${escape(value.toFixed(1))}<small>°C</small></p>`
+        : '<p class="ops-point__value is-empty">Not logged today</p>';
+      const logged = log ? [log.logged_by_label, formatWhen(log.reading_at)].filter(Boolean).join(' · ') : '';
       const actions = `${canWrite() ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ops-log="${escape(point.id)}">${log ? 'Log again' : 'Log reading'}</button>` : ''}${canManage() ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-ops-range="${escape(point.id)}">Edit range</button>` : ''}`;
-      const reading = log ? `${temperatureText(log.temperature_c)} · ${log.logged_by_label ? `${log.logged_by_label} · ` : ''}${formatWhen(log.reading_at)}` : 'Not logged today';
-      return `<li class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${escape(point.name)}</div><div class="atlas-table-list__meta">${escape([point.location, rangeText(point)].filter(Boolean).join(' · '))}</div><div class="atlas-table-list__meta">${escape(reading)}</div>${actions ? `<div class="ops-temp-list__actions">${actions}</div>` : ''}</div><div class="atlas-table-list__value">${tempStatusPill(log)}</div></li>`;
+      return `<li class="ops-point${out ? ' is-out' : ''}">
+        <div class="ops-point__head"><div class="ops-point__who"><h2 class="ops-point__name">${escape(point.name)}</h2>${point.location ? `<p class="ops-point__where">${escape(point.location)}</p>` : ''}</div>${tempStatusPill(log)}</div>
+        ${reading}
+        ${gaugeMarkup(point, value)}
+        <p class="ops-point__meta"><span>${escape(point.range_configured ? `Target ${rangeText(point)}` : rangeText(point))}</span>${logged ? `<span>${escape(logged)}</span>` : ''}</p>
+        ${actions ? `<div class="ops-point__actions">${actions}</div>` : ''}
+      </li>`;
     }).join('')}</ul>
     <p class="ops-foot">Readings are kept with who logged them and when. Today’s last reading is shown.</p>`;
+  }
+
+  // A reading against its target band on one axis: the band a pale tint, the
+  // reading an ink mark (red outside the band). Only with a configured range;
+  // SVG attributes, so no inline style.
+  function gaugeMarkup(point, value) {
+    if (!point?.range_configured) return '';
+    const min = point.min_temp_c != null && point.min_temp_c !== '' ? Number(point.min_temp_c) : null;
+    const max = point.max_temp_c != null && point.max_temp_c !== '' ? Number(point.max_temp_c) : null;
+    if (!Number.isFinite(min) && !Number.isFinite(max)) return '';
+    const low = Number.isFinite(min) ? min : max - 8;
+    const high = Number.isFinite(max) ? max : min + 8;
+    const has = Number.isFinite(value);
+    const from = Math.min(low - 4, has ? value - 1 : Infinity);
+    const to = Math.max(high + 4, has ? value + 1 : -Infinity);
+    const x = (reading) => ((reading - from) / (to - from)) * 100;
+    const start = Number.isFinite(min) ? x(min) : 0;
+    const end = Number.isFinite(max) ? x(max) : 100;
+    const mark = has ? `<rect class="ops-gauge__mark${outOfRange(point, value) ? ' is-out' : ''}" x="${(x(value) - 0.6).toFixed(2)}" y="1" width="1.2" height="12"></rect>` : '';
+    return `<svg class="ops-gauge" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="ops-gauge__track" x="0" y="6" width="100" height="2"></rect><rect class="ops-gauge__band" x="${start.toFixed(2)}" y="4" width="${Math.max(0.5, end - start).toFixed(2)}" height="6"></rect>${mark}</svg>`;
   }
 
   function scheduleMarkup() {
@@ -647,20 +759,32 @@
     }
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const roles = { any_active_staff: 'Anyone on shift', bartender: 'Bartenders', manager: 'Managers', admin: 'Administrators', viewer: 'Viewers' };
-    return `<div class="atlas-table-wrap"><table class="atlas-table">
-      <thead><tr><th scope="col">Routine</th><th scope="col">Days</th><th scope="col">Due</th><th scope="col">Who</th><th scope="col">Status</th><th scope="col" class="col-actions"><span class="sr-only">Actions</span></th></tr></thead>
-      <tbody>${templates.map((template) => {
-        const list = (template.days_of_week || []).map((day) => days[Number(day)]).filter(Boolean);
-        return `<tr>
+    const daysText = (template) => {
+      const list = (template.days_of_week || []).map((day) => days[Number(day)]).filter(Boolean);
+      return list.length === 7 ? 'Every day' : list.join(', ') || 'No days';
+    };
+    // The week at a glance, Monday first: a letter per day, the routine's days in ink.
+    const week = (template) => {
+      const on = new Set((template.days_of_week || []).map(Number));
+      return `<span class="ops-week" role="img" aria-label="${escape(daysText(template))}">${[1, 2, 3, 4, 5, 6, 0].map((day) => `<span${on.has(day) ? ' class="is-on"' : ''}>${days[day].charAt(0)}</span>`).join('')}</span>`;
+    };
+    const status = (template) => (template.active ? '<span class="atlas-pill atlas-pill--positive">Active</span>' : '<span class="atlas-pill atlas-pill--neutral">Paused</span>');
+    const due = (template) => (template.due_time ? String(template.due_time).slice(0, 5) : '');
+    return `<div class="atlas-table-wrap atlas-table-wrap--responsive ops-schedule"><table class="atlas-table">
+      <thead><tr><th scope="col">Routine</th><th scope="col">Days</th><th scope="col" class="is-num">Due</th><th scope="col">Who</th><th scope="col">Status</th><th scope="col" class="col-actions"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>${templates.map((template) => `<tr>
           <td><span class="cell-primary">${escape(template.name)}</span><span class="cell-sub">${escape(plural(number(template.item_count), 'item', 'items'))}</span></td>
-          <td>${escape(list.length === 7 ? 'Every day' : list.join(', ') || 'No days')}</td>
-          <td>${template.due_time ? escape(String(template.due_time).slice(0, 5)) : '<span class="ops-muted">No due time</span>'}</td>
+          <td>${week(template)}</td>
+          <td class="is-num">${due(template) ? escape(due(template)) : '<span class="ops-muted">—</span>'}</td>
           <td>${escape(roles[template.assigned_role] || 'Anyone on shift')}</td>
-          <td>${template.active ? '<span class="atlas-pill atlas-pill--positive">Active</span>' : '<span class="atlas-pill atlas-pill--neutral">Paused</span>'}</td>
+          <td>${status(template)}</td>
           <td class="col-actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-ops-template="${escape(template.id)}">Edit</button></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>`;
+        </tr>`).join('')}</tbody>
+    </table></div>
+    <ul class="atlas-table-list ops-schedule-list">${templates.map((template) => `<li class="atlas-table-list__row">
+        <div class="atlas-table-list__body"><div class="atlas-table-list__title">${escape(template.name)}</div><div class="atlas-table-list__meta">${escape([daysText(template), due(template) ? `due ${due(template)}` : null, roles[template.assigned_role] || 'Anyone on shift'].filter(Boolean).join(' · '))}</div><div class="ops-schedule-list__status">${status(template)}</div></div>
+        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ops-template="${escape(template.id)}">Edit</button>
+      </li>`).join('')}</ul>`;
   }
 
   function subtitle() {
@@ -688,17 +812,19 @@
     if (!root || root.style.display === 'none') return;
     const section = state.section;
     const detail = !['today', 'temperature', 'schedule'].includes(section);
-    const head = shell()?.pageHead?.({
+    // A checklist is its own page: its header (detailHead) carries the h1, so
+    // the Operations header and tabs stay on the section pages.
+    const head = detail ? '' : shell()?.pageHead?.({
       title: 'Operations',
       sub: subtitle(),
-      actions: canWrite() && readingDue() && !detail ? [{ label: 'Log temperature', icon: 'thermometer', variant: 'primary', attrs: { 'data-ops-log': '' } }] : []
+      actions: canWrite() && readingDue() ? [{ label: 'Log temperature', icon: 'thermometer', variant: 'primary', attrs: { 'data-ops-log': '' } }] : []
     }) || '<header class="page-head"><h1 class="page-head__title">Operations</h1></header>';
     const body = detail ? detailMarkup(routineById(section))
       : section === 'temperature' ? temperatureMarkup()
         : section === 'schedule' ? scheduleMarkup()
           : todayMarkup();
     const focus = document.activeElement && root.contains(document.activeElement) ? focusKey(document.activeElement) : null;
-    root.innerHTML = `<div class="ops">${head}${detail ? '' : tabsMarkup(section)}<div class="ops-body">${deviceImportMarkup()}${messageMarkup()}${body}</div></div>`;
+    root.innerHTML = `<div class="ops${detail ? ' ops--detail' : ''}">${head}${detail ? '' : tabsMarkup(section)}<div class="ops-body">${deviceImportMarkup()}${messageMarkup()}${body}</div></div>`;
     if (focus) root.querySelector(focus)?.focus();
     window.lucide?.createIcons?.();
   }
@@ -742,6 +868,7 @@
     if (state.pending.has(key)) return false;
     state.pending.add(key);
     delete state.itemErrors[key];
+    state.justTicked = completed ? key : null;
     render();
     try {
       await write('set-item', {
@@ -758,6 +885,7 @@
     } finally {
       state.pending.delete(key);
       render();
+      if (state.justTicked === key) state.justTicked = null;
     }
   }
 
@@ -837,7 +965,7 @@
       wide: true,
       body: `<input type="hidden" name="point" value="${escape(initial.id)}">
         <div class="atlas-field"><span class="atlas-label" id="ops-point-label">Point</span><div class="atlas-segmented ops-points" role="radiogroup" aria-labelledby="ops-point-label">${choices}</div><p class="atlas-field__help" data-ops-range-help>${escape(`Target ${rangeText(initial)}`)}</p></div>
-        ${field('Temperature (°C)', '<input class="atlas-input" name="value" type="number" inputmode="decimal" step="0.1" min="-60" max="120" required>')}
+        ${field('Temperature (°C)', '<input class="atlas-input ops-reading" name="value" type="number" inputmode="decimal" step="0.1" min="-60" max="120" required>')}
         <div class="atlas-alert atlas-alert--warning" data-ops-out hidden>${icon('triangle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">This is outside the target range. Say what you did about it.</p></div></div>
         <div data-ops-corrective hidden>${field('What you did', '<textarea class="atlas-input atlas-textarea" name="corrective" rows="2" maxlength="3000"></textarea>')}</div>
         ${field('Note (optional)', '<textarea class="atlas-input atlas-textarea" name="note" rows="2" maxlength="2000"></textarea>')}`,
@@ -917,7 +1045,7 @@
       wide: true,
       body: `${field('Name', `<input class="atlas-input" name="name" required maxlength="140" value="${escape(template.name)}">`)}
         ${field('Description', `<textarea class="atlas-input atlas-textarea" name="description" rows="2" maxlength="3000">${escape(template.description || '')}</textarea>`)}
-        <fieldset class="ops-days"><legend class="atlas-label">Days</legend><div class="atlas-chips">${days.map((label, index) => `<label class="atlas-check-row"><input type="checkbox" class="atlas-check" name="day" value="${index}"${selected.has(index) ? ' checked' : ''}> ${label}</label>`).join('')}</div></fieldset>
+        <fieldset class="ops-days"><legend class="atlas-label">Days</legend><div class="ops-days__grid">${[1, 2, 3, 4, 5, 6, 0].map((index) => `<label class="atlas-check-row ops-day"><input type="checkbox" class="atlas-check" name="day" value="${index}"${selected.has(index) ? ' checked' : ''}> ${days[index]}</label>`).join('')}</div></fieldset>
         <div class="atlas-grid-2">${field('Available from', `<input class="atlas-input" name="from" ${TIME_FIELD} value="${escape(time(template.available_from))}">`, 'Optional')}${field('Due by', `<input class="atlas-input" name="due" ${TIME_FIELD} value="${escape(time(template.due_time))}">`, 'Optional')}</div>
         ${field('Who does it', `<select class="atlas-select" name="role">${[['any_active_staff', 'Anyone on shift'], ['bartender', 'Bartenders'], ['manager', 'Managers'], ['admin', 'Administrators']].map(([value, label]) => `<option value="${value}"${template.assigned_role === value ? ' selected' : ''}>${label}</option>`).join('')}</select>`)}
         <label class="atlas-check-row"><input type="checkbox" class="atlas-check" name="signoff"${template.requires_manager_signoff ? ' checked' : ''}> Needs a manager to sign it off</label>
