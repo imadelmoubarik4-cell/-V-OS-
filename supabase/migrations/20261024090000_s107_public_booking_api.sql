@@ -1,0 +1,350 @@
+-- S107 — Secure public booking API (KANEL × ALCEDO online bookings, Phase 3).
+--
+-- A narrowly scoped PUBLIC (guest) path over the existing Alcedo bookings system,
+-- separate from the staff gateway. Everything stays in atlas_private / public
+-- SECURITY DEFINER RPCs granted to service_role only; the guest never reaches a
+-- table or a staff RPC. All approved rules are enforced HERE, server-side:
+-- online party 1..max_party_online, Bar-only (online_bookable areas), the day's
+-- opening hours + a close-derived last start (overnight aware, Atlantic/Reykjavik),
+-- the 90-day horizon, the 15-minute buffer and section-bounded contiguity from
+-- S106. A guest request is always created 'requested' (never confirmed) with an
+-- expiring hold — it never permanently blocks seats. Status is looked up by an
+-- unguessable token, never the human reference, and returns only that booking's
+-- own minimal fields. Rate limiting + idempotency are enforced in the request RPC.
+--
+-- TWO independent server-side gates, both OFF by default:
+--   * booking_settings.public_online_enabled (this migration), checked by the RPCs;
+--   * the edge function's PUBLIC_BOOKING_ENABLED env flag (atlas-public-booking).
+-- The frontend flag (config.js PUBLIC_BOOKING_ENABLED) only shows/hides the form
+-- and never gates the endpoint. No production apply without owner approval.
+
+-- 1. Server flag + online-bookable areas + guest status token -----------------
+alter table atlas_private.booking_settings
+  add column if not exists public_online_enabled boolean not null default false;
+comment on column atlas_private.booking_settings.public_online_enabled is
+  'Server-side master switch for public (guest) online booking. OFF by default; '
+  'independent of the edge PUBLIC_BOOKING_ENABLED flag and the frontend flag.';
+
+alter table atlas_private.booking_settings
+  add column if not exists public_hold_minutes integer not null default 15
+    check (public_hold_minutes between 1 and 120);
+
+alter table atlas_private.booking_areas
+  add column if not exists online_bookable boolean not null default false;
+comment on column atlas_private.booking_areas.online_bookable is
+  'Whether guests may reserve this area online. Only the Bar is online-bookable; '
+  'Wine cellar, Ocean view and Long table stay staff-only.';
+
+-- Only Bar 1-16 is reservable online (handoff). Others remain staff-only.
+update atlas_private.booking_areas set online_bookable = true
+  where id = 'ba000000-0000-4000-8000-000000000001';
+update atlas_private.booking_areas set online_bookable = false
+  where id <> 'ba000000-0000-4000-8000-000000000001';
+
+-- Unguessable token for guest status lookup (never the human booking_reference).
+alter table atlas_private.reservations
+  add column if not exists public_token text unique;
+
+-- 2. Fixed-window rate limiting (sealed, service_role only) -------------------
+create table if not exists atlas_private.booking_public_rate (
+  fingerprint text not null,
+  window_start timestamptz not null,
+  request_count integer not null default 0,
+  primary key (fingerprint, window_start)
+);
+alter table atlas_private.booking_public_rate enable row level security;
+do $$ begin
+  if not exists (select 1 from pg_policies where schemaname='atlas_private'
+      and tablename='booking_public_rate' and policyname='service role manages booking rate') then
+    create policy "service role manages booking rate" on atlas_private.booking_public_rate
+      for all to service_role using (true) with check (true);
+  end if;
+end $$;
+revoke all on atlas_private.booking_public_rate from public, anon, authenticated;
+grant all on atlas_private.booking_public_rate to service_role;
+
+create or replace function atlas_private.booking_public_rate_ok(
+  p_fingerprint text, p_limit integer, p_window_seconds integer
+)
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  bucket timestamptz;
+  used integer;
+begin
+  if p_fingerprint is null or p_fingerprint = '' then return false; end if;
+  bucket := pg_catalog.to_timestamp(pg_catalog.floor(extract(epoch from pg_catalog.clock_timestamp()) / p_window_seconds) * p_window_seconds);
+  insert into atlas_private.booking_public_rate (fingerprint, window_start, request_count)
+  values (p_fingerprint, bucket, 1)
+  on conflict (fingerprint, window_start)
+    do update set request_count = atlas_private.booking_public_rate.request_count + 1
+  returning request_count into used;
+  -- Opportunistic cleanup of old windows keeps the table tiny.
+  delete from atlas_private.booking_public_rate
+   where window_start < pg_catalog.now() - pg_catalog.make_interval(secs => p_window_seconds * 4);
+  return used <= p_limit;
+end
+$function$;
+revoke all on function atlas_private.booking_public_rate_ok(text,integer,integer) from public, anon, authenticated;
+
+-- 3. Local-time helpers (Atlantic/Reykjavik; no DST, but computed explicitly) --
+create or replace function atlas_private.booking_local_dow(p_ts timestamptz, p_tz text)
+returns smallint language sql stable security definer set search_path = '' as $$
+  select extract(dow from (p_ts at time zone p_tz))::smallint;
+$$;
+revoke all on function atlas_private.booking_local_dow(timestamptz,text) from public, anon, authenticated;
+
+create or replace function atlas_private.booking_local_minutes(p_ts timestamptz, p_tz text)
+returns integer language sql stable security definer set search_path = '' as $$
+  select (extract(hour from (p_ts at time zone p_tz)) * 60
+        + extract(minute from (p_ts at time zone p_tz)))::integer;
+$$;
+revoke all on function atlas_private.booking_local_minutes(timestamptz,text) from public, anon, authenticated;
+
+-- Does a 120-minute reservation starting at p_start fall within the venue's open
+-- window for its local day (open time .. close-derived last start), honouring
+-- overnight closes? Pure check used by availability and request.
+create or replace function atlas_private.booking_within_hours(
+  p_start timestamptz, p_duration_minutes integer, p_tz text
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  dow smallint := atlas_private.booking_local_dow(p_start, p_tz);
+  start_min integer := atlas_private.booking_local_minutes(p_start, p_tz);
+  h atlas_private.settings_business_hours;
+  open_min integer;
+  last_start integer;
+begin
+  select * into h from atlas_private.settings_business_hours where weekday = dow;
+  if not found or not h.is_open or h.open_time is null or h.close_time is null then return false; end if;
+  open_min := (extract(hour from h.open_time) * 60 + extract(minute from h.open_time))::int;
+  last_start := atlas_private.booking_day_last_start_minutes(dow, p_duration_minutes);
+  if last_start is null then return false; end if;
+  return start_min >= open_min and start_min <= last_start;
+end
+$function$;
+revoke all on function atlas_private.booking_within_hours(timestamptz,integer,text) from public, anon, authenticated;
+
+-- 4. Unguessable token + human reference --------------------------------------
+create or replace function atlas_private.booking_public_token()
+returns text language sql volatile security definer set search_path = '' as $$
+  select pg_catalog.encode(extensions.gen_random_bytes(16), 'hex');
+$$;
+revoke all on function atlas_private.booking_public_token() from public, anon, authenticated;
+
+-- 5. Public availability -------------------------------------------------------
+-- Returns bookable 15-minute start times for a date + party size, or an empty
+-- list. No seat identities, no other guests, no internal ids.
+create or replace function public.atlas_public_booking_availability(
+  p_date date, p_party_size integer, p_tz text default 'Atlantic/Reykjavik'
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  s atlas_private.booking_settings;
+  v_area uuid;
+  dur integer := 120;
+  step integer;
+  dow smallint;
+  h atlas_private.settings_business_hours;
+  open_min integer;
+  last_start integer;
+  m integer;
+  day_midnight timestamptz;
+  slot_start timestamptz;
+  slot_end timestamptz;
+  slots jsonb := '[]'::jsonb;
+begin
+  select * into s from atlas_private.booking_settings where id = true;
+  if not s.public_online_enabled then
+    raise exception 'Online booking is not available right now.' using errcode = '22023', hint = 'atlas:disabled';
+  end if;
+  if p_party_size is null or p_party_size < 1 or p_party_size > coalesce(s.max_party_online, 4) then
+    raise exception 'Online booking is for parties of 1 to %.' , coalesce(s.max_party_online, 4) using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if p_date is null or p_date < (pg_catalog.now() at time zone p_tz)::date
+     or p_date > (pg_catalog.now() at time zone p_tz)::date + coalesce(s.advance_days, 90) then
+    raise exception 'That date is outside the booking window.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  select id into v_area from atlas_private.booking_areas
+   where online_bookable and is_active order by display_order limit 1;
+  if v_area is null then return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size, 'slots', slots); end if;
+
+  dow := extract(dow from p_date)::smallint;
+  select * into h from atlas_private.settings_business_hours where weekday = dow;
+  if not found or not h.is_open or h.open_time is null then
+    return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size, 'slots', slots);
+  end if;
+  open_min := (extract(hour from h.open_time) * 60 + extract(minute from h.open_time))::int;
+  last_start := atlas_private.booking_day_last_start_minutes(dow, dur);
+  if last_start is null then
+    return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size, 'slots', slots);
+  end if;
+  step := coalesce(s.slot_interval_minutes, 15);
+  day_midnight := (p_date::text || ' 00:00')::timestamp at time zone p_tz;
+
+  m := open_min;
+  while m <= last_start loop
+    slot_start := day_midnight + pg_catalog.make_interval(mins => m);
+    slot_end := slot_start + pg_catalog.make_interval(mins => dur);
+    if slot_start > pg_catalog.now()
+       and atlas_private.booking_find_contiguous_tables(v_area, p_party_size, slot_start, slot_end, null) is not null then
+      slots := slots || pg_catalog.to_jsonb(slot_start);
+    end if;
+    m := m + step;
+  end loop;
+
+  return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size,
+    'duration_minutes', dur, 'slots', slots);
+end
+$function$;
+revoke all on function public.atlas_public_booking_availability(date,integer,text) from public, anon, authenticated;
+grant execute on function public.atlas_public_booking_availability(date,integer,text) to service_role;
+
+-- 6. Public request (always 'requested', expiring hold, idempotent, rate-limited)
+create or replace function public.atlas_public_booking_request(p_payload jsonb)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  p jsonb := coalesce(p_payload, '{}'::jsonb);
+  s atlas_private.booking_settings;
+  tz text := coalesce(nullif(p->>'tz',''), 'Atlantic/Reykjavik');
+  v_party integer := (p->>'party_size')::int;
+  v_start timestamptz := (p->>'start_at')::timestamptz;
+  v_dur integer := 120;
+  v_end timestamptz;
+  v_name text := nullif(p->>'guest_name','');
+  v_phone text := nullif(p->>'guest_phone','');
+  v_email text := nullif(p->>'guest_email','');
+  v_requests text := nullif(p->>'guest_requests','');
+  v_idem text := nullif(p->>'idempotency_key','');
+  v_fingerprint text := nullif(p->>'fingerprint','');
+  v_area uuid;
+  run uuid[];
+  tid uuid;
+  v_ref text;
+  v_token text;
+  v_id uuid := gen_random_uuid();
+  existing atlas_private.reservations;
+begin
+  select * into s from atlas_private.booking_settings where id = true;
+  if not s.public_online_enabled then
+    raise exception 'Online booking is not available right now.' using errcode = '22023', hint = 'atlas:disabled';
+  end if;
+  -- Rate limit: default 8 requests per 10 minutes per client fingerprint.
+  if not atlas_private.booking_public_rate_ok(v_fingerprint, 8, 600) then
+    raise exception 'Too many requests. Please try again shortly.' using errcode = '53400', hint = 'atlas:rate_limited';
+  end if;
+
+  if v_party is null or v_start is null or v_name is null then
+    raise exception 'A name, party size and time are required.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if v_party < 1 or v_party > coalesce(s.max_party_online, 4) then
+    raise exception 'Online booking is for parties of 1 to %.', coalesce(s.max_party_online, 4) using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  -- Idempotency: the same key returns the original request, never a duplicate.
+  if v_idem is not null then
+    select * into existing from atlas_private.reservations where idempotency_key = v_idem;
+    if existing.id is not null then
+      return pg_catalog.jsonb_build_object('reference', existing.booking_reference,
+        'public_token', existing.public_token, 'status', existing.status);
+    end if;
+  end if;
+
+  if v_start < pg_catalog.now()
+     or v_start > pg_catalog.now() + pg_catalog.make_interval(days => coalesce(s.advance_days, 90)) then
+    raise exception 'That date is outside the booking window.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if not atlas_private.booking_within_hours(v_start, v_dur, tz) then
+    raise exception 'That time is outside opening hours.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  select id into v_area from atlas_private.booking_areas
+   where online_bookable and is_active order by display_order limit 1;
+  if v_area is null then
+    raise exception 'Online booking is not available right now.' using errcode = '22023', hint = 'atlas:disabled';
+  end if;
+
+  v_end := v_start + pg_catalog.make_interval(mins => v_dur);
+
+  -- Lock the area's stools, then confirm a section-bounded contiguous run is still
+  -- free for the window. The request allocates NO seat (it stays 'requested'); it
+  -- places a short expiring hold so the pending demand does not vanish or let two
+  -- simultaneous requests claim the same stools, without permanently blocking them.
+  perform 1 from atlas_private.booking_tables t where t.area_id = v_area order by t.id for update;
+  run := atlas_private.booking_find_contiguous_tables(v_area, v_party, v_start, v_end, null);
+  if run is null then
+    raise exception 'That time is no longer available.' using errcode = '23505', hint = 'atlas:conflict';
+  end if;
+
+  v_ref := atlas_private.booking_new_reference();
+  v_token := atlas_private.booking_public_token();
+
+  insert into atlas_private.reservations
+    (id, source, status, start_at, end_at, party_size, guest_name, guest_phone, guest_email,
+     guest_requests, booking_reference, idempotency_key, public_token, area_id)
+  values (v_id, 'web', 'requested', v_start, v_end, v_party, v_name, v_phone, v_email,
+     v_requests, v_ref, v_idem, v_token, v_area);
+
+  foreach tid in array run loop
+    insert into atlas_private.booking_holds (table_id, reservation_id, start_at, end_at, reason, expires_at)
+    values (tid, v_id, v_start, v_end, 'web_pending',
+            pg_catalog.now() + pg_catalog.make_interval(mins => coalesce(s.public_hold_minutes, 15)));
+  end loop;
+
+  insert into atlas_private.reservation_status_history (reservation_id, from_status, to_status, note)
+  values (v_id, null, 'requested', 'public online request');
+  insert into atlas_private.booking_events (event_type, reservation_id, payload)
+  values ('reservation_created', v_id, pg_catalog.jsonb_build_object('party_size', v_party, 'source', 'web', 'channel', 'public'));
+
+  return pg_catalog.jsonb_build_object('reference', v_ref, 'public_token', v_token, 'status', 'requested');
+end
+$function$;
+revoke all on function public.atlas_public_booking_request(jsonb) from public, anon, authenticated;
+grant execute on function public.atlas_public_booking_request(jsonb) to service_role;
+
+-- 7. Public status by unguessable token ---------------------------------------
+-- Returns only that booking's own minimal fields. No staff notes, no table ids,
+-- no other guests. An unknown token yields a generic not-found.
+create or replace function public.atlas_public_booking_status(p_token text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare r atlas_private.reservations;
+begin
+  if p_token is null or pg_catalog.length(p_token) < 24 then
+    raise exception 'Booking not found.' using errcode = 'P0002', hint = 'atlas:not_found';
+  end if;
+  select * into r from atlas_private.reservations where public_token = p_token;
+  if r.id is null then
+    raise exception 'Booking not found.' using errcode = 'P0002', hint = 'atlas:not_found';
+  end if;
+  return pg_catalog.jsonb_build_object(
+    'reference', r.booking_reference, 'status', r.status,
+    'start_at', r.start_at, 'party_size', r.party_size);
+end
+$function$;
+revoke all on function public.atlas_public_booking_status(text) from public, anon, authenticated;
+grant execute on function public.atlas_public_booking_status(text) to service_role;

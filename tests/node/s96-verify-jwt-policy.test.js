@@ -59,6 +59,7 @@ const SELF_AUTHENTICATED = {
   'atlas-accounting': 'resolveActor+active admin (S92/PR#93; verify in code, admin-only)',
   'atlas-marketing-media': 'resolveActor+manager',
   'atlas-marketing-publisher': 'constant-time x-atlas-publisher-secret; no browser surface',
+  'atlas-public-booking': 'PUBLIC guest endpoint (S107): off unless the independent server flag PUBLIC_BOOKING_ENABLED is set; no staff actor; service-role public RPCs re-check the DB flag and enforce every rule',
 };
 
 function sourcesOf(name) {
@@ -81,6 +82,12 @@ test('verify_jwt = false only for functions that authenticate in code', () => {
       assert.match(source, /secretMatches\(provided, expected\)/);
       assert.match(source, /if \(!secretConfigured\(expected\)\) return json\(503/);
       assert.doesNotMatch(source, /access-control-allow-origin/i, 'the worker exposes no CORS surface');
+    } else if (name === 'atlas-public-booking') {
+      // A public guest endpoint: no staff actor, but gated by its own independent
+      // server flag (off by default) and backed by service-role-only RPCs.
+      assert.doesNotMatch(source, /resolveActor/, 'the public endpoint must not resolve a staff actor');
+      assert.match(source, /PUBLIC_BOOKING_ENABLED/, 'the public endpoint must gate on its own server flag');
+      assert.match(source, /enabled\(\)/, 'the public endpoint must check the flag before any work');
     } else {
       assert.match(source, /resolveActor/, `${name} must resolve the caller through _shared/auth.mjs`);
     }

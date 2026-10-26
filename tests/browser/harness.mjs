@@ -96,7 +96,7 @@ function json(route, body, status = 200) {
  *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body | { __raw: { status, contentType, body } } }
  * `contextOptions` is passed to browser.newContext (for example { hasTouch: true }).
  */
-export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {}, timezoneId = undefined, fixedTime = HARNESS_NOW, controlTimers = false, enforceCsp = false } = {}) {
+export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {}, timezoneId = undefined, fixedTime = HARNESS_NOW, controlTimers = false, enforceCsp = false, configOverrides = null } = {}) {
   const playwright = loadPlaywright();
   const libs = resolveLibraries();
   if (!playwright || !libs) throw new Error('Browser harness dependencies are unavailable.');
@@ -152,6 +152,13 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
     // S96: the start-up script moved out of index.html; its SRI line is dropped the same way.
     if (file === '/assets/js/atlas-app.js') {
       body = Buffer.from(body.toString('utf8').replace(/script\.integrity = SUPABASE_SRI;/, ''));
+    }
+    // Isolate unrelated module tests from background inbox work. Dedicated
+    // inbox tests opt in explicitly, including the timed manager-bell test.
+    // These overrides affect only this mocked test environment.
+    if (file === '/config.js') {
+      const testConfig = { BOOKING_NOTIFICATIONS_ENABLED: false, BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 0, ...(configOverrides || {}) };
+      body = Buffer.from(`${body.toString('utf8')}\nObject.assign(window.VABAR_CONFIG, ${JSON.stringify(testConfig)});\n`);
     }
     // enforceCsp: serve pages with the production Content-Security-Policy from netlify.toml.
     const headers = enforceCsp && file.endsWith('.html') ? { 'content-security-policy': productionCsp() } : {};

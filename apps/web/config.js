@@ -55,6 +55,27 @@ window.VABAR_CONFIG = {
   // and its RLS/RPC checks passed in production (issue #124), so the module is
   // enabled for admin/manager roles. Set to false to hide it entirely.
   KANEL_PRICING_ENABLED: true,
+  // Public (guest) online booking — Reserve a Table / Bóka borð on the public
+  // website, backed by the existing Alcedo bookings system. FEATURE-FLAGGED and
+  // OFF by default: while false, no public booking endpoint is advertised, no
+  // guest booking UI loads, and the staff bookings workspace behaves exactly as
+  // today. Turning it on is deliberate and owner-gated — it must not happen until
+  // the booking engine corrections, the scoped public API and the website form
+  // are complete and verified (KANEL × ALCEDO online-bookings handoff, phased).
+  PUBLIC_BOOKING_ENABLED: false,
+  // Staff in-app booking notifications (the manager/admin booking inbox in the
+  // notification bell). Explicitly enabled for KANEL staff, INDEPENDENT of
+  // PUBLIC_BOOKING_ENABLED: this only turns on the staff-facing inbox worker
+  // (bookings-notifications.js). While false, the worker is completely inert — it
+  // registers nothing, adds no listeners and never calls atlas-bookings — so no
+  // page makes an unexpected booking request. S109 and the authenticated staff
+  // edge notifications actions are now deployed. This is separate from, and must not be
+  // conflated with, activating the public guest-booking website.
+  BOOKING_NOTIFICATIONS_ENABLED: true,
+  // Optional visible manager/admin inbox refresh. 0 disables timed refreshes;
+  // only whole seconds in 30–300 are accepted. Visible managers refresh once
+  // per minute; public website activation and its live test remain separate.
+  BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 60,
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -140,6 +161,16 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/team-unread-badge.js?v=20261002-s93r',
   globalName: 'AtlasTeamUnreadBadge',
   dataAttribute: 'atlasTeamUnreadBadge',
+}));
+
+// S109: KANEL online-booking notifications for managers/admins. A small,
+// event-driven (no-poll) worker that feeds the app-wide notification bell from
+// the server-side booking inbox; independent of web-push delivery. Loads after
+// window load so it never delays startup.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/bookings-notifications.js?v=20261025-s110b',
+  globalName: 'AtlasBookingsNotifications',
+  dataAttribute: 'atlasBookingsNotifications',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({

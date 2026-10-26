@@ -75,3 +75,22 @@ jobs:
         run: bash scripts/verify_s100_security_cost.sh
       - name: Run S105 team-member deletion acceptance (sealed deletion RPCs, append-only audit, shift-RESTRICT anonymize, schedule-only route guard, redacted audit)
         run: bash scripts/verify_s105_team_deletion.sh
+      - name: Run S106 bookings-engine acceptance (online cap 4, 15-min turnaround, three fixed Bar sections, non-wrapping contiguity, cross-section assign refused, per-day last start)
+        run: bash scripts/verify_s106_bookings_engine.sh
+      - name: Run S107 public-booking acceptance (sealed RPCs, server gates off by default, Bar-only, requested + expiring hold + no seat, unguessable token, idempotency, rate limit, no double-hold)
+        run: bash scripts/verify_s107_public_booking.sh
+      - name: Run S108 booking-notifications acceptance (sealed outbox, manager-only alerts, KANEL reference, approve/change/cancel emails queued-not-sent, no-email still alerts, idempotency isolation)
+        run: bash scripts/verify_s108_booking_notifications.sh
+      - name: Run S109 in-app inbox acceptance (per-manager inbox + unread + mark-read RPCs manager-only, public_token-gated legacy skip, declined vs cancelled vs no_show, DB flag enforced, conflicting idempotency refused, outbox de-dup)
+        run: bash scripts/verify_s109_booking_notifications_inbox.sh
+      - name: Run S110 seat-integrity acceptance (parties 1–4 adjacent in one section, capacity, cross-section and gaps refused on create and move, duplicates/unavailable seats refused, 15-min turnaround with same-day reuse, viewer denied)
+        run: bash scripts/verify_s110_booking_seat_integrity.sh
+      - name: S110b booking inbox carries the visit time
+        run: bash scripts/verify_s110b_booking_inbox_visit_time.sh
+
+      - name: Run S111 personal-data retention acceptance (90 days after the visit guest details anonymised, linked inbox/outbox/push rows deleted, recent and future bookings untouched, no notifications fired, idempotent, 30-day minimum, sealed, counts-only run log)
+        run: bash scripts/verify_s111_booking_personal_data_retention.sh
+      - name: Run S112 direct-booking acceptance (owner stool numbering, owner switch off by default, booking_mode + seat_map, direct confirm on chosen or adjacent stools, seat_taken, corners and gap refused, idempotent, managers alerted)
+        run: bash scripts/verify_s112_public_direct_booking.sh
+      - name: Prove the S112, S111, S110b, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S112 via the reviewed bundles)
+        run: bash scripts/release/verify_kanel_bookings_rollback.sh

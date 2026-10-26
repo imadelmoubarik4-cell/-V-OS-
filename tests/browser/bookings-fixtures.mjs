@@ -55,7 +55,29 @@ export function defaultRoom() {
   };
 }
 
-export function bookingsBackend({ room = defaultRoom() } = {}) {
+// KANEL Bar (S106/S110 shape): 16 one-seat stools in three fixed sections —
+// A Bar 1–8, B Bar 9–12, C Bar 13–16 — with a party of 2 on Bar 3 + Bar 4 from
+// 16:00 to 18:00 (venue time = UTC). TEST DATA only.
+export function kanelRoom() {
+  const segment = (n) => (n <= 8 ? 'A' : n <= 12 ? 'B' : 'C');
+  const stools = Array.from({ length: 16 }, (_, i) => {
+    const n = i + 1;
+    return { id: `bar-${n}`, area_id: 'area-bar', label: `Bar ${n}`, seat_capacity: 1, min_party: 0, priority: n,
+      is_bookable: true, block_online: false, temporarily_unavailable: false, unavailable_from: null, unavailable_until: null,
+      floor_x: n, floor_y: 1, shape: 'round', position_index: n, segment: segment(n) };
+  });
+  return {
+    areas: [{ id: 'area-bar', name: 'Bar', section_colour: 'teal', display_order: 1, is_active: true, allocation_mode: 'tables' }],
+    tables: stools,
+    combinations: [],
+    settings: { ...defaultRoom().settings, max_party_online: 4, approval_party_threshold: 30 },
+    reservations: [
+      { id: 'res-b1', source: 'phone', status: 'confirmed', start_at: `${TODAY}T16:00:00.000Z`, end_at: `${TODAY}T18:00:00.000Z`, party_size: 2, guest_name: 'A4 TEST 1', guest_phone: '', guest_email: '', guest_requests: '', staff_notes: '', booking_reference: 'KA-1001', table_ids: ['bar-3', 'bar-4'] }
+    ]
+  };
+}
+
+export function bookingsBackend({ room = defaultRoom(), notifications = [] } = {}) {
   const areas = new Map(room.areas.map((a) => [a.id, { ...a }]));
   const tables = new Map(room.tables.map((t) => [t.id, { ...t }]));
   const combinations = new Map(room.combinations.map((c) => [c.id, { ...c }]));
@@ -64,6 +86,17 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
   const allocations = new Map(); // reservation_id -> [table_id]
   const holds = [];
   const calls = [];
+  // One-shot server refusals for a POST action: rejectNext.assign = { status, error_code }.
+  const rejectNext = {};
+  // S109 in-app booking inbox (per-manager). Each row: { id, reservation_id,
+  // kind, title, body, route, read, created_at }. Empty by default so existing
+  // tests see an empty inbox; the notifications test seeds its own.
+  const inbox = notifications.map((n, i) => ({
+    id: n.id || `note-${i + 1}`, reservation_id: n.reservation_id || null,
+    kind: n.kind || 'request', title: n.title || 'New booking request',
+    body: n.body || 'A guest · party of 2', route: 'bookings',
+    read: Boolean(n.read), created_at: n.created_at || fixtureTime(-60000 * (i + 1))
+  }));
   let seq = 0;
   let refSeq = 1002;
   const uid = (prefix) => `${prefix}-${String((seq += 1)).padStart(4, '0')}`;
@@ -72,6 +105,8 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
     reservations.set(r.id, { ...r });
     allocations.set(r.id, [...(r.table_ids || [])]);
   }
+  // Seeded seat holds (a web request's pending hold): { id, table_id, start_at, end_at, reason }.
+  for (const h of room.holds || []) holds.push({ expires_at: fixtureTime(3600000), reason: 'web_pending', ...h });
 
   function tableLabel(id) {
     return tables.get(id)?.label || id;
@@ -83,6 +118,7 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
     const tableIds = allocations.get(id) || [];
     return {
       id: r.id, source: r.source, status: r.status, start_at: r.start_at, end_at: r.end_at || null,
+      area_id: r.area_id || tables.get(tableIds[0])?.area_id || null,
       party_size: r.party_size, guest_name: r.guest_name || '', guest_phone: r.guest_phone || '',
       guest_email: r.guest_email || '', guest_requests: r.guest_requests || '', staff_notes: r.staff_notes || '',
       booking_reference: r.booking_reference || '', provider_ref: r.provider_ref || null,
@@ -134,6 +170,11 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
     const params = new URLSearchParams(ctx.search || '');
     calls.push({ method, action, body, search: ctx.search });
     if (!STAFF_ROLES.has(user?.role)) return forbidden();
+    if (method === 'POST' && rejectNext[action]) {
+      const { status, error_code } = rejectNext[action];
+      delete rejectNext[action];
+      return { __status: status, body: { error_code, message: 'Refused by the test backend.' } };
+    }
 
     if (method === 'GET' && (action === 'snapshot' || !action)) return snapshot(user, params.get('date'));
     if (method === 'GET' && action === 'config') {
@@ -176,6 +217,8 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
       if (!reservations.get(id)) return notFound();
       if (!Array.isArray(body.table_ids) || !body.table_ids.length) return invalid();
       allocations.set(id, [...body.table_ids]);
+      // Production S110: assigning seats confirms a Requested website booking.
+      if (reservations.get(id).status === 'requested') reservations.get(id).status = 'confirmed';
       reservations.get(id).updated_at = fixtureTime(0);
       return { reservation: reservationView(id) };
     }
@@ -187,6 +230,9 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
       if (!r) return notFound();
       const to = String(body.to_status || '');
       const unchanged = r.status === to;
+      // Production refuses confirmation of a seat-based request without seats.
+      if (r.status === 'requested' && to === 'confirmed' && !(allocations.get(id) || []).length
+          && areas.get(r.area_id)?.allocation_mode !== 'pooled') return invalid();
       r.status = to;
       r.updated_at = fixtureTime(0);
       return { reservation: reservationView(id), unchanged };
@@ -240,6 +286,28 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
       return { settings: { ...settings } };
     }
 
+    if (method === 'GET' && action === 'notifications') {
+      if (!MANAGER_ROLES.has(user?.role)) return forbidden();
+      // S110b: each row carries its reservation's visit start and venue-local date.
+      const items = inbox.map((n) => {
+        const r = n.reservation_id ? reservations.get(n.reservation_id) : null;
+        return { ...n, start_at: r?.start_at || null, visit_date: r?.start_at ? r.start_at.slice(0, 10) : null };
+      });
+      return { items, unread: items.filter((n) => !n.read).length };
+    }
+    if (method === 'POST' && action === 'notifications-read') {
+      if (!MANAGER_ROLES.has(user?.role)) return forbidden();
+      let updated = 0;
+      if (body.all === true) {
+        inbox.forEach((n) => { if (!n.read) { n.read = true; updated += 1; } });
+      } else if (Array.isArray(body.ids)) {
+        inbox.forEach((n) => { if (body.ids.includes(n.id) && !n.read) { n.read = true; updated += 1; } });
+      } else {
+        return invalid();
+      }
+      return { updated };
+    }
+
     if (method === 'POST' && action === 'hold') {
       const hold = { id: uid('hold'), table_id: body.table_id, start_at: body.start_at, end_at: body.end_at, reason: body.reason || null, expires_at: fixtureTime(600000) };
       holds.push(hold);
@@ -257,7 +325,7 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
   return {
     handler,
     calls,
-    areas, tables, combinations, settings, reservations, allocations, holds,
+    areas, tables, combinations, settings, reservations, allocations, holds, inbox, rejectNext,
     reservation: (id) => reservations.get(id),
     reservationView,
     table: (id) => tables.get(id),
@@ -268,8 +336,8 @@ export function bookingsBackend({ room = defaultRoom() } = {}) {
 }
 
 /** Assembles fixtures for launchAtlas: the bookings backend on atlas-bookings. */
-export function bookingsWorld({ room = defaultRoom(), functions = {}, tables = {}, rpc = {} } = {}) {
-  const bookings = bookingsBackend({ room });
+export function bookingsWorld({ room = defaultRoom(), notifications = [], functions = {}, tables = {}, rpc = {} } = {}) {
+  const bookings = bookingsBackend({ room, notifications });
   return {
     bookings,
     fixtures: {

@@ -96,6 +96,24 @@
 .bk-detail__assign-row .atlas-select { flex: 1 1 auto; min-width: 0; }
 .bk-detail__foot { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 
+/* ---------- seat picker (add booking + move) ---------- */
+.bk-seats { display: grid; gap: var(--s-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+.bk-seats__legend { padding: 0; font: var(--type-label); color: var(--text-2); }
+.bk-seats__modes { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); }
+.bk-seats__mode { min-height: var(--touch); }
+.bk-seats__picker { display: grid; gap: var(--s-3); }
+.bk-seats__section { display: grid; gap: var(--s-1); }
+.bk-seats__section-name { margin: 0; font: var(--type-label); color: var(--text-3); }
+.bk-seats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--s-2); }
+.bk-seat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--s-2); min-height: var(--touch); padding: var(--s-1) var(--s-2); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); cursor: pointer; }
+.bk-seat .atlas-check { grid-row: span 2; }
+.bk-seat__label { font: var(--type-body); color: var(--text); }
+.bk-seat__state { font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; }
+.bk-seat:has(.atlas-check:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.bk-seat:has(.atlas-check:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bk-seat.is-unavailable { cursor: not-allowed; background: var(--surface-2, var(--surface)); }
+.bk-seat.is-unavailable .bk-seat__label { color: var(--text-3); }
+
 /* ---------- config ---------- */
 .bk-config { max-width: var(--reading-max); }
 .bk-cfg-section { margin-top: var(--s-8); }
@@ -114,11 +132,19 @@
   .bk-date { max-width: none; flex: 1 1 100%; }
   .bk-viewtoggle { margin-left: 0; width: 100%; }
   .bk-area__tables { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  /* Let the stool grid scroll inside its area instead of widening the page. */
+  .bk-body, .bk-day, .bk-area { min-width: 0; }
   .bk-floor-grid { grid-template-columns: repeat(4, minmax(120px, 1fr)); grid-template-rows: none; overflow-x: auto; }
   .bk-floor-grid .bk-table { grid-column: auto; grid-row: auto; }
   .bk-table { min-height: var(--touch); }
   .bk-row__btn { min-height: var(--touch); }
   .bk-detail__facts > div { grid-template-columns: 1fr; gap: 2px; }
   .bk-config { max-width: none; }
+  .bk-seats__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 }
+
+/* Requests waiting (website requests have no seats until confirmed) */
+.bk-requests { margin: 0 0 var(--space-4, 16px); }
+.bk-request-row { width: 100%; text-align: left; }
+.bk-request-row__note { display: block; white-space: pre-line; }
