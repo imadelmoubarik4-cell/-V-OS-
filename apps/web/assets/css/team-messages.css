@@ -1,152 +1,240 @@
-/* Messages (#messages) — docs/design/Atlas_Experience_Redesign.md §7.3, §8.5.
+/* Messages (#messages) — docs/design/Atlas_Experience_Redesign.md §7.3, §8.5;
+ * visual direction docs/design/Alcedo_Redesign_2026.md ("Basalt & Kingfisher").
  * Module layout only: buttons, inputs, avatars, badges, alerts, empty states,
  * sheets and dialogs are the shared components from atlas-components.css.
- * No tokens are defined here. */
+ * No tokens are defined here.
+ *
+ * The inbox is one white sheet split in two by a 1px rule: the conversation
+ * list (280px) and the thread. One 64px header band runs across both panes on
+ * a single rule (title and summary | channel and its actions). The thread is
+ * a 720px reading column; each speaker's name line sits beside the avatar
+ * and the bubble under it: stone for others, pale kingfisher for your own,
+ * the corner nearest the speaker cut to 4px. Colour stays on the unread mark,
+ * the New line, read receipts and the one primary (Send). */
 @layer atlas.modules {
 
 /* The page is a full-height page (.page--full-height, atlas-shell.css): the
-   conversation list and the thread fill the content area under the top bar. */
+   conversation list and the thread fill the sheet under the top bar. */
 
 .msg { display: grid; grid-template-columns: 280px minmax(0, 1fr); height: 100%; min-height: 0; background: var(--bg); }
 
 /* ---------- conversation list ---------- */
-.msg-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--bg-subtle); }
-.msg-side__head.page-head { margin: 0; padding: var(--s-5) var(--s-4) var(--s-3); }
-.msg-side__head .page-head__title { font: var(--type-section); letter-spacing: var(--track-section); }
-.msg-side__search { width: auto; max-width: none; margin: 0 var(--s-3) var(--s-2); }
-.msg-side__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 var(--s-2) var(--s-4); }
-.msg-side__group { margin: var(--s-3) var(--s-2) var(--s-1); font: var(--type-caption); font-weight: 500; color: var(--text-3); }
+.msg-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--bg); }
+.msg-side__head.page-head { flex: none; flex-wrap: nowrap; align-items: center; min-height: 64px; margin: 0; padding: var(--s-2) var(--s-5); border-bottom: 1px solid var(--line); }
+.msg-side__head .page-head__text { flex: 1 1 auto; min-width: 0; }
+.msg-side__head .page-head__title { font: var(--type-title); letter-spacing: var(--track-title); }
+.msg-side__summary.page-head__sub { min-height: 18px; margin: 0; font: var(--type-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.msg-side__search { width: auto; max-width: none; margin: var(--s-3) var(--s-3) var(--s-1); }
+.msg-side__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--s-3) var(--s-4); }
+.msg-side__group { margin: var(--s-4) var(--s-2) var(--s-1); font: var(--type-caption); font-weight: 500; color: var(--text-3); }
 .msg-side__empty { margin: var(--s-4) var(--s-2); font: var(--type-meta); color: var(--text-2); }
-.msg-side__skel { display: grid; gap: var(--s-2); padding: var(--s-2); }
+.msg-side__skel { display: grid; padding-top: var(--s-6); }
+.msg-skel-row { display: flex; gap: var(--s-3); height: 60px; padding: 10px var(--s-2); }
+.msg-skel-row__icon { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.msg-skel-row__lines { display: grid; flex: 1 1 auto; align-content: start; gap: 8px; padding-top: 4px; }
+.msg-skel-row__name { width: 45%; height: 12px; }
+.msg-skel-row__preview { width: 80%; height: 10px; }
+.msg-skel-row:nth-child(2n) .msg-skel-row__name { width: 32%; }
+.msg-skel-row:nth-child(3n) .msg-skel-row__preview { width: 64%; }
 
-.msg-channel { display: flex; align-items: center; gap: var(--s-2); min-height: 52px; padding: var(--s-2); border-radius: var(--r-md); color: var(--text); text-decoration: none; }
-.msg-channel:hover { background: var(--bg-muted); }
-.msg-channel[aria-current="page"] { background: var(--surface); box-shadow: var(--shadow-1); }
-.msg-channel__icon { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: var(--r-sm); color: var(--text-2); }
+/* A row: the channel glyph, then two lines on one text edge. Selected takes
+   the nav pill's fill, never a ring, so it cannot read as focus or hover. */
+.msg-channel { display: flex; align-items: flex-start; gap: var(--s-3); min-height: 60px; padding: 10px var(--s-2); border-radius: var(--r-md); color: var(--text); text-decoration: none; -webkit-tap-highlight-color: transparent; transition: background-color var(--dur-1) ease; }
+.msg-channel[aria-current="page"] { background: var(--bg-muted); }
+.msg-channel:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.msg-channel__icon { display: grid; place-items: center; width: 16px; height: 20px; flex: none; color: var(--text-3); }
 .msg-channel__icon svg { width: var(--icon-sm); height: var(--icon-sm); }
-.msg-channel__body { display: grid; flex: 1 1 auto; min-width: 0; }
-.msg-channel__name { display: flex; align-items: center; gap: var(--s-1); min-width: 0; font: var(--type-label); overflow-wrap: anywhere; }
-.msg-channel__name svg { width: 12px; height: 12px; color: var(--text-3); }
+.msg-channel__body { display: grid; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.msg-channel__line { display: flex; align-items: baseline; gap: var(--s-2); min-width: 0; }
+.msg-channel__name { display: flex; align-items: center; gap: var(--s-1); flex: 1 1 auto; min-width: 0; overflow: hidden; font: 500 14px/20px var(--font-sans); white-space: nowrap; text-overflow: ellipsis; }
+.msg-channel__name svg { width: 12px; height: 12px; flex: none; color: var(--text-3); }
 .msg-channel.has-unread .msg-channel__name { font-weight: 600; }
-.msg-channel__preview { overflow: hidden; font: var(--type-meta); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
-.msg-channel__end { display: grid; justify-items: end; gap: 2px; flex: none; }
-.msg-channel__time { font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.msg-channel__time { flex: none; font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.msg-channel__preview { flex: 1 1 auto; min-width: 0; overflow: hidden; font: var(--type-meta); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
+.msg-channel.has-unread .msg-channel__preview { color: var(--text); }
+/* Unread: a kingfisher dot and the count beside it, no filled badge. */
+.msg-channel__unread.atlas-badge { display: inline-flex; align-items: center; gap: 5px; min-width: 0; height: 18px; padding: 0; border-radius: 0; background: none; color: var(--accent-text); font: 600 12px/18px var(--font-sans); font-variant-numeric: tabular-nums; }
+.msg-channel__unread::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-brand); }
+@media (hover: hover) and (pointer: fine) {
+  .msg-channel:not([aria-current="page"]):hover { background: var(--bg-hover); }
+}
 
 /* ---------- thread ---------- */
 .msg-thread { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.msg-thread__head { display: flex; align-items: center; gap: var(--s-3); min-height: 60px; padding: var(--s-3) var(--s-6); border-bottom: 1px solid var(--line); }
+.msg-thread__head { display: flex; flex: none; align-items: center; gap: var(--s-3); min-height: 64px; padding: var(--s-2) var(--s-4) var(--s-2) var(--s-6); border-bottom: 1px solid var(--line); }
 .msg-thread__text { flex: 1 1 auto; min-width: 0; }
-.msg-thread__title { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-heading); color: var(--text); }
-.msg-thread__title svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-3); }
-.msg-thread__desc { margin: 0; overflow: hidden; font: var(--type-meta); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
-.msg-thread__actions { display: flex; align-items: center; gap: var(--s-2); flex: none; }
+.msg-thread__title { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
+.msg-thread__title svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+.msg-thread__skel { width: 140px; height: 16px; }
+.msg-thread__skel--desc { width: 260px; height: 12px; margin-top: 4px; margin-left: calc(-1 * (var(--icon-sm) + var(--s-2))); }
+.msg-thread__desc { margin: 0; padding-left: calc(var(--icon-sm) + var(--s-2)); overflow: hidden; font: var(--type-meta); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
+.msg-thread__actions { display: flex; align-items: center; gap: var(--s-1); flex: none; }
 .msg-thread__alert:empty { display: none; }
-.msg-thread__alert { padding: var(--s-3) var(--s-6) 0; }
+.msg-thread__alert { flex: none; width: 100%; max-width: calc(720px + 2 * var(--s-6)); margin: 0 auto; padding: var(--s-4) var(--s-6) 0; }
 .msg-thread__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
-.msg-log { width: 100%; max-width: calc(720px + 2 * var(--s-6)); margin: 0 auto; padding: var(--s-4) var(--s-6) var(--s-6); }
-.msg-log__skel { display: grid; gap: var(--s-5); padding-top: var(--s-4); }
-.msg-skel { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--s-3); align-items: center; }
-.msg-skel .atlas-skel--circle { width: 28px; height: 28px; }
-.msg-log__empty { margin-top: var(--s-10); }
+.msg-log { width: 100%; max-width: calc(720px + 2 * var(--s-6)); margin: 0 auto; padding: var(--s-2) var(--s-6) var(--s-6); }
+.msg-log__empty { margin-top: var(--s-16); }
 
-.msg-divider { display: flex; align-items: center; gap: var(--s-3); margin: var(--s-5) 0 var(--s-2); font: var(--type-caption); font-weight: 500; color: var(--text-3); }
+/* Loading: the thread's own shapes at their real size. */
+.msg-log__skel { display: grid; gap: var(--s-6); padding-top: var(--s-8); }
+.msg-skel { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--s-1) var(--s-3); }
+.msg-skel .atlas-skel--circle { grid-row: 1; }
+.msg-skel__meta { grid-column: 2; grid-row: 1; align-self: center; width: 180px; height: 12px; }
+.msg-skel__bubble { grid-column: 2; width: min(380px, 70%); height: 38px; border-radius: var(--r-xs) var(--r-xl) var(--r-xl) var(--r-xl); }
+.msg-skel:nth-child(4) .msg-skel__bubble { width: min(240px, 55%); }
+.msg-skel--own { grid-template-columns: minmax(0, 1fr) 28px; }
+.msg-skel--own .atlas-skel--circle { grid-column: 2; }
+.msg-skel--own .msg-skel__meta, .msg-skel--own .msg-skel__bubble { grid-column: 1; justify-self: end; }
+.msg-skel--own .msg-skel__meta { width: 140px; }
+.msg-skel--own .msg-skel__bubble { width: min(300px, 60%); border-radius: var(--r-xl) var(--r-xs) var(--r-xl) var(--r-xl); }
+
+/* Day lines, and the New line: kingfisher, with its word at the right end. */
+.msg-divider { display: flex; align-items: center; gap: var(--s-3); margin: var(--s-6) 0 var(--s-1); font: var(--type-caption); font-weight: 500; color: var(--text-3); }
 .msg-divider::before, .msg-divider::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--line); }
-.msg-divider--new { color: var(--accent-text); }
-.msg-divider--new::before, .msg-divider--new::after { background: var(--accent-brand); }
+.msg-divider--new { gap: var(--s-2); margin-top: var(--s-5); color: var(--accent-text); font-weight: 600; }
+.msg-divider--new::before { background: var(--accent-brand); }
+.msg-divider--new::after { display: none; }
 
-.msg-item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--s-3); padding-top: var(--s-3); }
+/* A message: the avatar and the name line share one 28px row; the bubble
+   (and its receipt) sit under the name on the speaker's side. */
+.msg-item { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--s-1) var(--s-3); align-items: start; padding-top: var(--s-4); }
 .msg-item.is-grouped { padding-top: var(--s-1); }
+.msg-item > .msg-item__gutter { grid-column: 1; grid-row: 1; }
+.msg-item > :not(.msg-item__gutter) { grid-column: 2; }
 .msg-item__gutter { display: block; min-height: 1px; }
 .msg-avatar { overflow: hidden; }
-.msg-avatar--atlas { background: var(--bg-muted); color: var(--text-2); }
-.msg-avatar--atlas svg, .msg-avatar > svg { width: 14px; height: 14px; }
-/* Chat layout (S91a, S92): other people's messages on the left in a neutral
-   bubble, the viewer's own on the right in an accent-tinted one; both carry
-   the sender's name and avatar, own avatar in a gutter on the right. */
-.msg-item__body { position: relative; justify-self: start; min-width: 0; max-width: min(88%, 600px); padding: var(--s-2) var(--s-3); border: 1px solid transparent; border-radius: var(--r-lg); background: var(--bg-muted); }
+.msg-avatar > svg { width: 14px; height: 14px; }
+/* Alcedo's own notices: a plain grey glyph in the gutter, no disc. */
+.msg-avatar--atlas { background: none; color: var(--text-3); }
+.msg-avatar--atlas > svg { width: var(--icon-sm); height: var(--icon-sm); }
 .msg-item.is-own { grid-template-columns: minmax(0, 1fr) 28px; }
 .msg-item.is-own > .msg-item__gutter { grid-column: 2; grid-row: 1; }
-.msg-item.is-own > .msg-item__body { grid-column: 1; grid-row: 1; justify-self: end; max-width: min(80%, 600px); background: var(--accent-soft); }
-.msg-item.is-own .msg-item__meta { justify-content: flex-end; }
-.msg-item.is-deleted > .msg-item__body { border: 1px dashed var(--line); background: var(--bg); }
-.msg-item__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); }
-.msg-item__name { font: 600 13px/18px var(--font-sans); color: var(--text); }
+.msg-item.is-own > :not(.msg-item__gutter) { grid-column: 1; justify-self: end; }
+
+.msg-item__meta { display: flex; flex-wrap: wrap; align-items: baseline; align-content: center; gap: 0 var(--s-2); min-width: 0; min-height: 28px; }
+.msg-item.is-own .msg-item__meta { flex-direction: row-reverse; }
+.msg-item__name { font: var(--type-label); font-weight: 600; color: var(--text); }
 .msg-item__role { font: var(--type-caption); color: var(--text-3); }
 .msg-item__time { font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
-.msg-item__text { margin: 2px 0 0; font: 400 15px/22px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
-.msg-item.is-system .msg-item__text { color: var(--text-2); }
+
+/* The bubble. Others: the stone tint; yours: pale kingfisher. */
+.msg-item__body { position: relative; justify-self: start; min-width: 0; max-width: min(78%, 560px); padding: var(--s-2) var(--s-3); border-radius: var(--r-xs) var(--r-xl) var(--r-xl) var(--r-xl); background: var(--bg-subtle); }
+.msg-item.is-own > .msg-item__body { border-radius: var(--r-xl) var(--r-xs) var(--r-xl) var(--r-xl); background: var(--accent-soft); }
+/* The message the composer is editing: a kingfisher edge, the selection hue. */
+.msg-item.is-editing > .msg-item__body { box-shadow: inset 0 0 0 1px var(--accent-brand); }
+.msg-item__text { margin: 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
+.msg-item.is-deleted > .msg-item__body { padding: 6px var(--s-3); background: none; box-shadow: inset 0 0 0 1px var(--line); }
 .msg-item.is-deleted .msg-item__text { font-style: italic; color: var(--text-3); }
 .msg-item.is-deleted .msg-item__time { display: block; }
-.msg-item__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-1); min-height: 24px; }
-.msg-item__read, .msg-item__failed { display: inline-flex; align-items: center; gap: var(--s-1); font: var(--type-caption); color: var(--text-3); }
-.msg-item__read svg, .msg-item__failed svg { width: 14px; height: 14px; }
-.msg-item__failed { color: var(--danger); font-weight: 500; }
-/* Read receipts: one grey tick while only sent, a coloured double tick once read.
-   The read receipt is a button (tap to see who read it) but reads as plain text. */
-.msg-item__read--sent { color: var(--text-3); }
-.msg-item__read--read { position: relative; border: 0; margin: 0; padding: 0; background: none; cursor: pointer; color: var(--accent-brand); font: var(--type-caption); }
-.msg-item__read--read::after { content: ''; position: absolute; inset: -14px -8px; }   /* 44 px touch target */
-.msg-item__read--read svg { color: var(--accent-brand); }
-.msg-item__read--read:hover { text-decoration: underline; }
-.msg-item__read--read:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--r-xs); }
-/* "Read by" sheet */
-.msg-readers__list { display: grid; gap: var(--s-1); list-style: none; margin: 0; padding: var(--s-2) 0; }
-.msg-readers__row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) 0; }
-.msg-readers__who { display: inline-flex; align-items: center; gap: var(--s-2); min-width: 0; }
-.msg-readers__name { display: grid; min-width: 0; font: var(--type-body); color: var(--text); }
-.msg-readers__role { font: var(--type-caption); color: var(--text-2); }
-.msg-readers__when { flex: none; font: var(--type-caption); color: var(--text-2); white-space: nowrap; }
-.msg-readers__empty { color: var(--text-2); font: var(--type-caption); padding: var(--s-2) 0; list-style: none; }
-.msg-item { position: relative; }
-/* Edit / Delete: a small toolbar above the bubble's top edge on hover or focus (it never covers the time); inline on touch screens. */
-.msg-item__actions { position: absolute; bottom: calc(100% - var(--s-2)); right: var(--s-2); z-index: 1; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-1); opacity: 0; pointer-events: none; }
-.msg-item:hover > .msg-item__body > .msg-item__actions, .msg-item:focus-within > .msg-item__body > .msg-item__actions { opacity: 1; pointer-events: auto; }
-.msg-item.is-failed .msg-item__actions { position: static; padding: 0; border: 0; box-shadow: none; background: none; opacity: 1; pointer-events: auto; }
-.msg-item__more { position: absolute; top: 0; right: 0; display: none; }
-@media (hover: none) {
-  .msg-item:not(.is-failed) .msg-item__actions { display: none; }
-  .msg-item__more { display: inline-grid; }
-  .msg-item:has(> .msg-item__body > .msg-item__more) > .msg-item__body { min-height: var(--touch); padding-right: var(--touch); }
-}
-.msg-actions__list { gap: var(--s-2); }
+/* An Alcedo notice is a card across the column, its first line the heading. */
+.msg-item.is-system > .msg-item__body { justify-self: stretch; max-width: none; padding: var(--s-3) var(--s-4); border-radius: var(--r-lg); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.msg-item__section { font: var(--type-caption); font-weight: 600; color: var(--text-2); }
+.msg-item.is-system .msg-item__text { color: var(--text-2); }
+.msg-item.is-system .msg-item__text::first-line { font-weight: 600; color: var(--text); }
 
-/* Linked record chip (spec §6.28 record chip pattern). */
-/* The record chip itself is the shared .atlas-record-chip (atlas-components.css). */
+/* Linked record (spec §6.28): the shared .atlas-record-chip, white on the bubble. */
 .msg-link { margin-top: var(--s-2); }
 .msg-link.is-locked { color: var(--text-2); }
 
-.msg-jump { position: absolute; left: 50%; bottom: 112px; z-index: 2; transform: translateX(-50%); box-shadow: var(--shadow-pop); }
+.msg-item__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); min-height: 20px; }
+.msg-item.is-own > .msg-item__foot { justify-content: flex-end; }
+.msg-item__read, .msg-item__failed { display: inline-flex; align-items: center; gap: var(--s-1); font: var(--type-caption); color: var(--text-3); }
+.msg-item__read svg, .msg-item__failed svg { width: 14px; height: 14px; flex: none; }
+.msg-item__failed { color: var(--danger); font-weight: 500; }
+/* Read receipts: one grey tick while only sent, a kingfisher double tick once
+   read. The read receipt is a button (tap to see who read it) but reads as text. */
+.msg-item__read--sent { color: var(--text-3); }
+.msg-item__read--read { position: relative; border: 0; margin: 0; padding: 0; background: none; cursor: pointer; color: var(--accent-text); font: var(--type-caption); font-weight: 500; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.msg-item__read--read::after { content: ''; position: absolute; inset: -14px -8px; }   /* 44 px touch target */
+.msg-item__read--read svg { color: var(--accent-brand); }
+.msg-item__read--read:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); border-radius: var(--r-xs); }
+@media (hover: hover) and (pointer: fine) {
+  .msg-item__read--read:hover { text-decoration: underline; text-underline-offset: 2px; }
+}
+
+/* An unsent message stays where it was written: an outlined bubble, then
+   "Not sent" with Retry and Discard under it. */
+.msg-item.is-failed > .msg-item__body { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.msg-item.is-failed .msg-item__text { color: var(--text-2); }
+.msg-item.is-failed .msg-item__actions { position: static; display: inline-flex; gap: 0; padding: 0; border: 0; background: none; opacity: 1; pointer-events: auto; }
+
+/* Edit / Delete: two icon actions beside the bubble's top edge, on hover or
+   keyboard focus (they never cover the text); a "…" button on touch screens. */
+.msg-item__actions { position: absolute; top: 0; left: calc(100% + var(--s-2)); z-index: 1; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); opacity: 0; pointer-events: none; transition: opacity var(--dur-1) var(--ease-out); }
+.msg-item.is-own .msg-item__actions { left: auto; right: calc(100% + var(--s-2)); }
+.msg-item:focus-within > .msg-item__body > .msg-item__actions { opacity: 1; pointer-events: auto; }
+.msg-item__actions .atlas-icon-btn { width: 28px; height: 28px; }
+.msg-item__more { position: absolute; top: calc(50% - 22px); left: calc(100% + var(--s-1)); display: none; }
+.msg-item.is-own .msg-item__more { left: auto; right: calc(100% + var(--s-1)); }
+@media (hover: hover) and (pointer: fine) {
+  .msg-item:hover > .msg-item__body > .msg-item__actions { opacity: 1; pointer-events: auto; }
+}
+@media (hover: none) {
+  .msg-item:not(.is-failed) .msg-item__actions { display: none; }
+  .msg-item__more { display: inline-grid; width: var(--touch); height: var(--touch); color: var(--text-3); }
+}
+.msg-actions__list { gap: var(--s-2); }
+
+/* "N new messages": floats over the thread, so it may cast a shadow. */
+.msg-jump { position: absolute; left: 50%; bottom: 128px; z-index: 2; translate: -50% 0; box-shadow: var(--shadow-pop); transition: opacity var(--dur-2) var(--ease-out), transform var(--motion-press) var(--ease-out); }
 .msg-jump[hidden] { display: none; }
+@starting-style {
+  .msg-jump { opacity: 0; }
+}
+
+/* ---------- "Read by" sheet ---------- */
+.msg-readers__list { display: grid; gap: 0; list-style: none; margin: 0; padding-top: var(--s-2); }
+.msg-readers__row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 56px; padding: var(--s-2) 0; border-bottom: 1px solid var(--line-subtle); }
+.msg-readers__row:last-child { border-bottom: 0; }
+.msg-readers__who { display: inline-flex; align-items: center; gap: var(--s-3); min-width: 0; }
+.msg-readers__name { display: grid; min-width: 0; font: var(--type-body); font-weight: 500; color: var(--text); }
+.msg-readers__role { font: var(--type-caption); font-weight: 400; color: var(--text-2); }
+.msg-readers__when { flex: none; font: var(--type-caption); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.msg-readers__empty { padding: var(--s-2) 0; color: var(--text-2); font: var(--type-meta); list-style: none; }
 
 /* ---------- composer ---------- */
-.msg-composer { flex: none; padding: 0 var(--s-6) var(--s-4); background: var(--bg); }
+/* One floating card (it floats, so it carries the pop shadow) on the thread's
+   white band; what the message is about sits inside it, above the input row. */
+.msg-composer { flex: none; padding: var(--s-2) var(--s-6) var(--s-4); background: var(--bg); }
+.msg-composer:empty { display: none; }
 .msg-compose { width: 100%; max-width: 720px; margin: 0 auto; }
-.msg-compose__context { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); padding: 6px 6px 6px 10px; border-radius: var(--r-md); background: var(--bg-subtle); font: var(--type-meta); color: var(--text-2); }
+.msg-compose__box { display: grid; border: 1px solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-pop); transition: border-color var(--dur-1) ease, box-shadow var(--dur-1) ease; }
+.msg-compose__box:focus-within { border-color: var(--accent-brand); box-shadow: var(--focus-ring), var(--shadow-pop); }
+.msg-compose__context { display: flex; align-items: center; gap: var(--s-2); min-width: 0; min-height: 36px; margin: var(--s-2) var(--s-2) 0; padding: 2px 2px 2px var(--s-3); border-radius: var(--r-md); background: var(--bg-subtle); font: var(--type-meta); color: var(--text-2); }
 .msg-compose__context > span { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.msg-compose__context > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
-.msg-compose__box { display: flex; align-items: flex-end; gap: var(--s-2); padding: var(--s-2); border: 1px solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface); }
-.msg-compose__box:focus-within { border-color: var(--accent-brand); box-shadow: var(--focus-ring); }
-.msg-compose__input { flex: 1 1 auto; min-width: 0; min-height: 36px; max-height: 160px; padding: 8px 4px; border: 0; background: transparent; font: 400 15px/20px var(--font-sans); color: var(--text); resize: none; outline: none; }
+.msg-compose__context strong { font-weight: 500; color: var(--text); }
+.msg-compose__context > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+.msg-compose__context.is-record { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.msg-compose__row { display: flex; align-items: flex-end; gap: var(--s-1); padding: var(--s-1); }
+.msg-compose__input { flex: 1 1 auto; min-width: 0; min-height: 36px; max-height: 160px; padding: 8px 4px; border: 0; background: transparent; font: var(--type-body); color: var(--text); resize: none; outline: none; }
 .msg-compose__input::placeholder { color: var(--text-3); }
-.msg-compose__send { width: 36px; padding: 0; border-radius: 50%; }
-.msg-compose__note { margin: var(--s-2) 0 0; font: var(--type-caption); color: var(--text-3); text-align: center; }
-.msg-composer__locked { display: flex; align-items: center; justify-content: center; gap: var(--s-2); max-width: 720px; margin: 0 auto; padding: var(--s-3) var(--s-4); border-radius: var(--r-lg); background: var(--bg-subtle); font: var(--type-meta); color: var(--text-2); }
-.msg-composer__locked svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
+.msg-compose__send { width: 36px; padding: 0; }
+.msg-compose__send > svg { margin: 0; }
+.msg-compose__note { display: flex; justify-content: space-between; gap: var(--s-4); margin: var(--s-2) var(--s-1) 0; font: var(--type-caption); color: var(--text-3); }
+.msg-composer__locked { display: flex; align-items: center; justify-content: center; gap: var(--s-2); max-width: 720px; min-height: 44px; margin: 0 auto; padding: var(--s-3) var(--s-4); border-radius: var(--r-lg); background: var(--bg-subtle); font: var(--type-meta); color: var(--text-2); }
+.msg-composer__locked svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+@media (pointer: coarse) {
+  .msg-compose__keys { display: none; }
+}
 
 /* ---------- link picker sheet ---------- */
 .msg-link__types { width: 100%; }
 .msg-link__types button { flex: 1 1 0; }
-.msg-link__results { display: grid; gap: var(--s-1); }
-.msg-link__state { margin: var(--s-2) 0; font: var(--type-meta); color: var(--text-2); }
-.msg-link__option { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 52px; padding: var(--s-2) var(--s-3); border: 1px solid transparent; border-radius: var(--r-md); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
-.msg-link__option:hover { background: var(--bg-subtle); }
-.msg-link__option[aria-selected="true"] { border-color: var(--accent-brand); background: var(--accent-soft); }
-.msg-link__option svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-2); }
+.msg-link__results { display: grid; gap: 2px; margin: 0 calc(-1 * var(--s-2)); }
+.msg-link__results > .atlas-skel { height: 52px; margin: 0 var(--s-2); border-radius: var(--r-md); background: var(--bg-subtle); }
+.msg-link__state { margin: var(--s-2); font: var(--type-meta); color: var(--text-2); }
+.msg-link__option { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 52px; padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background-color var(--dur-1) ease; }
+.msg-link__option[aria-selected="true"] { background: var(--accent-soft); }
+.msg-link__option:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.msg-link__option svg { width: var(--icon-md); height: var(--icon-md); flex: none; color: var(--text-3); }
 .msg-link__option[aria-selected="true"] svg { color: var(--accent-brand); }
 .msg-link__option-body { display: grid; flex: 1 1 auto; min-width: 0; }
-.msg-link__option-title { font: var(--type-label); }
+.msg-link__option-title { font: var(--type-body); font-weight: 500; }
 .msg-link__option-meta { overflow: hidden; font: var(--type-caption); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
+@media (hover: hover) and (pointer: fine) {
+  .msg-link__option:not([aria-selected="true"]):hover { background: var(--bg-hover); }
+}
 
 /* ---------- widths ---------- */
 @media (min-width: 768px) and (max-width: 1023px) {
@@ -157,29 +245,44 @@
   .msg { display: block; height: auto; }
   .msg[data-msg-view="thread"] .msg-side, .msg[data-msg-view="list"] .msg-thread { display: none; }
 
-  /* Conversation list screen: rows 15/500 name, 13 preview (spec §8.5). */
-  .msg-side { min-height: calc(100dvh - 52px - var(--tabbar-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border-right: 0; background: var(--bg); }
-  .msg-side__head.page-head { padding: 0; }
-  .msg-side__search { margin: var(--s-3) var(--page-gutter) var(--s-2); }
-  .msg-side__list { padding: 0 var(--s-2) calc(var(--tabbar-h) + var(--s-10)); overflow: visible; }
-  .msg-channel { min-height: 64px; }
-  .msg-channel__name { font: 500 15px/20px var(--font-sans); }
-  .msg-channel__icon { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-muted); }
+  /* Conversation list screen: the top bar names the page; the summary line,
+     search and 64px rows (15/500 name, 14 preview) follow (spec §8.5). */
+  .msg-side { min-height: calc(100dvh - var(--topbar-h) - var(--tabbar-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border-right: 0; }
+  .msg-side__head.page-head { align-items: stretch; min-height: 0; padding: var(--s-3) var(--page-gutter) 0; border-bottom: 0; }
+  .msg-side__search { margin: var(--s-3) var(--page-gutter) var(--s-1); }
+  .msg-side__search .atlas-input { height: var(--touch); font-size: 16px; }
+  .msg-side__list { padding: 0 0 calc(var(--tabbar-h) + var(--s-10)); overflow: visible; }
+  .msg-side__group { margin: var(--s-5) var(--page-gutter) var(--s-1); }
+  .msg-side__empty { margin: var(--s-4) var(--page-gutter); }
+  .msg-channel { gap: var(--s-4); min-height: 68px; padding: var(--s-3) var(--page-gutter); border-radius: 0; touch-action: manipulation; }
+  .msg-channel:active { background: var(--bg-hover); }
+  .msg-channel__icon { width: 20px; height: 22px; }
+  .msg-channel__icon svg { width: var(--icon-lg); height: var(--icon-lg); }
+  .msg-channel__name { font: 500 15px/22px var(--font-sans); }
+  .msg-channel__preview { font: 400 14px/20px var(--font-sans); }
+  .msg-skel-row { height: 68px; padding: var(--s-3) var(--page-gutter); }
 
-  /* Channel screen: top bar with back, tab bar hidden, composer sticky above the keyboard. */
-  .msg-thread { height: calc(100dvh - 52px - env(safe-area-inset-top)); }
+  /* Channel screen: the shell top bar carries the name, back and actions;
+     the tab bar hides; the composer band is sticky above the keyboard. */
+  .msg-thread { height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top)); }
   .msg-thread__head { display: none; }
   .msg-thread__alert { padding: var(--s-3) var(--page-gutter) 0; }
-  .msg-log { padding: var(--s-2) var(--page-gutter) var(--s-4); }
-  .msg-composer { position: sticky; bottom: 0; padding: var(--s-2) var(--s-2) calc(var(--s-2) + env(safe-area-inset-bottom)); border-top: 1px solid var(--line-subtle); }
-  .msg-compose__box { border-radius: 22px; }
+  .msg-log { padding: 0 var(--page-gutter) var(--s-4); }
+  .msg-item { column-gap: var(--s-2); }
+  .msg-item__body { max-width: 78%; }
+  .msg-composer { position: sticky; bottom: 0; padding: var(--s-2) var(--s-2) calc(var(--s-2) + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg-subtle); }
+  .msg-compose__box { box-shadow: none; }
+  .msg-compose__box:focus-within { box-shadow: var(--focus-ring); }
+  .msg-compose__row { padding: 0; }
   .msg-compose__input { min-height: 44px; font-size: 16px; line-height: 22px; padding-top: 11px; padding-bottom: 11px; }
   .msg-compose__send { width: 44px; height: 44px; }
   .msg-compose__tool { width: 44px; height: 44px; }
+  .msg-compose__context .atlas-btn, .msg-compose__context .atlas-icon-btn { height: var(--touch); min-width: var(--touch); }
   .msg-compose__note { display: none; }
-  .msg-jump { bottom: 88px; }
+  .msg-composer__locked { margin: 0 var(--s-2); }
+  .msg-jump { bottom: 96px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .msg-item__actions { transition: none; }
+  .msg-item__actions, .msg-jump { transition: none; }
 }
 }

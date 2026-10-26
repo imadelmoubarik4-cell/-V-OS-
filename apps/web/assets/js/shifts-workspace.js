@@ -316,7 +316,22 @@
   // The toolbar switch. Shown only where more than one person appears, so toggling
   // colour is meaningful (manager grid, or a staff member's team view).
   function colorToggleMarkup() {
-    return `<button type="button" class="shifts-color-toggle" data-shifts-color-toggle role="switch" aria-checked="${state.colorByPerson}">${icon('palette')}<span>Colour by person</span></button>`;
+    return `<button type="button" class="shifts-color-toggle" data-shifts-color-toggle role="switch" aria-checked="${state.colorByPerson}"><span class="shifts-color-toggle__track" aria-hidden="true"></span><span>Colour by person</span></button>`;
+  }
+
+  // The key to the schedule's marks: a filled bar is published, a dashed one
+  // is a draft the team can't see yet, a hatched one is time off. Each entry
+  // is shown only when that mark is on the screen, and a key with one entry
+  // (every bar is published) is left out.
+  function legendMarkup({ drafts = false, leave = false, awaiting = false } = {}) {
+    const entries = [
+      '<span class="shifts-legend__item"><span class="shifts-legend__mark" aria-hidden="true"></span>Published</span>',
+      drafts ? '<span class="shifts-legend__item"><span class="shift-chip shift-chip--legend is-unpublished" aria-hidden="true"></span>Dashed: not published yet</span>' : '',
+      leave ? '<span class="shifts-legend__item"><span class="shifts-legend__mark shifts-legend__mark--leave" aria-hidden="true"></span>Time off</span>' : '',
+      awaiting ? '<span class="shifts-legend__item"><span class="shifts-legend__mark shifts-legend__mark--await" aria-hidden="true"></span>Not confirmed yet</span>' : ''
+    ].filter(Boolean);
+    if (entries.length < 2) return '';
+    return `<span class="shifts-toolbar__legend shifts-legend">${entries.join('')}</span>`;
   }
 
   function initials(value) {
@@ -564,16 +579,22 @@
         <form class="atlas-sheet__body atlas-form" id="shifts-editor-form" data-shifts-shift-form novalidate>
           <input type="hidden" name="shift_id" value="${escapeHtml(shift?.id || '')}">
           <div class="atlas-field"><label for="shift-person">Person</label><select class="atlas-select" id="shift-person" name="person_id" required><option value="" ${shift ? '' : 'selected'} disabled>Choose a person</option>${options}</select><p class="error" data-error-for="person_id" hidden>Choose who works this shift.</p></div>
-          <div class="atlas-field"><label for="shift-role">Role <span class="optional">Optional</span></label><input class="atlas-input" id="shift-role" name="role_name" maxlength="120" value="${escapeHtml(shift?.role_name || '')}" placeholder="Bartender, opening, closing"></div>
-          <div class="atlas-field"><label for="shift-date">Date</label><input class="atlas-input" ${DATE_FIELD} id="shift-date" name="date" required value="${escapeHtml(dateKey)}"></div>
-          <div class="atlas-grid-2">
+          ${shift && warningsFor(shift, ws).length ? `<p class="shifts-editor__warn">${icon('triangle-alert')}<span>${escapeHtml(warningsFor(shift, ws).join(' · '))}</span></p>` : ''}
+          <div class="shifts-editor__when">
+            <div class="atlas-field shifts-editor__date"><label for="shift-date">Date</label><input class="atlas-input" ${DATE_FIELD} id="shift-date" name="date" required value="${escapeHtml(dateKey)}"></div>
             <div class="atlas-field"><label for="shift-start">Start</label><input class="atlas-input" ${TIME_FIELD} id="shift-start" name="start" required value="${escapeHtml(start.time)}"></div>
             <div class="atlas-field"><label for="shift-end">End</label><input class="atlas-input" ${TIME_FIELD} id="shift-end" name="end" required value="${escapeHtml(end)}"></div>
           </div>
-          <p class="help shifts-editor__hint" data-shifts-start-note ${start.note ? '' : 'hidden'}>${escapeHtml(start.note)}</p>
-          <p class="help shifts-editor__hint" data-shifts-next-day hidden>Ends the next day.</p>
-          <p class="error" data-error-for="time" hidden>Enter a start and an end time. The end can’t be the same as the start.</p>
-          <div class="atlas-field"><label for="shift-break">Break <span class="optional">Minutes</span></label><input class="atlas-input" type="number" id="shift-break" name="break_minutes" min="0" max="720" step="5" inputmode="numeric" value="${Number(shift?.break_minutes || 0)}"></div>
+          <div class="shifts-editor__readout">
+            <p class="shifts-editor__length num" data-shifts-duration aria-live="polite" hidden></p>
+            <p class="help shifts-editor__hint" data-shifts-start-note ${start.note ? '' : 'hidden'}>${escapeHtml(start.note)}</p>
+            <p class="help shifts-editor__hint" data-shifts-next-day hidden>Ends the next day.</p>
+            <p class="error" data-error-for="time" hidden>Enter a start and an end time. The end can’t be the same as the start.</p>
+          </div>
+          <div class="shifts-editor__pair">
+            <div class="atlas-field"><label for="shift-role">Role <span class="optional">Optional</span></label><input class="atlas-input" id="shift-role" name="role_name" maxlength="120" value="${escapeHtml(shift?.role_name || '')}" placeholder="Bartender, opening, closing"></div>
+            <div class="atlas-field"><label for="shift-break">Break <span class="optional">Minutes</span></label><input class="atlas-input" type="number" id="shift-break" name="break_minutes" min="0" max="720" step="5" inputmode="numeric" value="${Number(shift?.break_minutes || 0)}"></div>
+          </div>
           <div class="atlas-field"><label for="shift-note">Note <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="shift-note" name="note" rows="3" maxlength="3000" placeholder="Opening duties, handover, a special event">${escapeHtml(shift?.note || '')}</textarea></div>
         </form>
         <footer class="atlas-sheet__foot">
@@ -584,10 +605,19 @@
       </section>`
     });
     const form = root.querySelector('#shifts-editor-form');
+    // The length reads back as the times change: "8 h shift", and what is
+    // left after the break when there is one.
+    const minutesOf = (value) => (Number(value.slice(0, 2)) * 60) + Number(value.slice(3, 5));
     const syncNextDay = () => {
       const s = form.start.value;
       const e = form.end.value;
       root.querySelector('[data-shifts-next-day]').hidden = !(s && e && e < s);
+      const length = root.querySelector('[data-shifts-duration]');
+      if (!s || !e || s === e) { length.hidden = true; return; }
+      const minutes = ((minutesOf(e) - minutesOf(s)) + 1440) % 1440;
+      const pause = Math.max(0, Number(form.break_minutes.value || 0));
+      length.textContent = pause && pause < minutes ? `${formatHours(minutes / 60)} shift · ${formatHours((minutes - pause) / 60)} after the break` : `${formatHours(minutes / 60)} shift`;
+      length.hidden = false;
     };
     form.addEventListener('input', (event) => {
       if (event.target.name === 'date' && !form.shift_id.value && !form.start.value) {
@@ -757,14 +787,26 @@
     }).join('')}</nav>`;
   }
 
+  // A failed first load keeps the schedule's frame and says so inside it; a
+  // failed refresh keeps the last schedule under a notice.
   function alertMarkup(slot) {
     if (!slot.error) return '';
+    if (!slot.workspace) return `<div class="shifts-failed">${alertBody(slot)}</div>`;
+    return alertBody(slot);
+  }
+
+  function alertBody(slot) {
     return `<div class="atlas-alert atlas-alert--danger shifts-alert" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Shifts couldn’t be ${slot.workspace ? 'updated' : 'loaded'}.</p><p class="atlas-alert__body">${escapeHtml(slot.error)} ${slot.workspace ? 'You’re seeing the last schedule that loaded.' : 'Nothing has changed.'}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-retry>Try again</button></div></div>`;
   }
 
+  // Loading draws the final layout with flat grey bars at their real size: the
+  // week grid's frame, header and rows with a few shift bars, or list rows.
+  const SKELETON_WEEK = ['0110100', '1011010', '0100110', '0001011'];
   function skeletonMarkup(kind = 'grid') {
-    if (kind === 'list') return `<div class="shifts-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(5)}<span class="sr-only">Loading shifts</span></div>`;
-    return `<div class="shifts-skel shifts-skel--grid" aria-busy="true">${'<div class="atlas-skel atlas-skel--block"></div>'.repeat(4)}<span class="sr-only">Loading shifts</span></div>`;
+    if (kind === 'list') return `<div class="shifts-skel shifts-skel--list" aria-busy="true">${'<div class="shifts-skel__item"><span class="atlas-skel shifts-skel__line"></span><span class="atlas-skel shifts-skel__meta"></span></div>'.repeat(5)}<span class="sr-only">Loading shifts</span></div>`;
+    const head = `<div class="shifts-skel__row shifts-skel__row--head"><span></span>${'<span><span class="atlas-skel shifts-skel__day"></span></span>'.repeat(7)}<span></span></div>`;
+    const rows = SKELETON_WEEK.map((pattern) => `<div class="shifts-skel__row"><span class="shifts-skel__person"><span class="atlas-skel atlas-skel--circle"></span><span class="atlas-skel shifts-skel__name"></span></span>${[...pattern].map((on) => `<span>${on === '1' ? '<span class="atlas-skel shifts-skel__bar"></span>' : ''}</span>`).join('')}<span><span class="atlas-skel shifts-skel__total"></span></span></div>`).join('');
+    return `<div class="shifts-skel shifts-skel--grid" aria-busy="true">${head}${rows}<span class="sr-only">Loading shifts</span></div>`;
   }
 
   // "Who's on": today and tomorrow by business date (AtlasVenueClock).
@@ -783,7 +825,7 @@
     return `<section class="shifts-now" aria-label="Who is working">${days.map(([key, label]) => {
       const rows = whoIsOn(key, ws);
       return `<div class="shifts-now__day"><p class="shifts-now__label">${label} <span>${escapeHtml(shortDate(key))}</span></p>${rows.length
-        ? `<p class="shifts-now__people">${rows.map((row) => `<span class="shifts-now__person${personColorClassOn(personFor(row.personId, ws) || { id: row.personId, display_name: row.name })}">${avatar(personFor(row.personId, ws))}${escapeHtml(row.name.split(' ')[0])} <span class="num">${escapeHtml(row.start)}–${escapeHtml(row.end)}</span></span>`).join('')}</p>`
+        ? `<p class="shifts-now__people">${rows.map((row) => `<span class="shifts-now__person${personColorClassOn(personFor(row.personId, ws) || { id: row.personId, display_name: row.name })}">${escapeHtml(row.name.split(' ')[0])} <span class="num">${escapeHtml(row.start)}–${escapeHtml(row.end)}</span></span>`).join('')}</p>`
         : `<p class="shifts-now__none">${canManage() ? 'No one scheduled' : 'No published shifts'}</p>`}</div>`;
     }).join('')}${canManage() || canRespond() ? '<a class="atlas-btn atlas-btn--ghost atlas-btn--sm shifts-now__handover" href="#messages/shift-handover">' + icon('notebook-pen') + 'Handover</a>' : ''}</section>`;
   }
@@ -798,21 +840,42 @@
     return 'Time off';
   }
 
-  function chipMarkup(shift, ws) {
+  // One shift in the week grid: a 22 px bar carrying the times (filled when
+  // published, dashed while it is a draft, coloured by person when that is
+  // on), with a caption under it for anything the row does not already say: a
+  // role other than the person's usual one, the note, and a conflict in words.
+  // The bar is the control; its label carries every caption for assistive tech.
+  function chipMarkup(shift, ws, person = personFor(shift.person_id, ws)) {
     const warnings = warningsFor(shift, ws);
     const unpublished = isUnpublished(shift, ws);
     const response = responseFor(shift, ws);
     const responseText = response ? RESPONSE[response.response]?.label || '' : (canManage() && !unpublished ? 'Not confirmed yet' : '');
+    const awaiting = canManage() && !unpublished && response?.response === 'pending';
     const label = `${nameOf(shift, ws)}, ${longDate(dateOf(shift.starts_local))}, ${timeOf(shift.starts_local)} to ${timeOf(shift.ends_local)}${shift.role_name ? `, ${shift.role_name}` : ''}${unpublished ? ', not published' : ''}${responseText ? `, ${responseText}` : ''}${warnings.length ? `. ${warnings.join('. ')}` : ''}`;
-    const tag = canManage() ? 'button type="button"' : 'div';
-    const close = canManage() ? 'button' : 'div';
-    return `<${tag} class="shift-chip${unpublished ? ' is-unpublished' : ''}${warnings.length ? ' has-warning' : ''}${shiftColorClass(shift, ws)}" ${canManage() ? `data-shifts-edit="${escapeHtml(shift.id)}"` : ''} aria-label="${escapeHtml(label)}" ${warnings.length ? `title="${escapeHtml(warnings.join(' · '))}"` : ''}>
-      <span class="shift-chip__time num">${escapeHtml(timeOf(shift.starts_local))}–${escapeHtml(timeOf(shift.ends_local))}</span>
-      ${shift.role_name ? `<span class="shift-chip__role">${escapeHtml(shift.role_name)}</span>` : ''}
-      ${warnings.length ? `<span class="shift-chip__warn">${icon('triangle-alert')}<span>${escapeHtml(warningWord(warnings))}</span></span>` : ''}
-    </${close}>`;
+    const manage = canManage();
+    const tag = manage ? 'button type="button"' : 'div';
+    const close = manage ? 'button' : 'div';
+    const caption = [shift.role_name && shift.role_name !== person?.default_role ? shift.role_name : null, shift.note].filter(Boolean).join(' · ');
+    return `<div class="shifts-grid__shift" ${manage ? `data-shifts-edit="${escapeHtml(shift.id)}"` : ''}>
+      <${tag} class="shift-chip${unpublished ? ' is-unpublished' : ''}${warnings.length ? ' has-warning' : ''}${awaiting ? ' is-awaiting' : ''}${shiftColorClass(shift, ws)}" ${manage ? `data-shifts-edit="${escapeHtml(shift.id)}"` : ''} aria-label="${escapeHtml(label)}" ${warnings.length ? `title="${escapeHtml(warnings.join(' · '))}"` : ''}>
+        <span class="shift-chip__time num">${escapeHtml(timeOf(shift.starts_local))}–${escapeHtml(timeOf(shift.ends_local))}</span>${awaiting ? '<span class="shift-chip__await"></span>' : ''}
+      </${close}>
+      ${caption ? `<span class="shift-chip__role" aria-hidden="true">${escapeHtml(caption)}</span>` : ''}
+      ${warnings.length ? `<span class="shift-chip__warn" aria-hidden="true">${icon('triangle-alert')}<span>${escapeHtml(warningWord(warnings))}</span></span>` : ''}
+    </div>`;
   }
 
+  // Approved time off, or a weekday the person marked as never available.
+  function leaveFor(personId, dateKey, ws) {
+    const leave = list(ws, 'time_off').find((request) => request.person_id === personId && request.status === 'approved' && request.starts_on <= dateKey && request.ends_on >= dateKey);
+    if (leave) return TIME_OFF_TYPES[leave.request_type] || 'Time off';
+    const recurring = list(ws, 'availability').find((entry) => entry.person_id === personId && Number(entry.weekday) === weekday(dateKey));
+    return recurring?.unavailable ? 'Unavailable' : '';
+  }
+
+  // The rota: people down a fixed column, the seven days across on faint day
+  // lines (the weekend a tone darker, today on a 1 px kingfisher line), each
+  // person's hours in the last column and each day's cover in the foot row.
   function weekGridMarkup(ws) {
     const days = [0, 1, 2, 3, 4, 5, 6].map((index) => addDays(state.weekStart, index));
     const shifts = list(ws, 'shifts');
@@ -820,26 +883,49 @@
     const personIds = new Set(shifts.map((shift) => shift.person_id));
     const rows = people(ws).filter((person) => person.active || personIds.has(person.id))
       .filter((person) => manage || personIds.has(person.id));
+    const shown = new Set(rows.map((person) => person.id));
     const current = today();
+    const dayClass = (key) => `${key === current ? ' is-today' : ''}${[0, 6].includes(weekday(key)) ? ' is-weekend' : ''}`;
     const head = `<div class="shifts-grid__row shifts-grid__row--head" role="row">
-      <div class="shifts-grid__corner" role="columnheader"><span class="sr-only">Person</span></div>
-      ${days.map((key) => `<div class="shifts-grid__day${key === current ? ' is-today' : ''}" role="columnheader" ${key === current ? 'aria-current="date"' : ''}><span>${escapeHtml(DAY_NAMES[weekday(key)].slice(0, 3))}</span> <span class="num">${dayNumber(key)}</span>${key === current ? '<span class="sr-only"> (today)</span>' : ''}</div>`).join('')}
+      <div class="shifts-grid__corner" role="columnheader"><span class="sr-only">Person</span><span aria-hidden="true">${rows.length} ${rows.length === 1 ? 'person' : 'people'}</span></div>
+      ${days.map((key) => `<div class="shifts-grid__day${dayClass(key)}" role="columnheader" ${key === current ? 'aria-current="date"' : ''}><span class="shifts-grid__dow">${escapeHtml(DAY_NAMES[weekday(key)].slice(0, 3))}</span> <span class="shifts-grid__date num">${dayNumber(key)}</span>${key === current ? '<span class="sr-only"> (today)</span>' : ''}</div>`).join('')}
+      <div class="shifts-grid__total" role="columnheader">Hours</div>
     </div>`;
     const body = rows.map((person) => {
       const personShifts = shifts.filter((shift) => shift.person_id === person.id);
       const hours = personShifts.reduce((total, shift) => total + hoursOf(shift), 0);
+      const meta = [person.default_role, person.login_enabled === false ? 'schedule only' : null].filter(Boolean).join(' · ');
       return `<div class="shifts-grid__row" role="row">
-        <div class="shifts-grid__person${personColorClassOn(person)}" role="rowheader">${avatar(person)}<span class="shifts-grid__name"><span class="shifts-grid__display">${escapeHtml(person.display_name)}</span><span class="shifts-grid__hours num">${personShifts.length ? formatHours(hours) : manage ? 'No shifts' : ''}</span></span></div>
+        <div class="shifts-grid__person${personColorClassOn(person)}" role="rowheader">${avatar(person)}<span class="shifts-grid__name"><span class="shifts-grid__display">${escapeHtml(person.display_name)}</span>${meta ? `<span class="shifts-grid__hours">${escapeHtml(meta)}</span>` : ''}</span></div>
         ${days.map((key) => {
           const cell = personShifts.filter((shift) => dateOf(shift.starts_local) === key).sort((a, b) => a.starts_local.localeCompare(b.starts_local));
-          const leave = list(ws, 'time_off').find((request) => request.person_id === person.id && request.status === 'approved' && request.starts_on <= key && request.ends_on >= key);
-          return `<div class="shifts-grid__cell${key === current ? ' is-today' : ''}" role="cell">${cell.map((shift) => chipMarkup(shift, ws)).join('')}${leave && !cell.length ? `<span class="shifts-grid__leave">${escapeHtml(TIME_OFF_TYPES[leave.request_type] || 'Time off')}</span>` : ''}${manage ? `<button type="button" class="shifts-grid__add" data-shifts-add="${escapeHtml(key)}" data-shifts-person="${escapeHtml(person.id)}" aria-label="Add a shift for ${escapeHtml(person.display_name)} on ${escapeHtml(longDate(key))}">${icon('plus')}</button>` : ''}</div>`;
+          const leave = cell.length ? '' : leaveFor(person.id, key, ws);
+          return `<div class="shifts-grid__cell${dayClass(key)}" role="cell">${cell.map((shift) => chipMarkup(shift, ws, person)).join('')}${leave ? `<span class="shifts-grid__leave">${escapeHtml(leave)}</span>` : ''}${manage ? `<button type="button" class="shifts-grid__add" data-shifts-add="${escapeHtml(key)}" data-shifts-person="${escapeHtml(person.id)}" aria-label="Add a shift for ${escapeHtml(person.display_name)} on ${escapeHtml(longDate(key))}">${icon('plus')}</button>` : ''}</div>`;
         }).join('')}
+        <div class="shifts-grid__total num${personShifts.length ? '' : ' is-zero'}" role="cell">${formatHours(hours)}</div>
       </div>`;
     }).join('');
-    return `<div class="shifts-grid" role="table" aria-label="Week of ${escapeHtml(weekRangeLabel(state.weekStart))}">${head}${body}</div>`;
+    const counted = shifts.filter((shift) => shown.has(shift.person_id));
+    const foot = `<div class="shifts-grid__row shifts-grid__row--foot" role="row">
+      <div class="shifts-grid__corner" role="rowheader">Cover</div>
+      ${days.map((key) => {
+        const on = counted.filter((shift) => dateOf(shift.starts_local) === key);
+        const hours = on.reduce((total, shift) => total + hoursOf(shift), 0);
+        const open = vc()?.dayWindow?.(key)?.state === 'open';
+        const heads = new Set(on.map((shift) => shift.person_id)).size;
+        const content = on.length
+          ? `<span class="shifts-grid__count">${heads} ${heads === 1 ? 'person' : 'people'}</span><span class="num">${formatHours(hours)}</span>`
+          : manage && open && key >= current ? '<span class="shifts-grid__gap">No one</span>' : '<span class="shifts-grid__none"><span aria-hidden="true">–</span><span class="sr-only">No shifts</span></span>';
+        return `<div class="shifts-grid__cover${dayClass(key)}" role="cell">${content}</div>`;
+      }).join('')}
+      <div class="shifts-grid__total num" role="cell">${formatHours(counted.reduce((total, shift) => total + hoursOf(shift), 0))}</div>
+    </div>`;
+    return `<div class="shifts-grid" role="table" aria-label="Week of ${escapeHtml(weekRangeLabel(state.weekStart))}">${head}${body}${foot}</div>`;
   }
 
+  // The day list (phones, tablets and a teammate's own week): one section per
+  // day, headed by the date, its shifts as rows that start with the same mark
+  // as the grid's bar (filled, or dashed while it is a draft).
   function dayListMarkup(ws, options = {}) {
     const days = [0, 1, 2, 3, 4, 5, 6].map((index) => addDays(state.weekStart, index));
     const manage = canManage();
@@ -851,8 +937,9 @@
       const entries = shiftsOn(ws, key).filter((shift) => !options.mine || shift.person_id === ownPersonId());
       if (options.mine && !entries.length) return '';
       if (hidePast && key < current) return '';
-      return `<section class="shifts-day" aria-labelledby="shifts-day-${key}">
-        <header class="shifts-day__head"><h3 class="shifts-day__title" id="shifts-day-${key}">${escapeHtml(longDate(key))}</h3>${key === current ? pill('Today', 'info') : ''}${manage && !options.mine ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm shifts-day__add" data-shifts-add="${escapeHtml(key)}">${icon('plus')}Add shift</button>` : ''}</header>
+      const hours = entries.reduce((total, shift) => total + hoursOf(shift), 0);
+      return `<section class="shifts-day${key === current ? ' is-today' : ''}" aria-labelledby="shifts-day-${key}">
+        <header class="shifts-day__head"><h3 class="shifts-day__title" id="shifts-day-${key}">${escapeHtml(longDate(key))}</h3>${key === current ? pill('Today', 'info') : ''}${entries.length && !options.mine ? `<span class="shifts-day__sum num">${entries.length} · ${formatHours(hours)}</span>` : ''}${manage && !options.mine ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm shifts-day__add" data-shifts-add="${escapeHtml(key)}">${icon('plus')}Add shift</button>` : ''}</header>
         ${entries.length ? `<ul class="atlas-list shifts-day__list">${entries.map((shift) => shiftRowMarkup(shift, ws, options)).join('')}</ul>` : `<p class="shifts-day__empty">${manage ? 'No shifts yet.' : 'No shifts.'}</p>`}
       </section>`;
     }).join('')}</div>`;
@@ -863,27 +950,28 @@
     const response = responseFor(shift, ws);
     const own = shift.person_id === ownPersonId();
     const status = RESPONSE[response?.response || 'pending'];
-    const warnings = manage ? warningsFor(shift, ws) : [];
+    // The pill says "Change requested"; the row keeps the person's note in words.
+    const warnings = manage ? warningsFor(shift, ws).filter((text) => !/^Change requested/.test(text)) : [];
+    const asked = manage && response?.response === 'change_requested' && response.note ? response.note : '';
     const unpublished = isUnpublished(shift, ws);
     const colleagues = options.mine ? whoIsOn(businessDateOf(shift), ws).filter((row) => row.personId !== shift.person_id) : [];
     const showConfirm = own && canRespond() && !manage && (response?.response || 'pending') === 'pending';
-    const meta = [
-      options.mine ? null : nameOf(shift, ws),
-      shift.role_name,
-      Number(shift.break_minutes || 0) ? `${Number(shift.break_minutes)} min break` : null,
-      shift.note
-    ].filter(Boolean).join(' · ');
+    const meta = options.mine
+      ? [shift.role_name, Number(shift.break_minutes || 0) ? `${Number(shift.break_minutes)} min break` : null, shift.note].filter(Boolean).join(' · ')
+      : [shift.role_name, shift.note].filter(Boolean).join(' · ');
     return `<li class="atlas-row shifts-row${unpublished ? ' is-unpublished' : ''}${shiftColorClass(shift, ws)}" data-shift-id="${escapeHtml(shift.id)}">
+      <span class="shifts-row__mark" aria-hidden="true"></span>
       <div class="atlas-row__body">
         <p class="atlas-row__title shifts-row__time num">${escapeHtml(timeOf(shift.starts_local))}–${escapeHtml(timeOf(shift.ends_local))}${options.mine ? '' : `<span class="shifts-row__name">${escapeHtml(nameOf(shift, ws))}</span>`}</p>
-        ${meta && options.mine ? `<p class="atlas-row__meta">${escapeHtml(meta)}</p>` : meta && !options.mine ? `<p class="atlas-row__meta">${escapeHtml([shift.role_name, shift.note].filter(Boolean).join(' · '))}</p>` : ''}
-        ${warnings.length ? `<p class="atlas-row__meta shifts-row__warn">${icon('triangle-alert')}${escapeHtml(warnings.join(' · '))}</p>` : ''}
-        ${colleagues.length ? `<p class="shifts-row__with"><span class="sr-only">Working with </span>${colleagues.slice(0, 4).map((row) => avatar(personFor(row.personId, ws))).join('')}<span class="atlas-row__meta">with ${escapeHtml(colleagues.map((row) => row.name.split(' ')[0]).join(', '))}</span></p>` : ''}
+        ${meta ? `<p class="atlas-row__meta">${escapeHtml(meta)}</p>` : ''}
+        ${asked ? `<p class="atlas-row__meta shifts-row__asked">“${escapeHtml(asked)}”</p>` : ''}
+        ${warnings.length ? `<p class="atlas-row__meta shifts-row__warn">${icon('triangle-alert')}<span>${escapeHtml(warnings.join(' · '))}</span></p>` : ''}
+        ${colleagues.length ? `<p class="shifts-row__with"><span class="sr-only">Working with </span><span class="shifts-row__faces">${colleagues.slice(0, 4).map((row) => avatar(personFor(row.personId, ws))).join('')}</span><span class="atlas-row__meta">with ${escapeHtml(colleagues.map((row) => row.name.split(' ')[0]).join(', '))}</span></p>` : ''}
       </div>
       <div class="atlas-row__end">
         ${unpublished ? pill('Not published', 'warning') : (own || manage) && (response || own) ? pill(status.label, status.tone) : ''}
         ${showConfirm ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-respond="confirmed" data-shift-id="${escapeHtml(shift.id)}">Confirm</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-shifts-respond="change_requested" data-shift-id="${escapeHtml(shift.id)}">Request change</button>` : ''}
-        ${manage ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-shifts-edit="${escapeHtml(shift.id)}" aria-label="Edit ${escapeHtml(nameOf(shift, ws))}'s shift">${icon('pencil')}</button>` : ''}
+        ${manage ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm shifts-row__edit" data-shifts-edit="${escapeHtml(shift.id)}" aria-label="Edit ${escapeHtml(nameOf(shift, ws))}'s shift">${icon('pencil')}</button>` : ''}
       </div>
     </li>`;
   }
@@ -895,6 +983,12 @@
     return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar')}</div><h3 class="atlas-empty__title">No published shifts this week</h3><p class="atlas-empty__text">Your manager hasn’t published this week yet. Published shifts appear here.</p></div>`;
   }
 
+  // The legend names only the marks the grid is showing.
+  function gridLegend(content, ws) {
+    if (!content.includes('shifts-grid"')) return '';
+    return legendMarkup({ drafts: list(ws, 'shifts').some((shift) => isUnpublished(shift, ws)), leave: content.includes('shifts-grid__leave'), awaiting: content.includes('is-awaiting') });
+  }
+
   function staffScheduleMarkup(ws) {
     const mine = list(ws, 'shifts').filter((shift) => shift.person_id === ownPersonId());
     const toggle = `<div class="atlas-segmented shifts-staff-toggle" role="group" aria-label="Whose shifts"><button type="button" data-shifts-staff-view="mine" aria-pressed="${state.staffView === 'mine'}">Mine</button><button type="button" data-shifts-staff-view="team" aria-pressed="${state.staffView === 'team'}">Team</button></div>`;
@@ -904,7 +998,8 @@
       content = mine.length ? dayListMarkup(ws, { mine: true }) + (!state.showEarlier && state.weekStart <= today() && today() <= addDays(state.weekStart, 6) && !mine.some((shift) => dateOf(shift.starts_local) >= today()) ? `<p class="shifts-day__empty">No more shifts for you this week.</p>` : '')
         : `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar')}</div><h3 class="atlas-empty__title">No shifts for you this week</h3><p class="atlas-empty__text">${ownPersonId() ? 'You’re not on the published schedule this week.' : 'Your account isn’t linked to the shift roster yet. Ask a manager to add you.'}</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-staff-view="team">See the team’s week</button></div></div>`;
     } else content = narrowQuery.matches ? dayListMarkup(ws) : weekGridMarkup(ws);
-    return `<div class="atlas-toolbar shifts-toolbar">${toggle}${statusMarkup()}${state.staffView === 'team' ? `<span class="shifts-toolbar__legend">${colorToggleMarkup()}</span>` : ''}</div>${onNowMarkup(ws)}${content}`;
+    const team = state.staffView === 'team';
+    return `${onNowMarkup(ws)}<div class="atlas-toolbar shifts-toolbar">${toggle}${statusMarkup()}${team ? gridLegend(content, ws) : ''}${team ? `<div class="atlas-toolbar__end">${colorToggleMarkup()}</div>` : ''}</div>${content}`;
   }
 
   function weekScheduleMarkup() {
@@ -912,8 +1007,10 @@
     const ws = slot.key === state.weekStart ? slot.workspace : null;
     if (!ws) return `${alertMarkup(slot)}${slot.error && !slot.loading ? '' : skeletonMarkup(narrowQuery.matches ? 'list' : 'grid')}`;
     if (!canManage()) return `${alertMarkup(slot)}${staffScheduleMarkup(ws)}`;
-    const content = list(ws, 'shifts').length ? (narrowQuery.matches ? dayListMarkup(ws) : weekGridMarkup(ws)) : weekEmptyMarkup();
-    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}<span class="shifts-toolbar__legend">${colorToggleMarkup()}${list(ws, 'shifts').some((shift) => isUnpublished(shift, ws)) ? '<span class="shift-chip shift-chip--legend is-unpublished" aria-hidden="true"></span>Dashed: not published yet' : ''}</span><div class="atlas-toolbar__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart)}">${icon('plus')}Add shift</button></div></div>${onNowMarkup(ws)}${content}`;
+    const any = list(ws, 'shifts').length > 0;
+    const content = any ? (narrowQuery.matches ? dayListMarkup(ws) : weekGridMarkup(ws)) : weekEmptyMarkup();
+    const addDate = state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart;
+    return `${alertMarkup(slot)}${any ? onNowMarkup(ws) : ''}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}${gridLegend(content, ws)}${any ? `<div class="atlas-toolbar__end">${colorToggleMarkup()}<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(addDate)}">${icon('plus')}Add shift</button></div>` : ''}</div>${content}`;
   }
 
   function monthScheduleMarkup() {
@@ -938,16 +1035,17 @@
       const gap = manage && inMonth && key >= current && !all.length && win?.state === 'open';
       const labelParts = [longDate(key), `${all.length} ${all.length === 1 ? 'shift' : 'shifts'}`];
       if (gap) labelParts.push('open, no one scheduled');
-      return `<button type="button" class="shifts-month__cell${inMonth ? '' : ' is-outside'}${key === current ? ' is-today' : ''}" data-shifts-day="${escapeHtml(key)}" ${inMonth ? '' : 'tabindex="-1"'} aria-label="${escapeHtml(labelParts.join(', '))}" ${key === current ? 'aria-current="date"' : ''}>
+      const colour = (shift) => personColorClassOn(personFor(shift.person_id, ws) || { id: shift.person_id, display_name: shift.person_name });
+      return `<button type="button" class="shifts-month__cell${inMonth ? '' : ' is-outside'}${key === current ? ' is-today' : ''}${[0, 6].includes(weekday(key)) ? ' is-weekend' : ''}${gap ? ' has-gap' : ''}" data-shifts-day="${escapeHtml(key)}" ${inMonth ? '' : 'tabindex="-1"'} aria-label="${escapeHtml(labelParts.join(', '))}" ${key === current ? 'aria-current="date"' : ''}>
         <span class="shifts-month__num num">${dayNumber(key)}</span>
-        ${inMonth ? `<span class="shifts-month__chips">${entries.slice(0, 3).map((shift) => `<span class="shifts-month__chip${isUnpublished(shift, ws) ? ' is-unpublished' : ''}${personColorClassOn(personFor(shift.person_id, ws) || { id: shift.person_id, display_name: shift.person_name })}"><span class="shifts-month__who">${escapeHtml(mineOnly ? 'You' : nameOf(shift, ws).split(' ')[0])}</span> <span class="num">${escapeHtml(timeOf(shift.starts_local))}</span></span>`).join('')}${entries.length > 3 ? `<span class="shifts-month__more">+${entries.length - 3} more</span>` : ''}</span>
-        <span class="shifts-month__count num" aria-hidden="true">${entries.length ? entries.length : ''}</span>
+        ${inMonth ? `<span class="shifts-month__chips">${entries.slice(0, 3).map((shift) => `<span class="shifts-month__chip${isUnpublished(shift, ws) ? ' is-unpublished' : ''}${colour(shift)}"><span class="shifts-month__who">${escapeHtml(mineOnly ? 'You' : nameOf(shift, ws).split(' ')[0])}</span> <span class="num">${escapeHtml(timeOf(shift.starts_local))}</span></span>`).join('')}${entries.length > 3 ? `<span class="shifts-month__more">+${entries.length - 3} more</span>` : ''}</span>
+        <span class="shifts-month__count" aria-hidden="true">${entries.slice(0, 4).map((shift) => `<span class="shifts-month__dot${isUnpublished(shift, ws) ? ' is-unpublished' : ''}${colour(shift)}"></span>`).join('')}</span>
         ${gap ? '<span class="shifts-month__gap">No one scheduled</span>' : ''}` : ''}
       </button>`;
     };
-    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}${manage ? `<div class="atlas-toolbar__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(current.slice(0, 7) === first.slice(0, 7) ? current : first)}">${icon('plus')}Add shift</button></div>` : ''}</div>
+    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}${manage ? legendMarkup({ drafts: list(ws, 'shifts').some((shift) => isUnpublished(shift, ws)) }) : ''}${manage ? `<div class="atlas-toolbar__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(current.slice(0, 7) === first.slice(0, 7) ? current : first)}">${icon('plus')}Add shift</button></div>` : ''}</div>
       <div class="shifts-month" role="grid" aria-label="${escapeHtml(monthLabel(first))}">
-        <div class="shifts-month__weekdays" role="row">${WEEK_ORDER.map((day) => `<span role="columnheader">${DAY_NAMES[day].slice(0, 3)}</span>`).join('')}</div>
+        <div class="shifts-month__weekdays" role="row">${WEEK_ORDER.map((day) => `<span role="columnheader"${[0, 6].includes(day) ? ' class="is-weekend"' : ''}>${DAY_NAMES[day].slice(0, 3)}</span>`).join('')}</div>
         <div class="shifts-month__grid">${cells.map(cellMarkup).join('')}</div>
       </div>`;
   }
@@ -994,19 +1092,21 @@
     const choices = manage ? activePeople() : people().filter((person) => person.id === ownPersonId());
     const person = choices.find((entry) => entry.id === state.availabilityPersonId) || choices.find((entry) => entry.id === ownPersonId()) || choices[0] || null;
     if (!person) {
-      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('user-x')}</div><h3 class="atlas-empty__title">Your account isn’t on the shift roster</h3><p class="atlas-empty__text">Ask a manager to add you to the team in Alcedo. Then you can set your availability here.</p></div>`;
+      return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('user-x')}</div><h3 class="atlas-empty__title">Your account isn’t on the shift roster</h3><p class="atlas-empty__text">Ask a manager to add you to the team in Alcedo. Then you can set your availability here.</p></div>`;
     }
     state.availabilityPersonId = person.id;
     const rows = list(ws, 'availability');
     return `${alertMarkup(slot)}
       <div class="atlas-toolbar shifts-toolbar">
         ${manage ? `<div class="atlas-field shifts-inline-field"><label for="shifts-avail-person" class="sr-only">Person</label><select class="atlas-select" id="shifts-avail-person" data-shifts-availability-person>${choices.map((entry) => `<option value="${escapeHtml(entry.id)}" ${entry.id === person.id ? 'selected' : ''}>${escapeHtml(entry.display_name)}</option>`).join('')}</select></div>` : ''}
-        <p class="shifts-toolbar__note">Your usual week. Managers see a warning when a shift falls outside it; approved time off is set separately.</p>
+        <p class="shifts-toolbar__note">${manage ? `${escapeHtml(person.display_name)}’s usual week.` : 'Your usual week.'} Managers see a warning when a shift falls outside it; approved time off is set separately.</p>
       </div>
+      <div class="shifts-avail-frame">
+      <div class="shifts-avail__head" aria-hidden="true"><span>Day</span><span>Available</span><span>From – until</span><span>Note</span><span></span></div>
       <ul class="atlas-list shifts-avail">${WEEK_ORDER.map((day) => {
         const entry = rows.find((row) => row.person_id === person.id && Number(row.weekday) === day) || {};
         const available = !entry.unavailable;
-        return `<li class="shifts-avail__row"><form class="shifts-avail__form" data-shifts-availability-form data-person-id="${escapeHtml(person.id)}" data-weekday="${day}" novalidate>
+        return `<li class="shifts-avail__row${available ? '' : ' is-off'}"><form class="shifts-avail__form" data-shifts-availability-form data-person-id="${escapeHtml(person.id)}" data-weekday="${day}" novalidate>
           <span class="shifts-avail__day" id="avail-day-${day}">${DAY_NAMES[day]}</span>
           <span class="shifts-avail__toggle"><button type="button" class="atlas-toggle" role="switch" aria-checked="${available}" aria-labelledby="avail-day-${day} avail-state-${day}" data-shifts-availability-toggle></button><span class="shifts-avail__state" id="avail-state-${day}">${available ? 'Available' : 'Unavailable'}</span></span>
           <span class="shifts-avail__times"><label class="sr-only" for="avail-from-${day}">${DAY_NAMES[day]} from</label><input class="atlas-input" ${TIME_FIELD} id="avail-from-${day}" name="available_from" value="${escapeHtml(String(entry.available_from || '').slice(0, 5))}" ${available ? '' : 'disabled'} aria-describedby="avail-hint-${day}"><span aria-hidden="true">–</span><label class="sr-only" for="avail-to-${day}">${DAY_NAMES[day]} until</label><input class="atlas-input" ${TIME_FIELD} id="avail-to-${day}" name="available_to" value="${escapeHtml(String(entry.available_to || '').slice(0, 5))}" ${available ? '' : 'disabled'}><span class="sr-only" id="avail-hint-${day}">Leave empty for any time</span></span>
@@ -1014,10 +1114,25 @@
           <input type="hidden" name="unavailable" value="${available ? 'false' : 'true'}">
           <button type="submit" class="atlas-btn atlas-btn--secondary atlas-btn--sm shifts-avail__save" disabled>Save</button>
         </form></li>`;
-      }).join('')}</ul>`;
+      }).join('')}</ul>
+      </div>`;
   }
 
   // ---------- time off ----------
+
+  // Whole days from the first to the last day, both included.
+  function dayCount(first, last) {
+    let count = 1;
+    for (let key = first; key < last && count < 400; key = addDays(key, 1)) count += 1;
+    return count;
+  }
+
+  // A titled block of rows: the open work first ("Waiting for you"), then the
+  // record. The count is computed from the rows shown.
+  function groupMarkup(title, rows, extra = '') {
+    if (!rows.length) return '';
+    return `<section class="shifts-group${extra}"><h2 class="shifts-group__title">${escapeHtml(title)} <span class="shifts-group__count num">${rows.length}</span></h2><ul class="atlas-list shifts-list">${rows.join('')}</ul></section>`;
+  }
 
   function timeOffMarkup() {
     const slot = state.week;
@@ -1026,17 +1141,23 @@
     const manage = Boolean(ws.permissions?.can_decide_time_off);
     const requests = list(ws, 'time_off').slice().sort((a, b) => (a.status === 'pending' ? -1 : 0) - (b.status === 'pending' ? -1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
     const canRequest = manage || Boolean(ownPersonId());
-    const rows = requests.map((request) => {
+    const row = (request) => {
       const [label, tone] = TIME_OFF_STATUS[request.status] || [request.status, 'neutral'];
       const range = request.starts_on === request.ends_on ? longDate(request.starts_on) : `${shortDate(request.starts_on)} – ${shortDate(request.ends_on)}`;
-      return `<li class="atlas-row" data-time-off="${escapeHtml(request.id)}">
-        <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(manage ? (request.person_name || personFor(request.person_id)?.display_name || 'Team member') : range)}</p><p class="atlas-row__meta">${escapeHtml([manage ? range : null, TIME_OFF_TYPES[request.request_type] || 'Time off', request.note, request.manager_note ? `Manager: ${request.manager_note}` : null].filter(Boolean).join(' · '))}</p></div>
+      const days = dayCount(request.starts_on, request.ends_on);
+      const person = personFor(request.person_id);
+      return `<li class="atlas-row shifts-leave${request.status === 'approved' ? ' is-approved' : ''}" data-time-off="${escapeHtml(request.id)}">
+        <span class="shifts-leave__mark" aria-hidden="true"></span>
+        ${manage ? avatar(person || { id: request.person_id, display_name: request.person_name }) : ''}
+        <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(manage ? (request.person_name || person?.display_name || 'Team member') : range)}</p><p class="atlas-row__meta">${escapeHtml([manage ? range : null, `${days} ${days === 1 ? 'day' : 'days'}`, TIME_OFF_TYPES[request.request_type] || 'Time off', request.note, request.manager_note ? `Manager: ${request.manager_note}` : null].filter(Boolean).join(' · '))}</p></div>
         <div class="atlas-row__end">${pill(label, tone)}${manage && request.status === 'pending' ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-time-off-decision="approved" data-request-id="${escapeHtml(request.id)}">Approve</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-shifts-time-off-decision="rejected" data-request-id="${escapeHtml(request.id)}">Decline</button>` : ''}</div>
       </li>`;
-    }).join('');
+    };
+    const pending = requests.filter((request) => request.status === 'pending').map(row);
+    const decided = requests.filter((request) => request.status !== 'pending').map(row);
     return `${alertMarkup(slot)}
       <div class="atlas-toolbar shifts-toolbar"><p class="shifts-toolbar__note">${manage ? 'Requests from the last two weeks and the next six.' : 'Your requests and what your manager decided.'}</p>${canRequest ? `<div class="atlas-toolbar__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-time-off-new>${icon('plus')}${manage ? 'Record time off' : 'Request time off'}</button></div>` : ''}</div>
-      ${requests.length ? `<ul class="atlas-list shifts-list">${rows}</ul>` : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('calendar-off')}</div><h3 class="atlas-empty__title">No time off requested</h3><p class="atlas-empty__text">${manage ? 'Requests from the team appear here for you to approve.' : canRequest ? 'Ask for days off here. Your manager approves them.' : 'Your account isn’t on the shift roster yet.'}</p></div>`}`;
+      ${requests.length ? `<div class="shifts-groups">${groupMarkup(manage ? 'Waiting for you' : 'Waiting for your manager', pending)}${groupMarkup('Decided', decided)}</div>` : `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar-off')}</div><h3 class="atlas-empty__title">No time off requested</h3><p class="atlas-empty__text">${manage ? 'Requests from the team appear here for you to approve.' : canRequest ? 'Ask for days off here. Your manager approves them.' : 'Your account isn’t on the shift roster yet.'}</p></div>`}`;
   }
 
   function openTimeOffSheet() {
@@ -1092,23 +1213,28 @@
       .filter((row) => row.shift)
       .sort((a, b) => (a.response.manager_status === 'open' ? -1 : 0) - (b.response.manager_status === 'open' ? -1 : 0) || a.shift.starts_local.localeCompare(b.shift.starts_local));
     if (!rows.length) {
-      return `${alertMarkup(slot)}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('badge-check')}</div><h3 class="atlas-empty__title">No responses for ${escapeHtml(weekRangeLabel(state.weekStart))}</h3><p class="atlas-empty__text">Publishing a week asks everyone with an Alcedo login to confirm their shifts.</p></div>`;
+      return `${alertMarkup(slot)}<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('badge-check')}</div><h3 class="atlas-empty__title">No responses for ${escapeHtml(weekRangeLabel(state.weekStart))}</h3><p class="atlas-empty__text">Publishing a week asks everyone with an Alcedo login to confirm their shifts.</p></div>`;
     }
-    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar"><p class="shifts-toolbar__note">Week of ${escapeHtml(weekRangeLabel(state.weekStart))}. Change requests need a note when you close them.</p></div><ul class="atlas-list shifts-list">${rows.map(({ response, shift }) => {
+    const row = ({ response, shift }) => {
       const status = RESPONSE[response.response] || RESPONSE.pending;
       const open = response.manager_status === 'open';
-      return `<li class="atlas-row"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(nameOf(shift, ws))}</p><p class="atlas-row__meta">${escapeHtml([`${shortDate(dateOf(shift.starts_local))}, ${timeOf(shift.starts_local)}–${timeOf(shift.ends_local)}`, response.note, response.manager_note ? `Manager: ${response.manager_note}` : null].filter(Boolean).join(' · '))}</p></div>
+      return `<li class="atlas-row shifts-response">${avatar(personFor(shift.person_id, ws) || { id: shift.person_id, display_name: nameOf(shift, ws) })}<div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(nameOf(shift, ws))}</p><p class="atlas-row__meta"><span class="num">${escapeHtml(`${shortDate(dateOf(shift.starts_local))}, ${timeOf(shift.starts_local)}–${timeOf(shift.ends_local)}`)}</span>${response.note ? ` · ${open ? '<span class="shifts-response__note">' : ''}“${escapeHtml(response.note)}”${open ? '</span>' : ''}` : ''}${response.manager_note ? ` · Manager: ${escapeHtml(response.manager_note)}` : ''}</p></div>
         <div class="atlas-row__end">${pill(status.label, status.tone)}${open ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-response-decision="resolved" data-shift-id="${escapeHtml(shift.id)}" data-person-id="${escapeHtml(response.person_id)}">Resolve</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-shifts-response-decision="rejected" data-shift-id="${escapeHtml(shift.id)}" data-person-id="${escapeHtml(response.person_id)}">Decline</button>` : ''}</div></li>`;
-    }).join('')}</ul>`;
+    };
+    const open = rows.filter((entry) => entry.response.manager_status === 'open').map(row);
+    const rest = rows.filter((entry) => entry.response.manager_status !== 'open').map(row);
+    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar"><p class="shifts-toolbar__note">Week of ${escapeHtml(weekRangeLabel(state.weekStart))}. Change requests need a note when you close them.</p></div><div class="shifts-groups">${groupMarkup('Change requests', open)}${groupMarkup('Responses', rest)}</div>`;
   }
 
+  // The schedule's history, newest first: what changed, who changed it and
+  // when, on one row each with the time on the right edge.
   function activityMarkup() {
     const slot = state.week;
     const ws = slot.workspace;
     if (!ws) return `${alertMarkup(slot)}${slot.error && !slot.loading ? '' : skeletonMarkup('list')}`;
-    const events = list(ws, 'events');
-    if (!events.length) return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('history')}</div><h3 class="atlas-empty__title">No schedule activity yet</h3><p class="atlas-empty__text">Changes to shifts, availability, time off and publishing appear here.</p></div>`;
-    return `<ul class="atlas-list shifts-list">${events.map((event) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon('history')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(EVENT_LABELS[event.event_type] || String(event.event_type || 'Change').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()))}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Alcedo')} · <time datetime="${escapeHtml(event.created_at || '')}">${escapeHtml(vc()?.formatRelative?.(event.created_at) || '')}</time></p></div></li>`).join('')}</ul>`;
+    const events = list(ws, 'events').slice().sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    if (!events.length) return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('history')}</div><h3 class="atlas-empty__title">No schedule activity yet</h3><p class="atlas-empty__text">Changes to shifts, availability, time off and publishing appear here.</p></div>`;
+    return `<div class="atlas-toolbar shifts-toolbar"><p class="shifts-toolbar__note">${events.length} ${events.length === 1 ? 'change' : 'changes'} to the schedule, newest first.</p></div><ul class="atlas-list shifts-list shifts-events">${events.map((event) => `<li class="atlas-row atlas-row--compact shifts-event"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(EVENT_LABELS[event.event_type] || String(event.event_type || 'Change').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()))}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Alcedo')}</p></div><time class="shifts-event__time" datetime="${escapeHtml(event.created_at || '')}">${escapeHtml(vc()?.formatRelative?.(event.created_at) || '')}</time></li>`).join('')}</ul>`;
   }
 
   function contentMarkup() {
@@ -1120,7 +1246,7 @@
   }
 
   function permissionMarkup() {
-    return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('lock')}</div><h3 class="atlas-empty__title">This part of Shifts is for managers</h3><p class="atlas-empty__text">You can see your own shifts, availability and time off.</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#shifts">Go to my shifts</a></div></div>`;
+    return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('lock')}</div><h3 class="atlas-empty__title">This part of Shifts is for managers</h3><p class="atlas-empty__text">You can see your own shifts, availability and time off.</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#shifts">Go to my shifts</a></div></div>`;
   }
 
   function paint() {
@@ -1213,13 +1339,23 @@
     mutate('respond', { shift_id: shiftId, response, note }, response === 'confirmed' ? 'Shift confirmed' : 'Change request sent');
   }
 
+  // What is about to go out, in one sentence: "10 shifts, 77.5 h. 1 changed since revision 2."
+  function publishSummary(info) {
+    const ws = state.mode === 'month' ? state.month.workspace : state.week.workspace;
+    const shifts = list(ws, 'shifts');
+    if (!shifts.length) return '';
+    const hours = formatHours(shifts.reduce((total, shift) => total + hoursOf(shift), 0));
+    const changed = info.changed && info.revision ? ` ${info.changed} changed since revision ${info.revision}.` : '';
+    return `${shifts.length} ${shifts.length === 1 ? 'shift' : 'shifts'}, ${hours}.${changed} `;
+  }
+
   async function publish() {
     const month = state.mode === 'month';
     const info = publishState();
     if (!info) return;
     const answer = await confirmDialog({
       title: month ? `Publish ${monthLabel(state.monthStart)}?` : `Publish ${weekRangeLabel(state.weekStart)}?`,
-      body: `The team will see revision ${info.revision + 1} straight away and be asked to confirm their shifts.`,
+      body: `${publishSummary(info)}The team will see revision ${info.revision + 1} straight away and be asked to confirm their shifts.`,
       confirmLabel: month ? 'Publish month' : 'Publish week',
       field: { label: 'Note to the team', required: false, placeholder: 'For example: two extra shifts for the Friday event' }
     });
@@ -1346,6 +1482,7 @@
       const available = toggle.getAttribute('aria-checked') !== 'true';
       toggle.setAttribute('aria-checked', String(available));
       form.querySelector('.shifts-avail__state').textContent = available ? 'Available' : 'Unavailable';
+      form.closest('.shifts-avail__row')?.classList.toggle('is-off', !available);
       form.elements.namedItem('unavailable').value = available ? 'false' : 'true';
       form.querySelectorAll('input[name="available_from"], input[name="available_to"]').forEach((input) => { input.disabled = !available; });
       form.querySelector('.shifts-avail__save').disabled = false;

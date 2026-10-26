@@ -139,15 +139,26 @@
     return date ? `#bookings/res/${reservationId}/${date}` : `#bookings/res/${reservationId}`;
   }
 
+  // One plain glyph per inbox kind. Only a request needs a decision, so only a
+  // request carries the warning severity (the bell's one full colour).
+  const KIND_ICON = { request: 'calendar-clock', approved: 'calendar-check', changed: 'calendar-clock', declined: 'x', cancelled: 'x', no_show: 'user-x' };
+
+  // "Web Test Guest · party of 2 · Thu 27 Sep, 16:00": the visit time is what
+  // a manager needs to judge a request, so it rides with the server's text.
+  function detailFor(row) {
+    const when = row?.start_at ? window.AtlasVenueClock?.formatDateTime?.(row.start_at) : '';
+    return [row.body, when].filter(Boolean).join(' · ');
+  }
+
   function toNotifyItem(row) {
     const isRequest = row.kind === 'request';
     return {
       id: `booking:${row.id}`,
       type: 'booking',
       severity: isRequest ? 'warning' : 'info',
-      icon: isRequest ? 'calendar-clock' : 'calendar-check',
+      icon: KIND_ICON[row.kind] || 'calendar-check',
       title: row.title,
-      detail: row.body,
+      detail: detailFor(row),
       time: row.created_at || null,
       needsAction: isRequest,
       // actionId lets activation mark the row read server-side before navigating.

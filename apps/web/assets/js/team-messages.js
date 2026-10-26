@@ -74,6 +74,16 @@
     return escapeHtml(value).replace(/\n/g, '<br>');
   }
 
+  // A handover post (the Write handover template) keeps its three section
+  // names as small headings; every other message is plain text.
+  const HANDOVER_SECTIONS = ['What happened', 'Stock issues', 'For the next shift'];
+  function messageBody(value) {
+    if (state.selectedChannel !== HANDOVER_CHANNEL) return formatBody(value);
+    return String(value ?? '').split('\n')
+      .map((line) => (HANDOVER_SECTIONS.includes(line.trim()) ? `<strong class="msg-item__section">${escapeHtml(line.trim())}</strong>` : escapeHtml(line)))
+      .join('<br>');
+  }
+
   function initials(value) {
     const words = String(value || 'Alcedo').trim().split(/\s+/).filter(Boolean);
     if (!words.length) return 'A';
@@ -360,7 +370,7 @@
     element.classList.add('msg-host', 'page--full-height');
     element.innerHTML = `<div class="msg" data-msg-view="list">
       <aside class="msg-side" aria-label="Conversations">
-        <header class="page-head msg-side__head"><div class="page-head__text"><h1 class="page-head__title">Messages</h1></div></header>
+        <header class="page-head msg-side__head"><div class="page-head__text"><h1 class="page-head__title">Messages</h1><p class="page-head__sub msg-side__summary" data-msg-summary></p></div></header>
         <label class="atlas-search msg-side__search">${icon('search')}<input class="atlas-input" type="search" placeholder="Search conversations" aria-label="Search conversations" data-msg-search autocomplete="off"></label>
         <nav class="msg-side__list" aria-label="Conversations" data-msg-list></nav>
       </aside>
@@ -404,6 +414,8 @@
     return who ? `${who}: ${last.body || ''}` : String(last.body || '');
   }
 
+  // Two lines on one text edge: name and time, then the preview and the
+  // unread mark (a kingfisher dot with the count; the row's label says it).
   function channelRowMarkup(channel) {
     const unread = Number(channel.unread_count || 0);
     const current = channel.key === state.selectedChannel && (!PHONE.matches || state.routeChannel);
@@ -411,20 +423,36 @@
     return `<a class="msg-channel${unread ? ' has-unread' : ''}" href="#messages/${encodeURIComponent(channel.key)}" data-team-channel="${escapeHtml(channel.key)}" ${current ? 'aria-current="page"' : ''} aria-label="${escapeHtml(channel.name)}${unread ? `, ${unread} unread` : ''}">
       <span class="msg-channel__icon">${icon(channelIcon(channel))}</span>
       <span class="msg-channel__body">
-        <span class="msg-channel__name">${escapeHtml(channel.name)}${channel.starred ? `<span class="sr-only"> (pinned)</span>${icon('pin')}` : ''}</span>
-        <span class="msg-channel__preview">${escapeHtml(previewOf(channel))}</span>
+        <span class="msg-channel__line">
+          <span class="msg-channel__name">${escapeHtml(channel.name)}${channel.starred ? `<span class="sr-only"> (pinned)</span>${icon('pin')}` : ''}</span>
+          ${time ? `<time class="msg-channel__time" datetime="${escapeHtml(isoOf(channel.last_message.created_at))}">${escapeHtml(time)}</time>` : ''}
+        </span>
+        <span class="msg-channel__line">
+          <span class="msg-channel__preview">${escapeHtml(previewOf(channel))}</span>
+          ${unread ? `<span class="atlas-badge msg-channel__unread">${unread > 99 ? '99+' : unread}</span>` : ''}
+        </span>
       </span>
-      <span class="msg-channel__end">${time ? `<time class="msg-channel__time" datetime="${escapeHtml(isoOf(channel.last_message.created_at))}">${escapeHtml(time)}</time>` : ''}${unread ? `<span class="atlas-badge">${unread > 99 ? '99+' : unread}</span>` : ''}</span>
     </a>`;
+  }
+
+  // The list head's one line: how many conversations, and how many unread.
+  function renderSummary() {
+    const summary = region('summary');
+    if (!summary) return;
+    if (!state.snapshot) { summary.textContent = ''; return; }
+    const count = channels().length;
+    const unread = totalUnread();
+    summary.textContent = `${count} ${count === 1 ? 'channel' : 'channels'} · ${unread ? `${unread} unread` : 'all read'}`;
   }
 
   function renderList() {
     const list = region('list');
     if (!list) return;
+    renderSummary();
     if (!state.snapshot) {
       list.innerHTML = state.error
         ? '<p class="msg-side__empty">Conversations couldn’t be loaded.</p>'
-        : `<div class="msg-side__skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(5)}<span class="sr-only">Loading conversations</span></div>`;
+        : `<div class="msg-side__skel" aria-busy="true">${'<div class="msg-skel-row"><span class="atlas-skel msg-skel-row__icon"></span><span class="msg-skel-row__lines"><span class="atlas-skel msg-skel-row__name"></span><span class="atlas-skel msg-skel-row__preview"></span></span></div>'.repeat(5)}<span class="sr-only">Loading conversations</span></div>`;
       return;
     }
     const query = state.search.trim().toLowerCase();
@@ -447,7 +475,9 @@
     if (!head) return;
     const channel = selectedChannel();
     if (!channel) {
-      head.innerHTML = `<h2 class="msg-thread__title" id="msg-thread-title">${state.snapshot || state.error ? 'Messages' : 'Loading…'}</h2>`;
+      head.innerHTML = state.snapshot || state.error
+        ? '<h2 class="msg-thread__title" id="msg-thread-title">Messages</h2>'
+        : '<div class="msg-thread__text"><h2 class="msg-thread__title" id="msg-thread-title"><span class="sr-only">Loading…</span><span class="atlas-skel msg-thread__skel" aria-hidden="true"></span></h2><p class="msg-thread__desc" aria-hidden="true"><span class="atlas-skel msg-thread__skel msg-thread__skel--desc"></span></p></div>';
       return;
     }
     const handover = channel.key === HANDOVER_CHANNEL && canPostIn(channel);
@@ -531,26 +561,29 @@
       && venueDateOf(previous.created_at) === venueDateOf(time)
       && (new Date(time) - new Date(previous.created_at)) < GROUP_WINDOW_MS;
     const roleText = system ? 'System update' : `${roleLabel(identity.role)}${identity.current ? '' : ' · no longer active'}`;
+    // Edit and Delete: two quiet icon actions beside the bubble on hover or
+    // focus (a "…" sheet on touch screens).
     const actions = [
-      message.can_edit ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-edit="${escapeHtml(message.id)}">Edit</button>` : '',
-      message.can_delete ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-delete="${escapeHtml(message.id)}">Delete</button>` : ''
+      message.can_edit ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-team-edit="${escapeHtml(message.id)}" aria-label="Edit message" data-atlas-tooltip="Edit">${icon('pencil')}</button>` : '',
+      message.can_delete ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-team-delete="${escapeHtml(message.id)}" aria-label="Delete message" data-atlas-tooltip="Delete">${icon('trash-2')}</button>` : ''
     ].join('');
     const readStatus = readStatusMarkup(message);
     // S93: own messages sit on the right with the viewer's own name and avatar
     // (the avatar gutter moves to the right); "(you)" is for assistive tech.
-    // Others show name and role on the left.
+    // Others show name and role on the left. The name line sits beside the
+    // avatar; the bubble holds only what was said (text and linked record).
     const header = own
       ? `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="sr-only"> (you)</span>${stamp}</header>`
       : `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="msg-item__role">${escapeHtml(roleText)}</span>${stamp}</header>`;
-    return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}" ${system ? '' : `data-msg-sender="${escapeHtml(identity.id || '')}"`}>
+    return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${own ? ' is-own' : ''}${message.id === state.editingMessageId ? ' is-editing' : ''}" data-team-message="${escapeHtml(message.id)}" ${system ? '' : `data-msg-sender="${escapeHtml(identity.id || '')}"`}>
       <span class="msg-item__gutter">${grouped ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
+      ${grouped ? '' : header}
       <div class="msg-item__body">
-        ${grouped ? '' : header}
-        <p class="msg-item__text">${formatBody(message.body)}</p>
+        <p class="msg-item__text">${messageBody(message.body)}</p>
         ${linkMarkup(message.link)}
-        ${readStatus ? `<footer class="msg-item__foot">${readStatus}</footer>` : ''}
         ${actions ? `<span class="msg-item__actions">${actions}</span><button type="button" class="atlas-icon-btn atlas-icon-btn--sm msg-item__more" data-msg-more="${escapeHtml(message.id)}" aria-label="Message options">${icon('ellipsis')}</button>` : ''}
       </div>
+      ${readStatus ? `<footer class="msg-item__foot">${readStatus}</footer>` : ''}
     </article>`;
   }
 
@@ -560,16 +593,24 @@
       <span class="msg-item__gutter"></span>
       <div class="msg-item__body">
         <p class="msg-item__text">${formatBody(entry.body)}</p>
-        <footer class="msg-item__foot"><span class="msg-item__failed">${icon('circle-alert')}Not sent</span><span class="msg-item__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-msg-retry="${escapeHtml(entry.id)}">Retry</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-msg-discard="${escapeHtml(entry.id)}">Discard</button></span></footer>
       </div>
+      <footer class="msg-item__foot"><span class="msg-item__failed">${icon('circle-alert')}Not sent</span><span class="msg-item__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-msg-retry="${escapeHtml(entry.id)}">Retry</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-msg-discard="${escapeHtml(entry.id)}">Discard</button></span></footer>
     </article>`).join('');
+  }
+
+  // Loading: the thread's own shapes at their real size (a name line beside
+  // the avatar, a bubble under it), others on the left and one of yours on
+  // the right, so nothing moves when the messages land.
+  function skeletonMarkup() {
+    const item = (own) => `<div class="msg-skel${own ? ' msg-skel--own' : ''}"><span class="atlas-skel atlas-skel--circle"></span><span class="atlas-skel msg-skel__meta"></span><span class="atlas-skel msg-skel__bubble"></span></div>`;
+    return `<div class="msg-log__skel" aria-busy="true">${[false, false, true, false].map(item).join('')}<span class="sr-only">Loading messages</span></div>`;
   }
 
   function logMarkup() {
     const channel = selectedChannel();
     if (!state.snapshot && state.error) return '';
     if (!state.snapshot || state.channelLoading || snapshotChannelKey() !== state.selectedChannel) {
-      return `<div class="msg-log__skel" aria-busy="true">${'<div class="msg-skel"><span class="atlas-skel atlas-skel--circle"></span><span class="atlas-skel atlas-skel--text"></span></div>'.repeat(4)}<span class="sr-only">Loading messages</span></div>`;
+      return skeletonMarkup();
     }
     const list = messages();
     if (!list.length && !(state.failed[state.selectedChannel] || []).length) {
@@ -660,16 +701,20 @@
     }
     const editing = messages().find((message) => message.id === state.editingMessageId);
     const target = state.selectedTarget;
-    return `<form class="msg-compose" data-team-composer novalidate>
-      ${editing ? `<div class="msg-compose__context">${icon('pencil')}<span>Editing your message</span><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-cancel-edit>Cancel</button></div>` : ''}
-      ${target && !editing ? `<div class="msg-compose__context">${icon(LINK_ICONS[target.type] || 'link-2')}<span><strong>${escapeHtml(target.label)}</strong>${target.description ? ` · ${escapeHtml(target.description)}` : ''}</span><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-team-remove-link aria-label="Remove linked record">${icon('x')}</button></div>` : ''}
+    // One floating card: what the message is about (an edit, a linked record)
+    // sits inside it above the line you type on.
+    return `<form class="msg-compose${editing ? ' is-editing' : ''}" data-team-composer novalidate>
       <div class="msg-compose__box">
-        ${editing ? '' : `<button type="button" class="atlas-icon-btn msg-compose__tool" data-team-toggle-attachment aria-label="Link a record" data-atlas-tooltip="Link a record">${icon('paperclip')}</button>`}
-        <label class="sr-only" for="msg-draft">Message ${escapeHtml(channel.name)}</label>
-        <textarea id="msg-draft" class="msg-compose__input" rows="1" maxlength="4000" data-team-draft placeholder="Message ${escapeHtml(channel.name)}" ${state.submitting ? 'disabled' : ''}>${escapeHtml(currentDraft())}</textarea>
-        <button type="submit" class="atlas-btn atlas-btn--primary msg-compose__send" aria-label="${editing ? 'Save edit' : 'Send'}" ${state.submitting || !currentDraft().trim() ? 'disabled' : ''}>${icon(editing ? 'check' : 'arrow-up')}</button>
+        ${editing ? `<div class="msg-compose__context">${icon('pencil')}<span>Editing your message</span><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-cancel-edit>Cancel</button></div>` : ''}
+        ${target && !editing ? `<div class="msg-compose__context is-record">${icon(LINK_ICONS[target.type] || 'link-2')}<span><strong>${escapeHtml(target.label)}</strong>${target.description ? ` · ${escapeHtml(target.description)}` : ''}</span><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-team-remove-link aria-label="Remove linked record">${icon('x')}</button></div>` : ''}
+        <div class="msg-compose__row">
+          ${editing ? '' : `<button type="button" class="atlas-icon-btn msg-compose__tool" data-team-toggle-attachment aria-label="Link a record" data-atlas-tooltip="Link a record">${icon('paperclip')}</button>`}
+          <label class="sr-only" for="msg-draft">Message ${escapeHtml(channel.name)}</label>
+          <textarea id="msg-draft" class="msg-compose__input" rows="1" maxlength="4000" data-team-draft placeholder="Message ${escapeHtml(channel.name)}" ${state.submitting ? 'disabled' : ''}>${escapeHtml(currentDraft())}</textarea>
+          <button type="submit" class="atlas-btn atlas-btn--primary msg-compose__send" aria-label="${editing ? 'Save edit' : 'Send'}" ${state.submitting || !currentDraft().trim() ? 'disabled' : ''}>${icon(editing ? 'check' : 'arrow-up')}</button>
+        </div>
       </div>
-      <p class="msg-compose__note">Messages are visible to everyone in this channel.</p>
+      <p class="msg-compose__note"><span>Messages are visible to everyone in this channel.</span><span class="msg-compose__keys" aria-hidden="true">${editing ? 'Enter to save · Esc to cancel' : 'Enter to send · Shift + Enter for a new line'}</span></p>
     </form>`;
   }
 
@@ -684,6 +729,8 @@
     if (!composer) return;
     const focused = document.activeElement?.matches?.('[data-team-draft]');
     composer.innerHTML = composerMarkup();
+    // The message being edited is marked in the thread while the composer holds it.
+    region('log')?.querySelectorAll('[data-team-message]').forEach((node) => node.classList.toggle('is-editing', node.dataset.teamMessage === state.editingMessageId));
     const textarea = composer.querySelector('[data-team-draft]');
     autosize(textarea);
     if (textarea && (focused || options.focus)) {
