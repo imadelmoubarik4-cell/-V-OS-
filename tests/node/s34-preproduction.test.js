@@ -76,11 +76,12 @@ test('Recipes and Reports › Overview delegate to the shared calculation rule (
 });
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
-  // ALCEDO: the action colour resolves to the single, AA-contrast deep teal
-  // (--accent = --atlas-blue #08495C); every legacy name is an alias of it.
+  // 2026 redesign: the action colour is the single near-black primary
+  // (--accent #18191b, white text); kingfisher --atlas-blue is the one hue for
+  // focus and indicators. Every legacy action name is an alias of --accent.
   const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
-  assert.match(tokens, /--accent: var\(--atlas-blue\);/);
-  assert.match(tokens, /--atlas-blue: #08495C;/);
+  assert.match(tokens, /--accent: #18191b;/);
+  assert.match(tokens, /--atlas-blue: #1f6aa5;/);
   assert.match(tokens, /--atlas-accent: var\(--accent\);/);
   assert.match(tokens, /--atlas-action: var\(--accent\);/);
   // S88: the shared focus, search and reduced-motion rules moved into the

@@ -176,23 +176,27 @@ function contrast(a, b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-test('tokens carry the ALCEDO palette', () => {
+test('tokens carry the 2026 redesign palette (Basalt & Kingfisher)', () => {
+  // docs/design/Alcedo_Redesign_2026.md: stone frame, white sheet, basalt ink,
+  // near-black primary, kingfisher blue as the one hue. The ALCEDO logo kit
+  // (brand-tokens.json) stays the logo's source; the app uses the logo in
+  // monochrome, so the interface palette no longer derives from the kit.
   const token = tokens();
   const kit = JSON.parse(readFileSync(path.join(ALCEDO, 'brand-tokens.json'), 'utf8'));
   assert.equal(kit.brand, 'ALCEDO');
-  // The kit anchors flow into the named tokens.
-  assert.equal(token('--atlas-blue'), kit.colors.teal.toLowerCase());   // #08495c
-  assert.equal(token('--atlas-snow'), kit.colors.ivory.toLowerCase());  // #f8f5ed
-  assert.equal(token('--atlas-midnight'), kit.colors.ink.toLowerCase()); // #10201f
-  assert.equal(token('--highlight'), kit.colors.orange.toLowerCase());  // #e8732a
-  assert.equal(token('--accent-brand'), '#08495c');
-  assert.equal(token('--accent'), '#08495c');
-  assert.equal(token('--accent-hover'), '#063a49');
-  assert.equal(token('--accent-press'), '#052e3a');
-  assert.equal(token('--focus-color'), '#08495c');
-  assert.equal(token('--text'), '#10201f');
-  assert.equal(token('--bg-subtle'), '#f8f5ed');
-  assert.equal(token('--line-strong'), '#cbd5e1');
+  assert.equal(token('--atlas-blue'), '#1f6aa5');
+  assert.equal(token('--atlas-snow'), '#f3f5f4');
+  assert.equal(token('--atlas-midnight'), '#131416');
+  assert.equal(token('--accent-brand'), '#1f6aa5');
+  assert.equal(token('--highlight'), '#1f6aa5');
+  assert.equal(token('--accent'), '#18191b');
+  assert.equal(token('--accent-hover'), '#2b2d30');
+  assert.equal(token('--accent-press'), '#000000');
+  assert.equal(token('--focus-color'), '#1f6aa5');
+  assert.equal(token('--text'), '#131416');
+  assert.equal(token('--bg'), '#ffffff');
+  assert.equal(token('--bg-subtle'), '#f3f5f4');
+  assert.equal(token('--line-strong'), '#cdced1');
   // Legacy names still resolve to the new system.
   for (const [legacy, modern] of [['--atlas-accent', '--accent'], ['--atlas-text', '--text'], ['--atlas-muted', '--text-2'], ['--atlas-line', '--line'], ['--s38-blue', '--accent'], ['--color-primary', '--accent'], ['--atlas-sidebar', '--bg-subtle'], ['--atlas-danger', '--danger'], ['--blue-500', '--accent']]) {
     assert.equal(token(legacy), token(modern), legacy);
@@ -218,20 +222,16 @@ test('text and button colours meet WCAG AA (4.5:1); focus and indicators meet 3:
       if (ratio < 4.5) failures.push(`${fg} on ${bg}: ${ratio.toFixed(2)}:1`);
     }
   }
-  // Non-text indicators. Teal focus/accent-brand is verified on light surfaces;
-  // dark --ink surfaces (toasts, tooltips) carry a light indicator instead
-  // (white text on --ink is checked above at ~14.7:1) because dark teal cannot
-  // reach 3:1 on a dark surface.
+  // Non-text indicators. Kingfisher focus/accent-brand/highlight are verified on
+  // light surfaces; dark --ink surfaces (toasts, tooltips) carry a light
+  // indicator instead (white text on --ink is checked above).
   const nonText = [
     ['--focus-color', ['--bg', '--bg-subtle', '--bg-muted', '--surface', '--accent-soft']],
     ['--accent-brand', ['--bg', '--bg-subtle', '--bg-muted']],
     ['--warning-icon', ['--bg']],
-    // ALCEDO: orange is used in-app as a FILL that carries ink text (primary
-    // buttons/badges, checked below at >= 4.5:1) and as a non-text accent on the
-    // deep-teal panels (dots/rules/icons) — never as a thin graphic that must be
-    // read against the warm ivory canvas or cream cards. So it is verified as an
-    // accent against the teal panel (3:1), not against the light surfaces.
-    ['--highlight', ['--accent', '--accent-hover']]
+    // The highlight is the kingfisher hue at small sizes (active-tab underline,
+    // unread dots) on the white sheet and the stone frame.
+    ['--highlight', ['--bg', '--bg-subtle', '--bg-muted']]
   ];
   for (const [fg, backgrounds] of nonText) {
     for (const bg of backgrounds) {
@@ -240,13 +240,9 @@ test('text and button colours meet WCAG AA (4.5:1); focus and indicators meet 3:
     }
   }
   assert.deepEqual(failures, []);
-  // ALCEDO teal is dark, so unlike Atlas Blue it doubles as a text-bearing fill:
-  // ivory/white on --accent passes AA.
+  // The near-black primary carries white text.
   assert.ok(contrast('#ffffff', token('--accent')) >= 4.5);
-  // Orange is a fill that carries INK text (primary CTA / count badges): ink on
-  // orange is >= 4.5:1 (AA text). It still fails AA as coloured text on a light
-  // surface (orange-on-white < 4.5:1), which is why orange is never used as body
-  // text — only as a fill under ink or as a >= 3:1 accent on the teal panels.
-  assert.ok(contrast(token('--text'), token('--highlight')) >= 4.5);
-  assert.ok(contrast(token('--highlight'), '#ffffff') < 4.5);
+  // Kingfisher is dark enough to read as text on white too (links use the
+  // deeper --accent-text, checked above).
+  assert.ok(contrast(token('--highlight'), '#ffffff') >= 4.5);
 });
