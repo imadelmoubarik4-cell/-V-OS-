@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Proves the KANEL bookings rollbacks on a replayed database that is at S112
-# (KANEL_S112_rollback.sql … KANEL_S106_S109_rollback.sql). MUTATES the database
+# Proves the KANEL bookings rollbacks on a replayed database that is at S113
+# (KANEL_S113_rollback.sql … KANEL_S106_S109_rollback.sql). MUTATES the database
 # (it rolls back), so run it last. Loopback databases only.
 #   1. main's original staff-booking acceptance (pre-S106 rules) FAILS at S110 — the
 #      check can tell the states apart;
 #   2. the S106–S109 rollback REFUSES while S110 is recorded (S110 builds on S106);
+#      the S112 rollback refuses while S113 is recorded; the S113 rollback applies twice and
+#      restores the S112 request RPC and outbox rule (scripts/release/kanel_pre_s113_expected.json);
 #      the S111 rollback refuses while S112 is recorded; the S112 rollback applies twice,
 #      restores every function S112 touched to its exact S111 state
 #      (scripts/release/kanel_pre_s112_expected.json) and the pre-S112 stool numbering;
@@ -15,9 +17,9 @@
 #   4. the S106–S109 rollback applies twice and every touched object matches its exact
 #      S105 state (kanel_pre_s106_expected.json); main's pre-S106 acceptance PASSES;
 #   5. the reviewed apply bundles (docs/release/sql/KANEL_apply_*.sql) refuse to run
-#      out of order, re-apply S106→S112 from the rolled-back state, and refuse a
+#      out of order, re-apply S106→S113 from the rolled-back state, and refuse a
 #      repeat run;
-#   6. the ledger verifier and the S106–S112 acceptances pass again.
+#   6. the ledger verifier and the S106–S113 acceptances pass again.
 set -euo pipefail
 export PGOPTIONS="-c client_min_messages=warning"
 : "${PGHOST:=127.0.0.1}"; : "${PGUSER:=postgres}"; : "${PGDATABASE:=vaos_replay}"
@@ -30,6 +32,7 @@ RB110="$ROOT/docs/release/sql/KANEL_S110_rollback.sql"
 RB111="$ROOT/docs/release/sql/KANEL_S111_rollback.sql"
 RB110B="$ROOT/docs/release/sql/KANEL_S110b_rollback.sql"
 RB112="$ROOT/docs/release/sql/KANEL_S112_rollback.sql"
+RB113="$ROOT/docs/release/sql/KANEL_S113_rollback.sql"
 SNAP="$ROOT/scripts/release/kanel_bookings_snapshot.sql"
 CMP="$ROOT/scripts/release/compare_kanel_expected.py"
 
@@ -49,6 +52,16 @@ fi
 if psql -X -v ON_ERROR_STOP=1 -q -f "$RB111" >/dev/null 2>&1; then
   echo "kanel_bookings_rollback: FAILED — the S111 rollback ran while S112 is recorded" >&2; exit 1
 fi
+if psql -X -v ON_ERROR_STOP=1 -q -f "$RB112" >/dev/null 2>&1; then
+  echo "kanel_bookings_rollback: FAILED — the S112 rollback ran while S113 is recorded" >&2; exit 1
+fi
+psql -X -v ON_ERROR_STOP=1 -q -f "$RB113" >/dev/null
+psql -X -v ON_ERROR_STOP=1 -q -f "$RB113" >/dev/null
+psql -X -qAt -f "$SNAP" | python3 -I "$CMP" "$ROOT/scripts/release/kanel_pre_s113_expected.json" -
+mail="$(psql -X -tAc "select (select count(*) from pg_constraint where conname = 'reservations_guest_language_check') || ':' || (select count(*) from supabase_migrations.schema_migrations where version = '20261030090000') || ':' || (select guest_email_enabled from atlas_private.booking_settings where id = true)")"
+[ "$mail" = "0:0:false" ] || { echo "kanel_bookings_rollback: FAILED — S113 rollback did not restore the language rule/ledger/switch ($mail)" >&2; exit 1; }
+echo "step 2 ok (S113): S112 rollback refused while S113 recorded; S113 rollback applied twice; S112 request RPC and outbox rule restored"
+
 psql -X -v ON_ERROR_STOP=1 -q -f "$RB112" >/dev/null
 psql -X -v ON_ERROR_STOP=1 -q -f "$RB112" >/dev/null
 psql -X -qAt -f "$SNAP" | python3 -I "$CMP" "$ROOT/scripts/release/kanel_pre_s112_expected.json" -
@@ -79,8 +92,8 @@ psql -X -qAt -f "$SNAP" | python3 -I "$CMP" "$ROOT/scripts/release/kanel_pre_s10
 out="$(psql -X -v ON_ERROR_STOP=1 -f "$PRE" 2>&1)" || { echo "$out" | tail -5; echo "kanel_bookings_rollback: FAILED — pre-S106 acceptance fails after rollback" >&2; exit 1; }
 echo "step 4 ok: S106–S109 rollback applied twice; S105 state restored; pre-S106 staff acceptance passes"
 
-BUNDLES=("$ROOT"/docs/release/sql/KANEL_apply_[1-8]_*.sql)
-[ "${#BUNDLES[@]}" -eq 8 ] || { echo "kanel_bookings_rollback: FAILED — expected 8 apply bundles" >&2; exit 1; }
+BUNDLES=("$ROOT"/docs/release/sql/KANEL_apply_[1-9]_*.sql)
+[ "${#BUNDLES[@]}" -eq 9 ] || { echo "kanel_bookings_rollback: FAILED — expected 9 apply bundles" >&2; exit 1; }
 if psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[1]}" >/dev/null 2>&1; then
   echo "kanel_bookings_rollback: FAILED — apply bundle 2 ran before bundle 1" >&2; exit 1
 fi
@@ -106,16 +119,23 @@ psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[6]}" >/dev/null
 if psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[6]}" >/dev/null 2>&1; then
   echo "kanel_bookings_rollback: FAILED — apply bundle 7 (S111) ran twice" >&2; exit 1
 fi
+if psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[8]}" >/dev/null 2>&1; then
+  echo "kanel_bookings_rollback: FAILED — apply bundle 9 (S113) ran before bundle 8 (S112)" >&2; exit 1
+fi
 psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[7]}" >/dev/null
 if psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[7]}" >/dev/null 2>&1; then
   echo "kanel_bookings_rollback: FAILED — apply bundle 8 (S112) ran twice" >&2; exit 1
 fi
-echo "step 5 ok: apply bundles refuse out-of-order and repeat runs; S106→S112 re-applied"
+psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[8]}" >/dev/null
+if psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[8]}" >/dev/null 2>&1; then
+  echo "kanel_bookings_rollback: FAILED — apply bundle 9 (S113) ran twice" >&2; exit 1
+fi
+echo "step 5 ok: apply bundles refuse out-of-order and repeat runs; S106→S113 re-applied"
 
 unset PGOPTIONS  # the acceptances report success via a NOTICE
 bash "$ROOT/scripts/verify_migration_ledger.sh" | tail -1
-for s in s106_bookings_engine s107_public_booking s108_booking_notifications s109_booking_notifications_inbox s110_booking_seat_integrity s110b_booking_inbox_visit_time s111_booking_personal_data_retention s112_public_direct_booking; do
+for s in s106_bookings_engine s107_public_booking s108_booking_notifications s109_booking_notifications_inbox s110_booking_seat_integrity s110b_booking_inbox_visit_time s111_booking_personal_data_retention s112_public_direct_booking s113_booking_guest_email; do
   bash "$ROOT/scripts/verify_$s.sh" | grep -E ": passed$"
 done
-echo "step 6 ok: ledger and S106–S112 acceptances pass after re-apply"
+echo "step 6 ok: ledger and S106–S113 acceptances pass after re-apply"
 echo "kanel_bookings_rollback: passed"

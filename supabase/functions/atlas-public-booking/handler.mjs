@@ -18,13 +18,15 @@
 // returned. No staff auth, no cookies, no other guests' data.
 //
 //   GET  ?action=availability&date=YYYY-MM-DD&party_size=N
-//   POST ?action=request            {party_size, start_at, guest_name, guest_phone?, guest_email?, guest_requests?, seats?}
+//   POST ?action=request            {party_size, start_at, guest_name, guest_phone?, guest_email?, guest_requests?, seats?, language?}
 //   POST ?action=book               same body; confirmed immediately while the owner switch
 //                                   booking_settings.public_instant_confirm is on (S112),
 //                                   otherwise requested. seats = the guest's stool numbers.
+//                                   language = 'en' | 'is', the site language the guest
+//                                   booked on; guest emails are written in it (S113).
 //   GET  ?action=status&token=<public_token>
 
-export const FUNCTION_VERSION = "0.3.0";
+export const FUNCTION_VERSION = "0.4.0";
 export const LIMITS = Object.freeze({ jsonBytes: 16 * 1024 });
 
 export class ApiError extends Error {
@@ -127,6 +129,13 @@ function guestSeats(value) {
   if (!value.every((n) => Number.isInteger(n) && n >= 1 && n <= 16)) throw invalid();
   if (new Set(value).size !== value.length) throw invalid();
   return value.slice();
+}
+
+// The guest's site language (S113): absent, or exactly 'en' / 'is'.
+function guestLanguage(value) {
+  if (value === undefined || value === null) return null;
+  if (value !== "en" && value !== "is") throw invalid();
+  return value;
 }
 const TOKEN = /^[0-9a-f]{24,64}$/i;
 
@@ -284,6 +293,7 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
     if (request.method === "POST" && (action === "request" || action === "book")) {
       const body = await readJson(request);
       const seats = guestSeats(body.seats);
+      const language = guestLanguage(body.language);
       const idem = request.headers.get("idempotency-key") || body.idempotency_key || null;
       const fp = await fingerprint(request, env);
       await rateGate(fp, "request");
@@ -299,6 +309,7 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
         idempotency_key: idem ? String(idem).slice(0, 128) : null,
         booking_mode: action === "book" ? "direct" : "request",
         ...(seats ? { seats } : {}),
+        ...(language ? { language } : {}),
       };
       return svc.rpc("atlas_public_booking_request", { p_payload: payload });
     }
