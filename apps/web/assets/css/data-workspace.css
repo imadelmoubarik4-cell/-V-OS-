@@ -1,5 +1,8 @@
-/* Data (#data) — module layout only (spec §7.14). Components come from
-   atlas-components.css; this file places them. */
+/* Data (#data) — module layout only (spec §7.14; docs/design/Alcedo_Redesign_2026.md).
+   Components come from atlas-components.css; this file places them. The tabs
+   are review queues: a list of what needs a manager, the record beside it,
+   and the one action that moves it on. Status is a pill, never a fill;
+   files carry one plain grey type glyph in a fixed slot. */
 @layer atlas.modules {
   .data-body { margin-top: var(--s-5); }
   .data-body > * + * { margin-top: var(--s-3); }
@@ -7,13 +10,24 @@
   .data-body > .atlas-alert + .atlas-toolbar { margin-top: var(--s-4); }
   .data-caption { margin: 0; font: var(--type-meta); color: var(--text-2); }
   .data-caption a { color: var(--accent-text); }
-  .data-skeleton { display: grid; gap: var(--s-2); padding-top: var(--s-3); }
+  .data-note { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-meta); color: var(--text-2); }
+  .data-note > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+  .data-skeleton { display: grid; gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--line-subtle); }
+  .data-skeleton > .atlas-skel { background: var(--surface); }
+  .data-skeleton > .atlas-skel::after { content: ''; display: block; width: 38%; height: 12px; margin: 18px 12px; border-radius: var(--r-xs); background: var(--bg-muted); }
 
   .data-filter { width: auto; min-width: 150px; }
   .data-cover { display: flex; align-items: center; gap: var(--s-2); }
   .data-cover .atlas-affix { width: 150px; }
 
-  .data-issue-chips { flex-wrap: wrap; margin-bottom: var(--s-3); }
+  /* ---------- Imports ---------- */
+  .data-file { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+  .data-file > svg { width: var(--icon-md); height: var(--icon-md); flex: none; color: var(--text-3); }
+  .data-file__text { min-width: 0; }
+  .data-when { color: var(--text-2); }
+  .atlas-table .data-dash, .atlas-table .data-zero { color: var(--text-3); }
+  .atlas-table .data-issues-count { font-weight: 500; }
+  .atlas-table .data-missing { white-space: normal; color: var(--text-2); }
 
   /* A link-styled button in a table cell; a phone list row keeps its row padding. */
   .data-link:not(.atlas-table-list__row) {
@@ -25,39 +39,128 @@
     text-align: left;
     cursor: pointer;
   }
-  .data-link.cell-primary:hover, a.cell-primary:hover { color: var(--accent-text); text-decoration: underline; }
-
-  .data-par-input { width: 96px; margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
-  .data-suggestion { display: inline-flex; align-items: center; gap: var(--s-2); }
-
-  .data-back { margin-left: calc(-1 * var(--s-2)); }
-  .data-import-detail { display: grid; gap: var(--s-5); margin-top: var(--s-3); }
-  .data-import-detail .atlas-section__head { justify-content: flex-start; gap: var(--s-3); margin: 0; }
-  .data-actions { flex-wrap: wrap; }
-
-  .data-facts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: var(--s-3) var(--s-6);
-    margin: 0;
+  @media (hover: hover) and (pointer: fine) {
+    .data-link.cell-primary:hover, a.cell-primary:hover { color: var(--accent-text); text-decoration: none; }
   }
-  .data-facts div { min-width: 0; }
-  .data-facts dt { font: var(--type-caption); color: var(--text-2); }
-  .data-facts dd { margin: 2px 0 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
 
+  /* ---------- One import: what happened | the file's facts ---------- */
+  .data-back { margin-left: calc(-1 * var(--s-2)); }
+  .data-import-detail { display: grid; gap: var(--s-4); margin-top: var(--s-3); }
+  .data-import-detail__head { display: grid; grid-template-columns: auto minmax(0, max-content) auto; justify-content: start; align-items: center; gap: var(--s-1) var(--s-3); min-width: 0; }
+  .data-import-detail__head > svg { width: var(--icon-lg); height: var(--icon-lg); color: var(--text-3); }
+  .data-import-detail__name { min-width: 0; }
+  .data-import-detail__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); overflow-wrap: anywhere; }
+  .data-import-detail__sub { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
+  .data-import-detail__head > .atlas-pill { justify-self: start; margin-left: var(--s-2); }
+  .data-import-detail__grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: var(--s-4); align-items: start; }
+  .data-import-detail__main { display: grid; gap: var(--s-4); padding: var(--s-5); }
+  .data-import-detail__state { margin: 0; font: var(--type-body); color: var(--text); }
+  .data-actions { flex-wrap: wrap; padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
+
+  /* Key-value facts: a grey label column and the value in ink beside it, on
+     hairline rules (sheets: values may be long sentences). As a well beside a
+     detail it sits on the stone tint with the values on one right edge. */
+  .data-facts { display: grid; gap: 0; margin: 0; }
+  .data-facts > div { display: grid; grid-template-columns: minmax(96px, 32%) minmax(0, 1fr); align-items: baseline; gap: var(--s-4); min-width: 0; padding: 7px 0; border-top: 1px solid var(--line-subtle); }
+  .data-facts > div:first-child { border-top: 0; }
+  .data-facts dt { min-width: 0; font: var(--type-body); color: var(--text-2); overflow-wrap: anywhere; }
+  .data-facts dd { min-width: 0; margin: 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
+  .data-facts--well { padding: var(--s-2) var(--s-5); border-radius: var(--r-lg); background: var(--bg-subtle); }
+  .data-facts--well > div { display: flex; justify-content: space-between; border-top-color: var(--line); }
+  .data-facts--well dt { flex: none; }
+  .data-facts--well dd { text-align: right; }
+  .data-facts .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Issues: issue types | the records of the chosen type ---------- */
+  .data-issues { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: var(--s-6); align-items: start; }
+  .data-issue-side { display: grid; gap: var(--s-3); position: sticky; top: var(--s-4); }
+  .data-issue-nav { display: grid; gap: 2px; }
+  .data-issue-nav__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    min-height: var(--control-md);
+    padding: 6px 10px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: var(--text-2);
+    font: var(--type-body);
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--dur-1) ease, color var(--dur-1) ease, transform var(--motion-press) var(--ease-out);
+  }
+  .data-issue-nav__item:active { transform: scale(var(--press-scale)); }
+  .data-issue-nav__item:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+  .data-issue-nav__item.is-active { background: var(--bg-muted); color: var(--text); font-weight: 500; }
+  .data-issue-nav__label { min-width: 0; }
+  .data-issue-nav__count { flex: none; font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-3); }
+  .data-issue-nav__item.is-active .data-issue-nav__count { color: var(--text); }
+  @media (hover: hover) and (pointer: fine) {
+    .data-issue-nav__item:not(.is-active):hover { background: var(--bg-hover); color: var(--text); }
+  }
+  @media (pointer: coarse) { .data-issue-nav__item { min-height: var(--touch); } }
+  .data-issue-side__note { padding: 0 10px; }
+  .data-issue-side > .data-caption:last-child { padding: 0 10px; }
+  .data-issue-pane { display: grid; gap: var(--s-3); min-width: 0; }
+  .data-pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); min-height: var(--control-md); }
+  .data-pane-head__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
+  .data-pane-head__meta { font: var(--type-meta); color: var(--text-2); white-space: nowrap; }
+  .data-issue-pane .atlas-empty { border: 1px dashed var(--line-strong); border-radius: var(--r-lg); padding: var(--s-8) var(--s-6); }
+
+  /* ---------- Par levels ---------- */
+  .data-par-input { width: 96px; margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+  /* An edited value that differs from the saved par: the kingfisher edge. */
+  .data-par-input[data-changed]:not([aria-invalid="true"]) { border-color: var(--accent-brand); background: var(--accent-soft); }
+  .data-suggestion { display: inline-flex; align-items: center; gap: var(--s-2); }
+  .data-suggestion .num { font-weight: 500; font-variant-numeric: tabular-nums; }
+  /* Where the Suggested par column folds away (≤1023), its Use sits under the input. */
+  .data-par-quick { display: none; }
+
+  /* ---------- Waiting for approval ---------- */
+  .data-queue { overflow: hidden; }
+  .data-queue .atlas-row__link { font: 500 14px/20px var(--font-sans); }
+
+  /* ---------- sheets ---------- */
   .data-sheet-heading { margin: 0; font: var(--type-heading); color: var(--text); }
   .data-raw summary { cursor: pointer; font: var(--type-label); color: var(--text-2); }
   .data-raw[open] summary { margin-bottom: var(--s-3); }
   .data-upload-note { margin: 0; font: var(--type-meta); color: var(--text-2); }
   .data-upload-drop { cursor: pointer; }
+  .data-upload-drop :is(.atlas-upload__title, .atlas-upload__help) { display: block; }
 
+  @media (max-width: 1023px) {
+    .data-issues { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
+    .data-issue-side { position: static; }
+    .data-issue-nav { display: flex; gap: var(--s-2); overflow-x: auto; scrollbar-width: none; }
+    .data-issue-nav::-webkit-scrollbar { display: none; }
+    .data-issue-nav__item { flex: none; border: 1px solid var(--line-strong); background: var(--surface); }
+    .data-issue-nav__item.is-active { border-color: transparent; background: var(--bg-muted); }
+    .data-issue-side__note, .data-issue-side > .data-caption:last-child { padding: 0; }
+    .data-import-detail__grid { grid-template-columns: minmax(0, 1fr); }
+    .data-par-quick { display: flex; width: fit-content; margin: var(--s-1) 0 0 auto; }
+    .atlas-table td:has(> .data-par-quick) { height: auto; padding-block: var(--s-2); }
+  }
   @media (max-width: 767px) {
     .data-par-input { width: 80px; }
     /* An import on a phone is a detail screen: the top bar carries its name and back. */
     .data-page.is-detail :is(.page-head__sub, .page-head__actions), .data-page.is-detail > .atlas-tabs, .data-page.is-detail .data-back { display: none; }
     .data-page.is-detail .data-body { margin-top: 0; }
     .data-par-bar .atlas-btn--primary { margin-left: auto; }
-    .data-cover .atlas-affix { width: 130px; }
+    /* Par levels: the days-of-cover form is the screen's main control, so the
+       toolbar wraps instead of scrolling it out of view. */
+    .data-par-toolbar { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; -webkit-mask-image: none; mask-image: none; }
+    .data-par-toolbar > .atlas-search { flex: 1 1 100%; min-width: 0; }
+    .data-par-toolbar > .data-filter { flex: 1 1 0; min-width: 0; }
+    .data-par-toolbar > .data-cover { flex: 1 1 100%; }
+    .data-cover .atlas-affix { flex: 1 1 auto; width: auto; }
     .data-actions > .atlas-btn { flex: 1 1 auto; }
+    .data-import-detail__main { padding: var(--s-4); }
+    .data-import-detail__head { grid-template-columns: auto minmax(0, 1fr); }
+    .data-import-detail__head > .atlas-pill { grid-column: 2; margin-left: 0; }
+    .data-issue-nav { margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); }
+    .data-facts--well { padding-inline: var(--s-4); }
   }
 }

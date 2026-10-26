@@ -1,51 +1,142 @@
-/* Reports (#reports) — module layout only (spec §7.12). Components come from
-   atlas-components.css; charts use --accent-illustration (one series, one hue). */
+/* Reports (#reports) — module layout only (spec §7.12; docs/design/Alcedo_Redesign_2026.md).
+   Components come from atlas-components.css. The page reads top to bottom:
+   title row (freshness stamp, Export, Ask) → tabs → scope bar (period first)
+   → one divided KPI strip → bands of cards on one 16 px gutter. Charts are
+   inline SVG (reports-workspace.js): kingfisher on the main series only,
+   faint gridlines, no y-axis line, square columns, round ticks above the
+   maximum; secondary bar lists are grey with the leader in ink. */
 @layer atlas.modules {
-  .reports-head .page-head__actions { flex-wrap: wrap; justify-content: flex-end; }
-  .reports-head .atlas-select { width: auto; }
-  .reports-custom { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--text-2); }
-  .reports-custom .atlas-input { width: 150px; }
+  /* ---------- title row and scope bar ---------- */
   .reports-export { position: relative; }
-  .reports-export .atlas-menu { position: absolute; top: calc(100% + var(--s-1)); right: 0; z-index: 3; min-width: 220px; }
-  .reports-body { margin-top: var(--s-5); }
-  .reports-body > .atlas-alert { margin-bottom: var(--s-4); }
+  .reports-export .atlas-menu { position: absolute; top: calc(100% + var(--s-1)); right: 0; z-index: 3; min-width: 220px; transform-origin: top right; }
+  .reports-scope { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-4); margin-top: var(--s-5); }
+  .reports-scope__controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); min-width: 0; }
+  .reports-scope .atlas-select { width: auto; }
+  .reports-custom { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--text-3); }
+  .reports-custom .atlas-input { width: 150px; }
+  .reports-period { margin: 0; font: var(--type-label); color: var(--text); font-variant-numeric: tabular-nums; }
+  .reports-period span { font: var(--type-meta); color: var(--text-2); white-space: nowrap; }
+
+  /* ---------- body: one gutter between every block ---------- */
+  .reports-body { display: grid; gap: var(--s-4); margin-top: var(--s-4); }
+  .reports-body > .atlas-section { margin-top: var(--s-4); }
   .reports-page.is-refreshing .reports-body { opacity: .6; transition: opacity var(--dur-1) var(--ease-out); }
   .reports-stats { margin: 0; }
-  .reports-period { margin: 0 0 var(--s-3); font: var(--type-label); color: var(--text); }
-  .reports-period span { font: var(--type-meta); color: var(--text-2); }
-  .reports-skeleton { display: grid; gap: var(--s-2); margin-top: var(--s-8); }
+  /* A figure the period doesn't report: a short grey dash on the value's line. */
+  .reports-stats .atlas-stat__value.is-empty { font-size: var(--fs-section); color: var(--text-3); }
+  .reports-delta { font: var(--type-meta); color: var(--text-2); }
+  .reports-delta__figure { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }
+  .reports-delta.is-good .reports-delta__figure { color: var(--positive); }
+  .reports-delta.is-bad .reports-delta__figure { color: var(--danger); }
 
-  .reports-delta { font: var(--type-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
-  .reports-delta.is-good { color: var(--positive); }
-  .reports-delta.is-bad { color: var(--danger); }
+  /* Bands: the answer and its evidence side by side; rows share a top edge
+     and keep their own height (no card is stretched over empty space). */
+  .reports-band { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--s-4); align-items: start; }
+  .reports-band--single { grid-template-columns: minmax(0, 1fr); }
+  .reports-band--lead { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .reports-band--pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* ---------- cards ---------- */
+  .reports-panel { display: flex; flex-direction: column; min-width: 0; margin: 0; }
+  .reports-panel__head { display: grid; gap: 2px; padding: var(--s-4) var(--s-5) var(--s-3); }
+  .reports-panel__head--row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+  .reports-panel__title, .reports-chart__title { margin: 0; font: var(--type-heading); color: var(--text); }
+  .reports-chart__takeaway, .reports-panel__meta { font: var(--type-meta); color: var(--text-2); }
+  .reports-panel__meta { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .reports-panel__link { font: var(--type-label); color: var(--accent-text); white-space: nowrap; text-decoration: none; }
+  .reports-panel .atlas-row { padding-inline: var(--s-5); }
+  .reports-panel .atlas-row__value.is-empty { color: var(--text-3); }
+  .reports-panel__empty { display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: 0 var(--s-5) var(--s-5); font: var(--type-body); color: var(--text-2); }
+  .reports-panel__empty > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+  /* Needs attention: one line per finding (what, then why in grey). */
+  .reports-attention .atlas-row__body { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--s-2); }
+  .reports-attention .atlas-row__meta { margin: 0; }
+  .reports-go { font: var(--type-label); color: var(--text-2); white-space: nowrap; transition: color var(--dur-1) ease; }
+  @media (hover: hover) and (pointer: fine) {
+    .reports-panel .atlas-row:hover .reports-go { color: var(--accent-text); }
+    .reports-panel__link:hover { text-decoration: underline; }
+  }
+
+  /* ---------- ranked bar list ---------- */
+  .reports-bars { display: grid; gap: var(--s-3); margin: 0; padding: var(--s-1) var(--s-5) var(--s-5); list-style: none; }
+  .reports-bars__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 6px var(--s-3); }
+  .reports-bars__label { overflow: hidden; font: var(--type-body); color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+  .reports-bars__value { font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); text-align: right; white-space: nowrap; }
+  .reports-bars__share { margin-right: var(--s-3); font: var(--type-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .reports-bars__track { display: block; grid-column: 1 / -1; overflow: visible; }
+  .reports-bars__bar { fill: var(--accent-brand); }
+  .reports-bars--quiet .reports-bars__bar { fill: var(--line-hover); }
+  .reports-bars--quiet .reports-bars__row:first-child .reports-bars__bar { fill: var(--text); }
+
+  /* ---------- columns over time ---------- */
+  .reports-plot { display: grid; grid-template-columns: 52px minmax(0, 1fr); padding: 0 var(--s-6) var(--s-3) var(--s-5); }
+  .reports-plot svg { display: block; overflow: visible; font: var(--type-caption); font-variant-numeric: tabular-nums; }
+  .reports-plot__y text, .reports-plot__x { fill: var(--text-3); }
+  .reports-plot__grid { stroke: var(--line); stroke-width: 1; shape-rendering: crispEdges; }
+  .reports-plot__base { stroke: var(--line-strong); stroke-width: 1; shape-rendering: crispEdges; }
+  .reports-plot__bar { fill: var(--accent-brand); transition: fill var(--dur-1) ease; }
+  .reports-plot__leader { stroke: var(--text-3); stroke-width: 1; shape-rendering: crispEdges; }
+  .reports-plot__note { fill: var(--text-2); font-weight: 500; }
+  @media (hover: hover) and (pointer: fine) {
+    .reports-plot__bar:hover { fill: var(--accent-text); }
+  }
+
+  /* ---------- completeness meters ---------- */
+  .reports-meters { display: grid; gap: var(--s-4); margin: 0; padding: var(--s-1) var(--s-5) var(--s-5); list-style: none; }
+  .reports-meter { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 6px var(--s-3); }
+  .reports-meter__label { grid-area: 1 / 1; min-width: 0; font: var(--type-body); color: var(--text); }
+  .reports-meter__fix { grid-area: 1 / 2; font: var(--type-label); }
+  .reports-meter__value { grid-area: 1 / 3; font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); text-align: right; white-space: nowrap; }
+  .reports-meter__track { display: block; grid-column: 1 / -1; }
+  .reports-meter__rail { fill: var(--bg-muted); }
+  .reports-meter__fill { fill: var(--text-2); }
+  .reports-meter.is-full .reports-meter__fill { fill: var(--line-hover); }
+  .reports-meter.is-low .reports-meter__fill { fill: var(--warning-icon); }
+  .reports-meter.is-low .reports-meter__value { color: var(--warning); }
+
+  /* ---------- evidence well ---------- */
+  .reports-well { min-width: 0; padding: var(--s-4) var(--s-5); border-radius: var(--r-lg); background: var(--bg-subtle); }
+  .reports-well__title { margin: 0 0 var(--s-2); font: var(--type-heading); color: var(--text); }
+  .reports-well__list { margin: 0; }
+  .reports-well__list > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); padding: 6px 0; border-top: 1px solid var(--line); }
+  .reports-well__list dt { font: var(--type-body); color: var(--text-2); }
+  .reports-well__list dd { margin: 0; font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); text-align: right; }
+  .reports-well__note { margin: var(--s-3) 0 0; font: var(--type-meta); color: var(--text-2); }
+
+  /* ---------- quiet states ---------- */
+  .reports-not-enough { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; margin: 0; padding: var(--s-2) var(--s-4); border: 1px dashed var(--line-strong); border-radius: var(--r-lg); font: var(--type-meta); color: var(--text-2); }
+  .reports-not-enough > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+  .reports-panel .reports-not-enough { margin: 0 var(--s-5) var(--s-5); }
+  .reports-note { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; font: var(--type-meta); color: var(--text-2); }
+  .reports-note > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-top: 1px; color: var(--text-3); }
   .reports-muted { margin: 0; font: var(--type-meta); color: var(--text-2); }
-  .reports-not-enough { display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: var(--s-4) 0; font: var(--type-meta); color: var(--text-2); }
-
-  .reports-chart-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-4); align-items: start; }
-  .reports-chart { margin: 0; padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
-  .reports-chart figcaption { display: grid; gap: 2px; margin-bottom: var(--s-4); }
-  .reports-chart__title { font: var(--type-heading); color: var(--text); }
-  .reports-chart__takeaway { font: var(--type-meta); color: var(--text-2); }
-  .reports-bars { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
-  .reports-bars__row { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, 2fr) auto; align-items: center; gap: var(--s-3); min-height: 28px; }
-  .reports-bars__label { overflow: hidden; font: var(--type-meta); color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
-  .reports-bars__track { display: block; height: 12px; }
-  .reports-bars__bar { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--accent-illustration); }
-  .reports-bars__value { min-width: 88px; text-align: right; font: var(--type-num); color: var(--text); }
-  .reports-facts .atlas-list { margin: 0; }
+  .reports-section__meta { font: var(--type-meta); color: var(--text-2); }
+  .reports-skeleton .reports-panel { display: grid; gap: var(--s-4); padding: var(--s-4) var(--s-5) var(--s-5); }
+  .reports-skeleton__head { width: 30%; height: 14px; }
+  .reports-skeleton__row { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: var(--s-6); }
+  .reports-skeleton__label { width: 45%; }
+  .reports-skeleton__value { width: 55%; height: 28px; margin-top: var(--s-3); }
 
   @media (max-width: 1023px) {
-    .reports-chart-grid { grid-template-columns: minmax(0, 1fr); }
+    .reports-band, .reports-band--lead, .reports-band--pair { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 767px) {
-    .reports-head .page-head__actions { justify-content: stretch; }
-    .reports-head .page-head__actions > * { flex: 1 1 auto; }
-    .reports-custom .atlas-input { width: auto; min-width: 0; flex: 1 1 0; }
-    .reports-bars__row { grid-template-columns: minmax(0, 1fr) auto; }
-    .reports-bars__track { grid-column: 1 / -1; grid-row: 2; }
-    .reports-bars__value { min-width: 0; }
+    .reports-head .page-head__actions > * { flex: 1 1 0; }
+    .reports-head .reports-export > .atlas-btn { width: 100%; }
+    .reports-scope { margin-top: var(--s-4); }
+    .reports-scope__controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .reports-scope .atlas-select { width: 100%; }
+    .reports-custom { grid-column: 1 / -1; order: 1; }
+    .reports-custom .atlas-input { flex: 1 1 0; width: auto; min-width: 0; }
+    .reports-panel__head { padding: var(--s-4) var(--s-4) var(--s-3); }
+    .reports-panel .atlas-row { padding-inline: var(--s-4); }
+    .reports-bars, .reports-meters { padding-inline: var(--s-4); }
+    .reports-panel .reports-not-enough { margin-inline: var(--s-4); }
+    .reports-plot { padding-right: var(--s-4); }
+    .reports-plot__x.is-minor { display: none; }
   }
   @media print {
-    .reports-head .page-head__actions, .atlas-tabs { display: none; }
+    .reports-head .page-head__actions, .atlas-tabs, .reports-scope__controls { display: none; }
+    .reports-band, .reports-band--lead, .reports-band--pair { grid-template-columns: minmax(0, 1fr); }
   }
 }

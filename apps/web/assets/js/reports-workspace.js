@@ -205,63 +205,209 @@
     return `<div class="atlas-alert atlas-alert--${tone}"${tone === 'danger' ? ' role="alert"' : ''}><i data-lucide="${icon}"></i><div class="atlas-alert__content">${title ? `<p class="atlas-alert__title">${escapeHtml(title)}</p>` : ''}${body ? `<p class="atlas-alert__body">${escapeHtml(body)}</p>` : ''}</div>${action ? `<div class="atlas-alert__actions">${action}</div>` : ''}</div>`;
   }
 
+  // An empty block keeps its frame: one sentence in a quiet dashed slot.
   function notEnough(text) {
     return `<p class="reports-not-enough"><i data-lucide="chart-no-axes-column"></i>${escapeHtml(text)}</p>`;
   }
 
-  // Delta vs comparison: sign and a word; colour only when it matters.
+  // Delta vs comparison: the sign and the window in words; colour only when
+  // the change is large and the metric has a good direction.
   function deltaMarkup(entry, { goodWhenUp = null } = {}) {
     if (!entry || !state.compare) return '';
     const pct = number(entry.change_percent);
     if (pct === null) return '<span class="reports-delta">No comparable figure</span>';
     const rounded = Math.round(pct);
-    if (rounded === 0) return '<span class="reports-delta">Same as before</span>';
+    if (rounded === 0) return '<span class="reports-delta">Same as the previous period</span>';
     const up = rounded > 0;
     const tone = goodWhenUp === null || Math.abs(rounded) < 10 ? '' : (up === goodWhenUp ? ' is-good' : ' is-bad');
-    return `<span class="reports-delta${tone}">${up ? '▲' : '▼'} ${Math.abs(rounded)} % ${up ? 'up' : 'down'}</span>`;
+    return `<span class="reports-delta${tone}"><span class="reports-delta__figure">${up ? '+' : '−'}${Math.abs(rounded)} %</span> vs previous period</span>`;
   }
 
+  // A missing figure is a short grey dash, never a dash at full value size.
   function statMarkup({ label, value, unit = '', detail = '', delta = '', link = '' }) {
-    return `<div class="atlas-stat"><p class="atlas-stat__label">${escapeHtml(label)}</p><p class="atlas-stat__value">${value}${unit ? `<span class="atlas-stat__unit">${escapeHtml(unit)}</span>` : ''}</p>${delta ? `<p class="atlas-stat__detail">${delta}</p>` : ''}${detail ? `<p class="atlas-stat__detail">${escapeHtml(detail)}</p>` : ''}${link}</div>`;
+    const empty = value === '—';
+    return `<div class="atlas-stat"><p class="atlas-stat__label">${escapeHtml(label)}</p><p class="atlas-stat__value${empty ? ' is-empty' : ''}">${value}${unit && !empty ? `<span class="atlas-stat__unit">${escapeHtml(unit)}</span>` : ''}</p>${delta ? `<p class="atlas-stat__detail">${delta}</p>` : ''}${detail ? `<p class="atlas-stat__detail">${escapeHtml(detail)}</p>` : ''}${link}</div>`;
   }
 
-  // One horizontal bar per row, single hue (--accent-illustration), value
-  // labels beside each bar, a native title per bar for hover.
-  function barChart(rows, { label, value, format, title, takeaway }) {
-    const usable = rows.filter((row) => number(row[value]) !== null && Number(row[value]) > 0).slice(0, 8);
-    if (!usable.length) return '';
-    const max = Math.max(...usable.map((row) => Number(row[value])));
-    return `<figure class="reports-chart" aria-label="${escapeHtml(title)}">
-        <figcaption><span class="reports-chart__title">${escapeHtml(title)}</span>${takeaway ? `<span class="reports-chart__takeaway">${escapeHtml(takeaway)}</span>` : ''}</figcaption>
-        <ul class="reports-bars">${usable.map((row) => {
-          const amount = Number(row[value]);
-          return `<li class="reports-bars__row" title="${escapeHtml(`${row[label]}: ${format(amount)}`)}"><span class="reports-bars__label">${escapeHtml(row[label])}</span><span class="reports-bars__track"><span class="reports-bars__bar" style="width:${Math.max(2, amount / max * 100).toFixed(1)}%"></span></span><span class="reports-bars__value num">${escapeHtml(format(amount))}</span></li>`;
-        }).join('')}</ul>
+  // ---------- charts: inline SVG, no inline style, one hue ----------
+  //
+  // Horizontal positions are percentages and vertical ones pixels, so a plot
+  // fills its column at any width without a viewBox stretching its text.
+
+  // Round, even y ticks with the top tick above the maximum (3–5 steps).
+  function niceTicks(max, integer = false) {
+    if (!(max > 0)) return [0, 1];
+    const power = 10 ** Math.floor(Math.log10(max / 4));
+    for (const factor of [1, 2, 2.5, 5, 10, 20, 25, 50]) {
+      const step = factor * power;
+      if (integer && (step < 1 || !Number.isInteger(step))) continue;
+      const count = Math.floor(max / step) + 1;
+      if (count <= 5) return Array.from({ length: count + 1 }, (_, index) => index * step);
+    }
+    return [0, max * 1.25];
+  }
+
+  // Calendar buckets for a period: days up to two weeks, weeks (from Monday)
+  // up to four months, months beyond.
+  function periodBuckets(range) {
+    const c = clock();
+    if (!c?.addDays || !c?.weekday || !range?.start || !range?.end) return null;
+    const days = [];
+    for (let key = range.start; key && key <= range.end && days.length < 400; key = c.addDays(key, 1)) days.push(key);
+    if (!days.length) return null;
+    const short = (key) => String(dateLabel(key)).split(' ').slice(1).join(' ') || key;
+    if (days.length <= 14) return { grain: 'day', buckets: days.map((key) => ({ start: key, end: key, label: short(key) })) };
+    const groups = new Map();
+    days.forEach((key) => {
+      const id = days.length <= 120 ? c.addDays(key, -((c.weekday(key) + 6) % 7)) : key.slice(0, 7);
+      if (!groups.has(id)) groups.set(id, { start: key, end: key });
+      groups.get(id).end = key;
+    });
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return {
+      grain: days.length <= 120 ? 'week' : 'month',
+      buckets: [...groups.values()].map((bucket) => ({ ...bucket, label: days.length <= 120 ? short(bucket.start) : months[Number(bucket.start.slice(5, 7)) - 1] }))
+    };
+  }
+
+  // Sums rows into the period's buckets. Returns null unless every row lands
+  // in a bucket and the buckets add up to `total` (the figure in the strip):
+  // a chart never disagrees with the number above it.
+  function seriesFor(rows, { date, value, total }, range = period()) {
+    const shape = periodBuckets(range);
+    if (!shape || !Array.isArray(rows) || !rows.length) return null;
+    const buckets = shape.buckets.map((bucket) => ({ ...bucket, value: 0, rows: [] }));
+    for (const row of rows) {
+      const key = clock()?.venueDate ? clock().venueDate(row[date]) : String(row[date] || '').slice(0, 10);
+      const amount = typeof value === 'function' ? value(row) : number(row[value]);
+      if (amount === null) continue;   // not valued (a receipt without a cost): not in the total either
+      if (!key) return null;
+      const bucket = buckets.find((entry) => key >= entry.start && key <= entry.end);
+      if (!bucket) return null;
+      bucket.value += amount;
+      bucket.rows.push(row);
+    }
+    const sum = buckets.reduce((acc, bucket) => acc + bucket.value, 0);
+    if (number(total) === null || Math.abs(sum - Number(total)) > 0.5 || !(sum > 0)) return null;
+    return { grain: shape.grain, buckets };
+  }
+
+  // Columns per period (one series, kingfisher). The tallest column, when it
+  // stands well above the rest, gets a leader line and a label naming it.
+  function columnChart({ title, takeaway = '', series, format, ticksAs = formatNumber, integer = false, describe, annotate = null }) {
+    if (!series) return '';
+    const { buckets } = series;
+    const max = Math.max(...buckets.map((bucket) => bucket.value));
+    if (!(max > 0)) return '';
+    const ticks = niceTicks(max, integer);
+    const top = ticks[ticks.length - 1];
+    const peak = buckets.reduce((best, bucket) => (bucket.value > best.value ? bucket : best), buckets[0]);
+    const others = buckets.filter((bucket) => bucket !== peak && bucket.value > 0).map((bucket) => bucket.value).sort((a, b) => a - b);
+    const median = others.length ? others[Math.floor(others.length / 2)] : 0;
+    const note = annotate && buckets.length >= 3 && (!median || peak.value >= median * 2) ? annotate(peak) : '';
+    const plotTop = note ? 30 : 12;
+    const base = plotTop + 128;
+    const height = base + 26;
+    const y = (amount) => base - (amount / top) * (base - plotTop);
+    const slot = 100 / buckets.length;
+    const share = buckets.length <= 6 ? 0.36 : 0.56;   // a few columns stay slim, many keep a clear gap
+    const step = Math.max(1, Math.ceil(buckets.length / 7));
+    const crisp = (value) => Math.round(value) + 0.5;
+    const grid = ticks.map((tick) => `<line class="reports-plot__${tick === 0 ? 'base' : 'grid'}" x1="0" x2="100%" y1="${crisp(y(tick))}" y2="${crisp(y(tick))}"/>`).join('');
+    const bars = buckets.map((bucket, index) => {
+      if (!(bucket.value > 0)) return '';
+      const barTop = Math.round(y(bucket.value));
+      return `<rect class="reports-plot__bar" x="${(index * slot + slot * (1 - share) / 2).toFixed(3)}%" y="${barTop}" width="${(slot * share).toFixed(3)}%" height="${Math.max(1, base - barTop)}"><title>${escapeHtml(`${describe(bucket)}: ${format(bucket.value)}`)}</title></rect>`;
+    }).join('');
+    const labels = buckets.map((bucket, index) => (index % step ? '' : `<text class="reports-plot__x${(index / step) % 2 ? ' is-minor' : ''}" x="${(index * slot + slot / 2).toFixed(3)}%" y="${height - 6}" text-anchor="middle">${escapeHtml(bucket.label)}</text>`)).join('');
+    let marker = '';
+    if (note) {
+      const index = buckets.indexOf(peak);
+      const centre = index * slot + slot / 2;
+      const end = centre > 62;
+      marker = `<line class="reports-plot__leader" x1="${centre.toFixed(3)}%" x2="${centre.toFixed(3)}%" y1="6" y2="${Math.round(y(peak.value)) - 3}"/><text class="reports-plot__note" x="${centre.toFixed(3)}%" y="14" dx="${end ? -6 : 6}" text-anchor="${end ? 'end' : 'start'}">${escapeHtml(note)}</text>`;
+    }
+    const yLabels = ticks.map((tick) => `<text x="44" y="${Math.round(y(tick)) + 4}" text-anchor="end">${escapeHtml(ticksAs(tick))}</text>`).join('');
+    return `<figure class="atlas-card reports-panel reports-chart reports-chart--columns" aria-label="${escapeHtml(title)}">
+        <figcaption class="reports-panel__head"><span class="reports-chart__title">${escapeHtml(title)}</span>${takeaway ? `<span class="reports-chart__takeaway">${escapeHtml(takeaway)}</span>` : ''}</figcaption>
+        <div class="reports-plot">
+          <svg class="reports-plot__y" width="52" height="${height}" aria-hidden="true" focusable="false">${yLabels}</svg>
+          <svg class="reports-plot__area" width="100%" height="${height}" role="img" aria-label="${escapeHtml(`${title}. ${takeaway}`)}" focusable="false">${grid}${bars}${marker}${labels}</svg>
+        </div>
       </figure>`;
+  }
+
+  // A ranked bar list: label and value on one line, the bar under them at its
+  // true share of the largest row. `quiet` draws grey bars with the leader in
+  // ink (a secondary chart beside the main series).
+  function barList(rows, { label, value, format, quiet = false, share = false, limit = 6 }) {
+    const usable = rows.filter((row) => number(row[value]) !== null && Number(row[value]) > 0)
+      .sort((a, b) => Number(b[value]) - Number(a[value])).slice(0, limit);
+    if (!usable.length) return '';
+    const max = Number(usable[0][value]);
+    const total = rows.reduce((sum, row) => sum + (number(row[value]) > 0 ? Number(row[value]) : 0), 0);
+    return `<ol class="reports-bars${quiet ? ' reports-bars--quiet' : ''}">${usable.map((row) => {
+      const amount = Number(row[value]);
+      const pct = total > 0 ? Math.round(amount / total * 100) : null;
+      return `<li class="reports-bars__row" title="${escapeHtml(`${row[label]}: ${format(amount)}`)}"><span class="reports-bars__label">${escapeHtml(row[label])}</span><span class="reports-bars__value num">${share && pct !== null ? `<span class="reports-bars__share">${pct} %</span>` : ''}${escapeHtml(format(amount))}</span><svg class="reports-bars__track" width="100%" height="6" aria-hidden="true" focusable="false"><rect class="reports-bars__bar" width="${(amount / max * 100).toFixed(2)}%" height="6" rx="3"/></svg></li>`;
+    }).join('')}</ol>`;
+  }
+
+  // A bar list in its own card. Returns '' when there is nothing to draw.
+  function barChart(rows, { label, value, format, title, takeaway, quiet = false, share = true }) {
+    const list = barList(rows, { label, value, format, quiet, share });
+    if (!list) return '';
+    return `<figure class="atlas-card reports-panel reports-chart" aria-label="${escapeHtml(title)}">
+        <figcaption class="reports-panel__head"><span class="reports-chart__title">${escapeHtml(title)}</span>${takeaway ? `<span class="reports-chart__takeaway">${escapeHtml(takeaway)}</span>` : ''}</figcaption>
+        ${list}
+      </figure>`;
+  }
+
+  // The same frame with one sentence when a chart has nothing to draw.
+  function emptyChart(title, text) {
+    return `<figure class="atlas-card reports-panel reports-chart" aria-label="${escapeHtml(title)}"><figcaption class="reports-panel__head"><span class="reports-chart__title">${escapeHtml(title)}</span></figcaption>${notEnough(text)}</figure>`;
+  }
+
+  // A titled card (Needs attention, Money, completeness, sources).
+  function panel({ id, title, meta = '', body, cls = '' }) {
+    return `<section class="atlas-card reports-panel${cls ? ` ${cls}` : ''}" aria-labelledby="${id}"><header class="reports-panel__head reports-panel__head--row"><h2 class="reports-panel__title" id="${id}">${escapeHtml(title)}</h2>${meta}</header>${body}</section>`;
+  }
+
+  // The method beside the answer: a tinted key-value well.
+  function well(title, rows, note = '') {
+    return `<aside class="reports-well" aria-label="${escapeHtml(title)}"><h3 class="reports-well__title">${escapeHtml(title)}</h3><dl class="reports-well__list">${rows.map(([key, value]) => `<div><dt>${escapeHtml(key)}</dt><dd>${value}</dd></div>`).join('')}</dl>${note ? `<p class="reports-well__note">${escapeHtml(note)}</p>` : ''}</aside>`;
+  }
+
+  // Two blocks side by side (a wide answer and its evidence); one block spans.
+  function band(blocks, cls = '') {
+    const present = blocks.filter(Boolean);
+    if (!present.length) return '';
+    return `<div class="reports-band${present.length === 1 ? ' reports-band--single' : ''}${cls ? ` ${cls}` : ''}">${present.join('')}</div>`;
+  }
+
+  // A completeness meter: label, the share in words, a 4 px bar at the true
+  // ratio (no stub at zero) and a Fix link while anything is missing.
+  function meterRow(label, value, fix) {
+    const known = value !== null;
+    const pct = known ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+    const tone = !known ? '' : pct < 50 ? ' is-low' : pct >= 100 ? ' is-full' : '';
+    return `<li class="reports-meter${tone}"><span class="reports-meter__label">${escapeHtml(label)}</span><span class="reports-meter__value num">${known ? `${pct} %` : 'Not available'}</span>${known && pct < 100 ? `<a class="atlas-link reports-meter__fix" href="${fix}">Fix</a>` : ''}<svg class="reports-meter__track" width="100%" height="4" aria-hidden="true" focusable="false"><rect class="reports-meter__rail" width="100%" height="4" rx="2"/>${pct > 0 ? `<rect class="reports-meter__fill" width="${pct}%" height="4" rx="2"/>` : ''}</svg></li>`;
   }
 
   // ---------- header ----------
 
+  // The title row carries the freshness stamp and the utilities (Export, Ask);
+  // the period is the scope bar under the tabs.
   function headerMarkup() {
-    const range = period();
-    const compare = comparison(range);
     const list = sources();
     const connected = list.filter((source) => ['connected', 'complete'].includes(source.status)).length;
     const subParts = [];
     if (state.snapshot?.generated_at) subParts.push(`Updated ${time(state.snapshot.generated_at)}`);
     if (list.length) subParts.push(`${connected} of ${list.length} data sources connected`);
     if (!subParts.length) subParts.push('Stock, purchasing, recipes, waste and labour');
-    const custom = state.preset === 'custom'
-      ? `<span class="reports-custom"><label class="sr-only" for="reports-start">From</label><input class="atlas-input" ${DATE_FIELD} id="reports-start" value="${escapeHtml(state.customStart || range.start)}" max="${escapeHtml(state.customEnd || range.end)}" data-reports-start><span aria-hidden="true">–</span><label class="sr-only" for="reports-end">To</label><input class="atlas-input" ${DATE_FIELD} id="reports-end" value="${escapeHtml(state.customEnd || range.end)}" min="${escapeHtml(state.customStart || range.start)}" max="${escapeHtml(venueToday())}" data-reports-end></span>`
-      : '';
     return `<header class="page-head reports-head">
         <div class="page-head__text"><h1 class="page-head__title">Reports</h1><p class="page-head__sub">${escapeHtml(subParts.join(' · '))}</p></div>
         <div class="page-head__actions">
-          <label class="sr-only" for="reports-period">Period</label>
-          <select class="atlas-select" id="reports-period" data-reports-preset>${PRESETS.map(([key, text]) => `<option value="${key}"${state.preset === key ? ' selected' : ''}>${text}</option>`).join('')}</select>
-          ${custom}
-          <label class="sr-only" for="reports-compare">Comparison</label>
-          <select class="atlas-select" id="reports-compare" data-reports-compare><option value="on"${state.compare ? ' selected' : ''}>vs previous period</option><option value="off"${state.compare ? '' : ' selected'}>No comparison</option></select>
           <span class="reports-export"><button type="button" class="atlas-btn atlas-btn--secondary" id="reports-export-btn" aria-haspopup="menu" aria-expanded="false"><i data-lucide="download"></i>Export<i data-lucide="chevron-down"></i></button>
             <ul class="atlas-menu" role="menu" id="reports-export-menu" aria-label="Export" hidden>
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="csv"><i data-lucide="file-spreadsheet"></i>Download CSV</button></li>
@@ -275,6 +421,26 @@
 
   function tabsMarkup() {
     return `<nav class="atlas-tabs" aria-label="Reports">${TABS.map(([key, label]) => `<a href="#reports/${ROUTE_NAMES[key] || key}"${state.activeSection === key ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
+  }
+
+  // Scope first: the period, its custom dates and the comparison, then the
+  // period in words (the same dates every figure below is for).
+  function scopeMarkup() {
+    const range = period();
+    const compare = comparison(range);
+    const custom = state.preset === 'custom'
+      ? `<span class="reports-custom"><label class="sr-only" for="reports-start">From</label><input class="atlas-input" ${DATE_FIELD} id="reports-start" value="${escapeHtml(state.customStart || range.start)}" max="${escapeHtml(state.customEnd || range.end)}" data-reports-start><span class="reports-custom__to" aria-hidden="true">–</span><label class="sr-only" for="reports-end">To</label><input class="atlas-input" ${DATE_FIELD} id="reports-end" value="${escapeHtml(state.customEnd || range.end)}" min="${escapeHtml(state.customStart || range.start)}" max="${escapeHtml(venueToday())}" data-reports-end></span>`
+      : '';
+    return `<div class="reports-scope" role="group" aria-label="Period">
+        <div class="reports-scope__controls">
+          <label class="sr-only" for="reports-period">Period</label>
+          <select class="atlas-select" id="reports-period" data-reports-preset>${PRESETS.map(([key, text]) => `<option value="${key}"${state.preset === key ? ' selected' : ''}>${text}</option>`).join('')}</select>
+          ${custom}
+          <label class="sr-only" for="reports-compare">Comparison</label>
+          <select class="atlas-select" id="reports-compare" data-reports-compare><option value="on"${state.compare ? ' selected' : ''}>vs previous period</option><option value="off"${state.compare ? '' : ' selected'}>No comparison</option></select>
+        </div>
+        <p class="reports-period">${escapeHtml(periodText(range))}${compare ? ` <span>compared with ${escapeHtml(periodText(compare))}</span>` : ''}</p>
+      </div>`;
   }
 
   // ---------- Overview (absorbs Business Intelligence) ----------
@@ -315,18 +481,36 @@
     const spendValue = number(purchasing.spend);
     const wasteCount = number(waste.recorded_waste_count);
     const wasteValue = number(waste.estimated_waste_value);
+    // A real zero is printed ("0 kr"); a figure the period doesn't report is a dash.
+    const wasteFigure = wasteValue !== null ? money(wasteValue) : wasteCount === 0 ? money(0) : '—';
+    const wasteDetail = wasteCount === null ? 'Waste isn\'t reported for this period'
+      : wasteCount === 0 ? 'No waste recorded in this period'
+      : wasteValue === null ? `${formatNumber(wasteCount)} ${noun(wasteCount, 'entry', 'entries')}; some have no cost`
+      : `${formatNumber(wasteCount)} ${noun(wasteCount, 'entry', 'entries')}`;
     const stats = `<div class="atlas-stats reports-stats">
         ${inventoryValueStat('Inventory value')}
-        ${statMarkup({ label: 'Purchasing spend', value: spendValue === null ? '—' : escapeHtml(money(spendValue)), delta: deltaMarkup(spendKpi), detail: spendValue === null ? 'No deliveries with a cost in this period' : 'Costed deliveries in this period' })}
-        ${statMarkup({ label: 'Waste', value: wasteValue !== null ? escapeHtml(money(wasteValue)) : wasteCount === 0 ? 'None' : '—', detail: wasteCount === 0 ? 'No waste recorded in this period' : wasteValue === null ? `${formatNumber(wasteCount)} ${noun(wasteCount, 'entry', 'entries')}; some have no cost` : `${formatNumber(wasteCount)} ${noun(wasteCount, 'entry', 'entries')}` })}
+        ${statMarkup({ label: 'Purchasing spend', value: spendValue === null ? '—' : escapeHtml(money(spendValue)), delta: deltaMarkup(spendKpi), detail: spendValue === null ? 'Not reported for this period' : spendValue === 0 ? 'No deliveries with a cost in this period' : 'Costed deliveries in this period' })}
+        ${statMarkup({ label: 'Waste', value: wasteFigure === '—' ? '—' : escapeHtml(wasteFigure), detail: wasteDetail })}
         ${statMarkup({ label: 'Recipe margin', value: costing && costing.averageMargin !== null ? escapeHtml(percent(costing.averageMargin)) : '—', detail: costing && costing.total ? `Theoretical · ${costing.complete} of ${costing.total} ${noun(costing.total, 'recipe', 'recipes')} fully costed` : 'No active recipes' })}
       </div>`;
 
+    // The finding first: what needs a manager this period, each row opening
+    // the report behind it (the whole row is the link, on phones too).
     const attention = Array.isArray(state.snapshot?.attention) ? state.snapshot.attention : [];
-    const attentionSection = `<section class="atlas-section" aria-labelledby="reports-attention"><div class="atlas-section__head"><h2 class="atlas-section__title" id="reports-attention">Needs attention</h2></div>
-        ${attention.length ? `<ul class="atlas-list">${attention.slice(0, 6).map((entry) => `<li class="atlas-row"><span class="atlas-row__icon atlas-row__icon--${entry.tone === 'danger' ? 'danger' : entry.tone === 'warn' ? 'warning' : 'info'}"><i data-lucide="${entry.tone === 'danger' ? 'circle-alert' : entry.tone === 'warn' ? 'triangle-alert' : 'info'}"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(entry.title)}</p><p class="atlas-row__meta">${escapeHtml(entry.detail || '')}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" href="#reports/${escapeHtml(ROUTE_NAMES[SECTION_ALIASES[entry.section] || entry.section] || SECTION_ALIASES[entry.section] || entry.section)}">Open report</a></div></li>`).join('')}</ul>` : '<p class="reports-muted">Nothing needs attention for this period.</p>'}
-      </section>`;
+    const toneOf = (entry) => (entry.tone === 'danger' ? 'danger' : entry.tone === 'warn' ? 'warning' : 'info');
+    const iconOf = (entry) => (entry.tone === 'danger' ? 'circle-alert' : entry.tone === 'warn' ? 'triangle-alert' : 'info');
+    const routeOf = (entry) => escapeHtml(ROUTE_NAMES[SECTION_ALIASES[entry.section] || entry.section] || SECTION_ALIASES[entry.section] || entry.section);
+    const attentionPanel = panel({
+      id: 'reports-attention',
+      title: 'Needs attention',
+      meta: attention.length ? `<span class="reports-panel__meta num">${formatNumber(Math.min(attention.length, 6))}${attention.length > 6 ? ` of ${formatNumber(attention.length)}` : ''}</span>` : '',
+      cls: 'reports-attention',
+      body: attention.length
+        ? `<ul class="atlas-list">${attention.slice(0, 6).map((entry) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon atlas-row__icon--${toneOf(entry)}"><i data-lucide="${iconOf(entry)}"></i></span><div class="atlas-row__body"><a class="atlas-row__link" href="#reports/${routeOf(entry)}">${escapeHtml(entry.title)}</a><p class="atlas-row__meta">${escapeHtml(entry.detail || '')}</p></div><div class="atlas-row__end"><span class="reports-go atlas-row__action" aria-hidden="true">Open report</span><i data-lucide="chevron-right" class="atlas-row__chevron" aria-hidden="true"></i></div></li>`).join('')}</ul>`
+        : '<p class="reports-panel__empty"><i data-lucide="circle-check"></i>Nothing needs attention for this period.</p>'
+    });
 
+    // Where the money went: one series, the one hue.
     const concentration = overview?.supplierConcentration?.(range.start, range.end) || [];
     const supplierRows = (report('suppliers').rows || []).map((row) => ({ name: row.supplier, spend: number(row.spend) }));
     const bySupplier = supplierRows.length ? supplierRows : concentration;
@@ -334,33 +518,49 @@
     const top = bySupplier.slice().sort((a, b) => (b.spend || 0) - (a.spend || 0))[0];
     const takeaway = top && total ? `${top.name} is ${Math.round(top.spend / total * 100)} % of spend this period${Math.round(top.spend / total * 100) >= 70 ? ' — worth watching for price and supply risk' : ''}.` : '';
     const suppliersChart = barChart(bySupplier, { label: 'name', value: 'spend', format: money, title: 'Spend by supplier', takeaway })
-      || `<figure class="reports-chart"><figcaption><span class="reports-chart__title">Spend by supplier</span></figcaption>${notEnough('Not enough data yet — needs deliveries with a supplier and a cost in this period.')}</figure>`;
+      || emptyChart('Spend by supplier', 'Not enough data yet — needs deliveries with a supplier and a cost in this period.');
+
     const exposure = incomplete ? null : overview?.orderExposure?.() || null;
     const salesSource = sources().find((source) => source.key === 'sales');
-    const charts = `<section class="atlas-section" aria-labelledby="reports-money"><div class="atlas-section__head"><h2 class="atlas-section__title" id="reports-money">Money</h2></div>
-        <div class="reports-chart-grid">${suppliersChart}
-          <div class="atlas-card atlas-card--pad reports-facts"><ul class="atlas-list">
-            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Sales</p><p class="atlas-row__meta">${salesSource?.status === 'connected' ? 'Connected' : 'Not connected — no point-of-sale system sends sales to Alcedo, so revenue and realised margin aren\'t shown.'}</p></div></li>
-            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Suggested order</p><p class="atlas-row__meta">${incomplete ? 'Unknown — stock figures are incomplete' : exposure && exposure.items ? `${exposure.items} ${noun(exposure.items, 'item', 'items')} below par · about ${money(exposure.estimate)}${exposure.uncosted ? ` plus ${exposure.uncosted} without a cost` : ''}` : 'Nothing below par that isn\'t already ordered'}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#purchasing">Purchasing</a></div></li>
-            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Average cost per serve</p><p class="atlas-row__meta">${costing && costing.averageCostPerServe !== null ? `${money(costing.averageCostPerServe)} across ${costing.complete} fully costed ${noun(costing.complete, 'recipe', 'recipes')}` : 'Needs recipes with every ingredient costed'}</p></div></li>
-          </ul></div>
-        </div></section>`;
+    const money_ = panel({
+      id: 'reports-money',
+      title: 'Money',
+      cls: 'reports-facts',
+      body: `<ul class="atlas-list">
+          <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Sales</p><p class="atlas-row__meta">${salesSource?.status === 'connected' ? 'Connected' : 'Not connected — no point-of-sale system sends sales to Alcedo, so revenue and realised margin aren\'t shown.'}</p></div></li>
+          <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><a class="atlas-row__link" href="#purchasing">Suggested order</a><p class="atlas-row__meta">${incomplete ? 'Unknown — stock figures are incomplete' : exposure && exposure.items ? `${exposure.items} ${noun(exposure.items, 'item', 'items')} below par${exposure.uncosted ? `, ${exposure.uncosted} without a cost` : ''}` : 'Nothing below par that isn\'t already ordered'}</p></div><div class="atlas-row__end"><span class="atlas-row__value${exposure && exposure.items && !incomplete ? '' : ' is-empty'}">${!incomplete && exposure && exposure.items ? `about ${escapeHtml(money(exposure.estimate))}` : '—'}</span></div></li>
+          <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Average cost per serve</p><p class="atlas-row__meta">${costing && costing.averageCostPerServe !== null ? `Across ${costing.complete} fully costed ${noun(costing.complete, 'recipe', 'recipes')}` : 'Needs recipes with every ingredient costed'}</p></div><div class="atlas-row__end"><span class="atlas-row__value${costing && costing.averageCostPerServe !== null ? '' : ' is-empty'}">${costing && costing.averageCostPerServe !== null ? escapeHtml(money(costing.averageCostPerServe)) : '—'}</span></div></li>
+        </ul>`
+    });
 
+    // Coverage: how much of the record each figure stands on.
     const complete = overview?.completeness?.() || null;
-    const line = (label, value, fix) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${label}</p><p class="atlas-row__meta">${value === null ? 'Not available' : `${Math.round(value)} % complete`}</p></div><div class="atlas-row__end">${value !== null && value < 100 ? `<a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="${fix}">Fix</a>` : ''}</div></li>`;
-    const completeness = `<section class="atlas-section" aria-labelledby="reports-completeness"><div class="atlas-section__head"><h2 class="atlas-section__title" id="reports-completeness">Data completeness</h2><a class="atlas-section__link" href="#data/issues">Data › Issues</a></div>
-        <div class="reports-chart-grid">
-          <div class="atlas-card atlas-card--pad"><ul class="atlas-list">${complete ? [
-            line('Items with a cost', complete.cost, '#data/issues?issue=inventory.missing_cost'),
-            line('Items with a par level', complete.par, '#data/pars'),
-            line('Items with a supplier', complete.supplier, '#data/issues?issue=inventory.missing_supplier'),
-            line('Items counted recently', incomplete ? null : complete.counted, '#inventory/counts'),
-            line('Recipes fully costed', complete.recipesCosted, '#recipes')
-          ].join('') : '<li class="reports-muted">Stock isn\'t loaded.</li>'}</ul></div>
-          <div class="atlas-card atlas-card--pad"><ul class="atlas-list">${sources().map((source) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(source.name)}</p><p class="atlas-row__meta">${escapeHtml(source.note || (source.last_refreshed_at ? `Updated ${dateTime(source.last_refreshed_at)}` : ''))}</p></div><div class="atlas-row__end">${sourcePill(source.status)}</div></li>`).join('') || '<li class="reports-muted">No sources reported.</li>'}</ul></div>
-        </div></section>`;
+    const completeness = panel({
+      id: 'reports-completeness',
+      title: 'Data completeness',
+      meta: '<a class="reports-panel__link" href="#data/issues">Data › Issues</a>',
+      body: complete ? `<ul class="reports-meters">${[
+        meterRow('Items with a cost', complete.cost, '#data/issues?issue=inventory.missing_cost'),
+        meterRow('Items with a par level', complete.par, '#data/pars'),
+        meterRow('Items with a supplier', complete.supplier, '#data/issues?issue=inventory.missing_supplier'),
+        meterRow('Items counted recently', incomplete ? null : complete.counted, '#inventory/counts'),
+        meterRow('Recipes fully costed', complete.recipesCosted, '#recipes')
+      ].join('')}</ul>` : '<p class="reports-panel__empty">Stock isn\'t loaded.</p>'
+    });
+    const list = sources();
+    const connected = list.filter((source) => ['connected', 'complete'].includes(source.status)).length;
+    const sourcesPanel = panel({
+      id: 'reports-sources',
+      title: 'Data sources',
+      meta: list.length ? `<span class="reports-panel__meta num">${connected} of ${list.length} connected</span>` : '',
+      body: list.length ? `<ul class="atlas-list">${list.map((source) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(source.name)}</p><p class="atlas-row__meta">${escapeHtml(source.note || (source.last_refreshed_at ? `Updated ${dateTime(source.last_refreshed_at)}` : 'Not updated yet'))}</p></div><div class="atlas-row__end">${sourcePill(source.status)}</div></li>`).join('')}</ul>` : '<p class="reports-panel__empty">No sources reported.</p>'
+    });
 
-    return `${incomplete ? stockIncompleteAlert() : ''}${stats}${attentionSection}${charts}${completeness}`;
+    // Reading order: the figures, what needs a manager, where the money went
+    // (beside the money facts), then what the figures stand on.
+    return `${incomplete ? stockIncompleteAlert() : ''}${stats}${attentionPanel}
+      ${band([suppliersChart, money_], 'reports-band--lead')}
+      ${band([completeness, sourcesPanel], 'reports-band--pair')}`;
   }
 
   function sourcePill(status) {
@@ -426,11 +626,11 @@
     const slice = rows.slice(start, start + PAGE_SIZE);
     const isNum = (type) => ['money', 'percent', 'number'].includes(type);
     return `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table">
-        <thead><tr>${columns.map(([key, label, type, priority]) => `<th${isNum(type) ? ' class="is-num"' : ''}${priority ? ` data-priority="${priority}"` : ''}${state.sortKey === key ? ` aria-sort="${state.sortDirection === 'desc' ? 'descending' : 'ascending'}"` : ''}><button type="button" class="atlas-th-sort" data-reports-sort="${key}">${label}<i data-lucide="chevron-down"></i></button></th>`).join('')}</tr></thead>
+        <thead><tr>${columns.map(([key, label, type, priority]) => `<th${isNum(type) ? ' class="is-num"' : ''}${priority ? ` data-priority="${priority}"` : ''}${state.sortKey === key ? ` aria-sort="${state.sortDirection === 'desc' ? 'descending' : 'ascending'}"` : ''}><button type="button" class="atlas-th-sort" data-reports-sort="${key}">${isNum(type) ? `<i data-lucide="chevron-down"></i>${label}` : `${label}<i data-lucide="chevron-down"></i>`}</button></th>`).join('')}</tr></thead>
         <tbody>${slice.map((row) => `<tr>${columns.map((column) => `<td${isNum(column[2]) ? ' class="is-num"' : ''}${column[3] ? ` data-priority="${column[3]}"` : ''}>${cell(row, column)}</td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>
       <ul class="atlas-table-list">${slice.map((row) => `<li class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${cell(row, columns[0])} · ${cell(row, columns[1])}</div><div class="atlas-table-list__meta">${columns.slice(2, 4).map((column) => `${column[1]}: ${cell(row, column)}`).join(' · ')}</div></div><div class="atlas-table-list__value">${cell(row, columns[columns.length - 1])}</div></li>`).join('')}</ul>
-      <div class="atlas-table-foot"><span>${start + 1}–${Math.min(start + PAGE_SIZE, rows.length)} of ${rows.length}</span><span class="atlas-btn-group">${state.page > 1 ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-reports-page="${state.page - 1}">Previous</button>` : ''}${state.page < pages ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-reports-page="${state.page + 1}">Next</button>` : ''}</span></div>`;
+      ${pages > 1 ? `<div class="atlas-table-foot"><span>${start + 1}–${Math.min(start + PAGE_SIZE, rows.length)} of ${rows.length}</span><span class="atlas-btn-group">${state.page > 1 ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-reports-page="${state.page - 1}">Previous</button>` : ''}${state.page < pages ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-reports-page="${state.page + 1}">Next</button>` : ''}</span></div>` : ''}`;
   }
 
   // The one "stock value is unknown" wording (Overview and the Inventory
@@ -444,42 +644,127 @@
     return [floor, missing].filter(Boolean).join(' — ') || 'Unknown until every item is counted and costed';
   }
 
+  // The detail table's heading and its row noun, per report.
+  const DETAIL = {
+    inventory: ['Items', 'item', 'items'], purchasing: ['Deliveries', 'delivery', 'deliveries'], recipes: ['Recipes', 'recipe', 'recipes'],
+    waste: ['Waste entries', 'entry', 'entries'], labour: ['Shifts', 'shift', 'shifts']
+  };
+
+  function bucketName(bucket, grain) {
+    if (grain === 'day') return dateLabel(bucket.start);
+    if (grain === 'week') return `Week of ${dateLabel(bucket.start)}`;
+    return `${bucket.label} ${bucket.start.slice(0, 4)}`;
+  }
+  const grainWord = (grain) => ({ day: 'day', week: 'week', month: 'month' })[grain] || 'period';
+
+  // The receipt value Reports counts as spend (the server's `amount`, else
+  // the canonical total_cost / unit cost × quantity rule).
+  function receiptAmount(row) {
+    const amount = number(row.amount);
+    if (amount !== null) return amount;
+    if (number(row.total_cost) > 0) return Number(row.total_cost);
+    if (number(row.unit_cost) > 0 && number(row.quantity_change) > 0) return Number(row.unit_cost) * Number(row.quantity_change);
+    return null;
+  }
+
+  // The largest contributor to a bucket, for the peak's label.
+  function leader(rows, key, amount) {
+    const totals = new Map();
+    rows.forEach((row) => { const name = row[key]; if (name) totals.set(name, (totals.get(name) || 0) + (amount(row) || 0)); });
+    return [...totals.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  }
+
   function sectionMarkup(section) {
     const data = report(section);
     const summary = data.summary || {};
+    const rows = Array.isArray(data.rows) ? data.rows : [];
     let figures = '';
-    let chart = '';
+    let charts = '';
+    let note = '';
     if (section === 'inventory') {
       figures = `<div class="atlas-stats reports-stats">${inventoryValueStat('Stock value')}${statMarkup({ label: 'Below par', value: escapeHtml(formatNumber(summary.below_par)), unit: noun(summary.below_par, 'item', 'items') })}${statMarkup({ label: 'Out of stock', value: escapeHtml(formatNumber(summary.out_of_stock)), unit: noun(summary.out_of_stock, 'item', 'items') })}${statMarkup({ label: 'Counted recently', value: escapeHtml(`${formatNumber(summary.current_items)} of ${formatNumber(summary.active_items)}`) })}</div>`;
       // The same canonical source as the Stock value above (never a second figure).
-      const categories = stockIncomplete() ? [] : window.AtlasReportsOverview?.inventoryValueByCategory?.() || [];
+      const incomplete = stockIncomplete();
+      const categories = incomplete ? [] : window.AtlasReportsOverview?.inventoryValueByCategory?.() || [];
       const top = categories.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
-      chart = barChart(categories, { label: 'name', value: 'value', format: money, title: 'Counted stock value by category', takeaway: top ? `${top.name} holds the most value.` : '' }) || notEnough('Not enough data yet — needs a current stock count with costs.');
+      const chart = barChart(categories, { label: 'name', value: 'value', format: money, title: 'Counted stock value by category', takeaway: top ? `${top.name} holds the most value.` : '' })
+        || emptyChart('Counted stock value by category', 'Not enough data yet — needs a current stock count with costs.');
+      const parts = incomplete ? null : window.AtlasReportsOverview?.inventoryValueParts?.() || null;
+      const evidence = parts ? well('How the value is counted', [
+        ['Counted and costed', parts.value !== null ? escapeHtml(money(parts.value)) : number(parts.knownValue) === null ? '—' : `at least ${escapeHtml(money(parts.knownValue))}`],
+        ['Active items', escapeHtml(formatNumber(parts.items))],
+        ['Not counted', escapeHtml(formatNumber(parts.uncounted || 0))],
+        ['Without a cost', escapeHtml(formatNumber(parts.uncosted || 0))]
+      ], 'Counted stock at unit cost. The total is shown only when every active item is counted and has a cost.') : '';
+      charts = band([chart, evidence]);
     } else if (section === 'recipes') {
       figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Available', value: escapeHtml(formatNumber(summary.ready)), unit: noun(summary.ready, 'recipe', 'recipes') })}${statMarkup({ label: 'Running low', value: escapeHtml(formatNumber(summary.needs_attention)), unit: noun(summary.needs_attention, 'recipe', 'recipes') })}${statMarkup({ label: 'Unavailable', value: escapeHtml(formatNumber(summary.unavailable)), unit: noun(summary.unavailable, 'recipe', 'recipes') })}${statMarkup({ label: 'Setup incomplete', value: escapeHtml(formatNumber(summary.incomplete_setup)), unit: noun(summary.incomplete_setup, 'recipe', 'recipes') })}</div>`;
-      chart = `<p class="reports-muted">Margins are theoretical, from recipe costs and menu prices. Popularity and realised margin need sales, which aren't connected.</p>`;
+      note = 'Margins are theoretical, from recipe costs and menu prices. Popularity and realised margin need sales, which aren\'t connected.';
     } else if (section === 'purchasing') {
       const spendKpi = kpi('purchasing_spend') || kpi('purchasing');
-      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Spend', value: number(summary.spend) === null ? '—' : escapeHtml(money(summary.spend)), delta: deltaMarkup(spendKpi), detail: 'Costed deliveries' })}${statMarkup({ label: 'Deliveries', value: escapeHtml(formatNumber(summary.movement_count)) })}</div>`;
+      const uncosted = number(summary.uncosted_receipts);
+      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Spend', value: number(summary.spend) === null ? '—' : escapeHtml(money(summary.spend)), delta: deltaMarkup(spendKpi), detail: 'Costed deliveries' })}${statMarkup({ label: 'Deliveries', value: escapeHtml(formatNumber(summary.movement_count)), detail: uncosted ? `Plus ${formatNumber(uncosted)} without a cost` : '' })}</div>`;
       const suppliers = (report('suppliers').rows || []).map((row) => ({ name: row.supplier, spend: number(row.spend) }));
       const total = suppliers.reduce((sum, row) => sum + (row.spend || 0), 0);
       const top = suppliers.slice().sort((a, b) => (b.spend || 0) - (a.spend || 0))[0];
-      chart = barChart(suppliers, { label: 'name', value: 'spend', format: money, title: 'Spend by supplier', takeaway: top && total ? `${top.name} is ${Math.round(top.spend / total * 100)} % of spend.` : '' }) || notEnough('Not enough data yet — needs deliveries with a supplier and a cost.');
+      const series = seriesFor(rows, { date: 'created_at', value: receiptAmount, total: summary.spend });
+      const busiest = series ? series.buckets.reduce((best, bucket) => (bucket.value > best.value ? bucket : best), series.buckets[0]) : null;
+      const overTime = columnChart({
+        title: `Spend per ${grainWord(series?.grain)}`,
+        takeaway: busiest ? `The most was spent in the ${grainWord(series.grain)} ${series.grain === 'week' ? 'of ' : ''}${series.grain === 'month' ? busiest.label : dateLabel(busiest.start)}: ${money(busiest.value)}.` : '',
+        series, format: money, describe: (bucket) => bucketName(bucket, series.grain),
+        annotate: (bucket) => { const name = leader(bucket.rows, 'supplier', receiptAmount); return name ? `${name} · ${money(bucket.value)}` : money(bucket.value); }
+      });
+      const bySupplier = barChart(suppliers, { label: 'name', value: 'spend', format: money, title: 'Spend by supplier', takeaway: top && total ? `${top.name} is ${Math.round(top.spend / total * 100)} % of spend.` : '', quiet: Boolean(overTime) })
+        || emptyChart('Spend by supplier', 'Not enough data yet — needs deliveries with a supplier and a cost.');
+      charts = band(overTime ? [overTime, bySupplier] : [bySupplier, well('How spend is counted', [
+        ['Costed deliveries', escapeHtml(formatNumber(summary.movement_count))],
+        ['Without a cost', uncosted === null ? '—' : escapeHtml(formatNumber(uncosted))],
+        ['Suppliers', escapeHtml(formatNumber(suppliers.length))]
+      ], 'Spend is costed purchase receipts. Waste and adjustments are never spend.')]);
     } else if (section === 'waste') {
       const count = number(summary.recorded_waste_count);
-      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Entries', value: escapeHtml(formatNumber(count)) })}${statMarkup({ label: 'Value', value: number(summary.estimated_waste_value) === null ? '—' : escapeHtml(money(summary.estimated_waste_value)), detail: number(summary.estimated_waste_value) === null && count ? 'Some entries have no cost' : '' })}</div>`;
-      if (!count) chart = notEnough('No waste recorded in this period.');
+      const value = number(summary.estimated_waste_value);
+      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Entries', value: escapeHtml(formatNumber(count)) })}${statMarkup({ label: 'Value', value: value === null ? (count === 0 ? escapeHtml(money(0)) : '—') : escapeHtml(money(value)), detail: value === null && count ? 'Some entries have no cost' : '' })}</div>`;
+      if (!count) charts = notEnough('No waste recorded in this period.');
+      else {
+        const byValue = seriesFor(rows, { date: 'created_at', value: 'estimated_value', total: value });
+        const byCount = byValue ? null : seriesFor(rows, { date: 'created_at', value: () => 1, total: count });
+        const series = byValue || byCount;
+        const format = byValue ? money : (n) => `${formatNumber(n)} ${noun(n, 'entry', 'entries')}`;
+        const overTime = columnChart({
+          title: byValue ? `Waste value per ${grainWord(series?.grain)}` : `Waste entries per ${grainWord(series?.grain)}`,
+          series, format, integer: !byValue, describe: (bucket) => bucketName(bucket, series.grain),
+          annotate: (bucket) => leader(bucket.rows, 'item_name', (row) => (byValue ? number(row.estimated_value) : 1))
+        });
+        const items = new Map();
+        rows.forEach((row) => { if (row.item_name) items.set(row.item_name, (items.get(row.item_name) || 0) + (byValue ? number(row.estimated_value) || 0 : 1)); });
+        const most = barChart([...items.entries()].map(([name, amount]) => ({ name, amount })), { label: 'name', value: 'amount', format, title: 'Most wasted', quiet: true, share: false });
+        charts = band([overTime, most]);
+      }
     } else if (section === 'labour') {
       figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Shifts', value: escapeHtml(formatNumber(summary.shift_count)) })}${statMarkup({ label: 'Scheduled hours', value: escapeHtml(formatNumber(summary.scheduled_hours, 1)), unit: 'h' })}${statMarkup({ label: 'Not published', value: escapeHtml(formatNumber(summary.unpublished_shift_entries)), unit: noun(summary.unpublished_shift_entries, 'shift', 'shifts') })}</div>`;
-      chart = '<p class="reports-muted">Scheduled hours only. Labour cost needs pay rates, which Alcedo doesn\'t store.</p>';
+      const hours = (n) => `${formatNumber(n, Number.isInteger(n) ? 0 : 1)} h`;
+      const series = seriesFor(rows, { date: 'starts_at', value: 'planned_hours', total: summary.scheduled_hours });
+      const overTime = columnChart({ title: `Scheduled hours per ${grainWord(series?.grain)}`, series, format: hours, describe: (bucket) => bucketName(bucket, series.grain) });
+      const roles = new Map();
+      rows.forEach((row) => { const hoursFor = number(row.planned_hours); if (row.role_name && hoursFor) roles.set(row.role_name, (roles.get(row.role_name) || 0) + hoursFor); });
+      const byRole = overTime ? barChart([...roles.entries()].map(([name, amount]) => ({ name, amount })), { label: 'name', value: 'amount', format: hours, title: 'Hours by role', quiet: true }) : '';
+      charts = band([overTime, byRole]);
+      note = 'Scheduled hours only. Labour cost needs pay rates, which Alcedo doesn\'t store.';
     }
-    return `${figures}<section class="atlas-section"><div class="atlas-section__head"><h2 class="atlas-section__title">${escapeHtml(TABS.find(([key]) => key === section)?.[1] || '')} detail</h2></div>${chart}${tableMarkup(section)}</section>`;
+    const [heading, one, many] = DETAIL[section] || ['Detail', 'row', 'rows'];
+    const count = rows.length ? `<span class="reports-section__meta num">${formatNumber(rows.length)} ${noun(rows.length, one, many)}</span>` : '';
+    return `${figures}${charts}${note ? `<p class="reports-note"><i data-lucide="info"></i>${escapeHtml(note)}</p>` : ''}<section class="atlas-section reports-detail" aria-labelledby="reports-detail-title"><div class="atlas-section__head"><h2 class="atlas-section__title" id="reports-detail-title">${escapeHtml(heading)}</h2>${count}</div>${tableMarkup(section)}</section>`;
   }
 
   // ---------- render ----------
 
+  // Loading: the final layout with each value a flat grey bar at its size.
   function skeleton() {
-    return `<div class="atlas-stats reports-stats" aria-busy="true" aria-label="Loading reports">${Array.from({ length: 4 }, () => '<div class="atlas-stat"><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--title"></span></div>').join('')}</div><div class="reports-skeleton">${Array.from({ length: 5 }, () => '<span class="atlas-skel atlas-skel--row"></span>').join('')}</div>`;
+    const rows = (n) => Array.from({ length: n }, () => '<span class="reports-skeleton__row"><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--text"></span></span>').join('');
+    return `<div class="atlas-stats reports-stats" aria-busy="true" aria-label="Loading reports">${Array.from({ length: 4 }, () => '<div class="atlas-stat"><span class="atlas-skel atlas-skel--text reports-skeleton__label"></span><span class="atlas-skel atlas-skel--title reports-skeleton__value"></span></div>').join('')}</div>
+      <div class="reports-band reports-band--lead reports-skeleton" aria-hidden="true"><div class="atlas-card reports-panel"><span class="atlas-skel atlas-skel--text reports-skeleton__head"></span>${rows(3)}</div><div class="atlas-card reports-panel"><span class="atlas-skel atlas-skel--text reports-skeleton__head"></span>${rows(3)}</div></div>`;
   }
 
   function render() {
@@ -496,12 +781,9 @@
     else if (!state.snapshot) body = skeleton();
     else {
       const refreshError = state.error ? alertMarkup({ tone: 'warning', title: 'This period couldn\'t be loaded.', body: `Showing the last loaded figures. ${errorText(state.error)}`, action: '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-reports-retry>Try again</button>' }) : '';
-      const range = period();
-      const compare = comparison(range);
-      const caption = `<p class="reports-period">${escapeHtml(periodText(range))}${compare ? ` <span>compared with ${escapeHtml(periodText(compare))}</span>` : ''}</p>`;
-      body = `${refreshError}${caption}${state.activeSection === 'overview' ? overviewMarkup() : sectionMarkup(state.activeSection)}`;
+      body = `${refreshError}${state.activeSection === 'overview' ? overviewMarkup() : sectionMarkup(state.activeSection)}`;
     }
-    element.innerHTML = `<div class="atlas-page reports-page${state.loading && state.snapshot ? ' is-refreshing' : ''}" aria-busy="${state.loading}">${headerMarkup()}${tabsMarkup()}<div class="reports-body">${body}</div></div>`;
+    element.innerHTML = `<div class="atlas-page reports-page${state.loading && state.snapshot ? ' is-refreshing' : ''}" aria-busy="${state.loading}">${headerMarkup()}${tabsMarkup()}${scopeMarkup()}<div class="reports-body">${body}</div></div>`;
     const trigger = element.querySelector('#reports-export-btn');
     const menu = element.querySelector('#reports-export-menu');
     if (trigger && menu) window.AtlasShell?.menu?.(trigger, menu, { onSelect: (item) => exportAs(item?.dataset?.reportsExport) });
