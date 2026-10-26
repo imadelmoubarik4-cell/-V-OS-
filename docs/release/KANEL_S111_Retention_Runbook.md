@@ -75,6 +75,7 @@ not-scheduled path.
 
 `docs/release/sql/KANEL_S111_rollback.sql` stops the job and removes the function, the
 run log and the ledger row. It does **not** bring back data that was already removed.
+It refuses while S112 is recorded; run `KANEL_S112_rollback.sql` first.
 
 ## Proof
 

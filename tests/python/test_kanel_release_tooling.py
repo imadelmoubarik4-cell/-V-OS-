@@ -1,4 +1,4 @@
-"""KANEL bookings release tooling (S106–S111, incl. S110b) — static contract.
+"""KANEL bookings release tooling (S106–S112, incl. S110b) — static contract.
 
 The rollback itself is proven on a replayed database by
 scripts/release/verify_kanel_bookings_rollback.sh (last step of the replay gate).
@@ -16,7 +16,7 @@ PREFLIGHT = (ROOT / "docs/release/sql/KANEL_preflight_readonly.sql").read_text(e
 WORKFLOW = (ROOT / ".github/workflows/migration-replay.yml").read_text(encoding="utf-8")
 RELEASE_MIGRATIONS = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if p.name.split("_")[0] > "20261022090000")
 S106_S109 = [p for p in RELEASE_MIGRATIONS if p.name.split("_")[0] < "20261027000000"]
-BUNDLES = sorted((ROOT / "docs/release/sql").glob("KANEL_apply_[1-7]_*.sql"))
+BUNDLES = sorted((ROOT / "docs/release/sql").glob("KANEL_apply_[1-8]_*.sql"))
 EXPECTED_110 = json.loads((ROOT / "scripts/release/kanel_pre_s110_expected.json").read_text(encoding="utf-8"))
 ROLLBACK_110 = (ROOT / "docs/release/sql/KANEL_S110_rollback.sql").read_text(encoding="utf-8")
 PREFLIGHT_110 = (ROOT / "docs/release/sql/KANEL_S110_preflight_readonly.sql").read_text(encoding="utf-8")
@@ -24,6 +24,9 @@ ROLLBACK_111 = (ROOT / "docs/release/sql/KANEL_S111_rollback.sql").read_text(enc
 PREFLIGHT_111 = (ROOT / "docs/release/sql/KANEL_S111_preflight_readonly.sql").read_text(encoding="utf-8")
 ROLLBACK_110B = (ROOT / "docs/release/sql/KANEL_S110b_rollback.sql").read_text(encoding="utf-8")
 PREFLIGHT_110B = (ROOT / "docs/release/sql/KANEL_S110b_preflight_readonly.sql").read_text(encoding="utf-8")
+EXPECTED_112 = json.loads((ROOT / "scripts/release/kanel_pre_s112_expected.json").read_text(encoding="utf-8"))
+ROLLBACK_112 = (ROOT / "docs/release/sql/KANEL_S112_rollback.sql").read_text(encoding="utf-8")
+PREFLIGHT_112 = (ROOT / "docs/release/sql/KANEL_S112_preflight_readonly.sql").read_text(encoding="utf-8")
 S109_SQL = (ROOT / "supabase/migrations/20261026090000_s109_booking_notifications_inbox.sql").read_text(encoding="utf-8")
 
 
@@ -35,7 +38,7 @@ def code_only(sql):
 
 class KanelReleaseTooling(unittest.TestCase):
     def test_preflight_is_strictly_read_only(self):
-        for name, text in (("S106", PREFLIGHT), ("S110", PREFLIGHT_110), ("S110b", PREFLIGHT_110B), ("S111", PREFLIGHT_111)):
+        for name, text in (("S106", PREFLIGHT), ("S110", PREFLIGHT_110), ("S110b", PREFLIGHT_110B), ("S111", PREFLIGHT_111), ("S112", PREFLIGHT_112)):
             code = code_only(text).lower()
             for word in ("insert", "update", "delete", "alter", "drop", "create", "grant", "revoke",
                          "truncate", "copy", "call", "do", "set ", "begin", "commit", "vacuum"):
@@ -127,6 +130,40 @@ class KanelReleaseTooling(unittest.TestCase):
             if re.search(r"\b(drop table|truncate|delete from)\b", line, re.I) and not line.lstrip().startswith("--"):
                 self.assertTrue("booking_retention_runs" in line or "schema_migrations" in line, line)
 
+    def test_s111_rollback_refuses_while_s112_is_recorded(self):
+        guard = ROLLBACK_111.index("version >= '20261029000000'")
+        self.assertLess(ROLLBACK_111.index("begin;"), guard)
+        self.assertLess(guard, ROLLBACK_111.index("drop function if exists"))
+
+    def test_s112_preflight_checks_every_touched_function_and_the_stools(self):
+        for key, want in EXPECTED_112["restored_functions"].items():
+            self.assertIn(want["src_md5"], PREFLIGHT_112, key)
+            self.assertIn(want["acl"].replace("'", "''"), PREFLIGHT_112, key)
+        self.assertIn("'20261028090000'", PREFLIGHT_112)  # production must be at S111
+        self.assertIn("'20261029090000'", PREFLIGHT_112)
+        self.assertIn("public_instant_confirm", PREFLIGHT_112)
+        for n in range(1, 17):  # every seeded stool is checked by id
+            self.assertIn(f"('bb000000-0000-4000-8000-0000000000{n:02d}'::uuid, {n})", PREFLIGHT_112)
+
+    def test_s112_rollback_restores_s111_and_the_stool_numbering(self):
+        code = code_only(ROLLBACK_112)
+        self.assertEqual(code.count("begin;"), 1)
+        self.assertTrue(code.rstrip().endswith("commit;"))
+        self.assertEqual(len(EXPECTED_112["restored_functions"]), 3)
+        for key in EXPECTED_112["restored_functions"]:
+            self.assertIn(f"CREATE OR REPLACE FUNCTION {key.split('(')[0]}(", ROLLBACK_112, key)
+        self.assertEqual(len(EXPECTED_112["release_functions"]), 4)
+        for key in EXPECTED_112["release_functions"]:
+            self.assertIn(f"drop function if exists {key.split('(')[0]}(", ROLLBACK_112, key)
+        self.assertLess(ROLLBACK_112.index("version > '20261029090000'"), ROLLBACK_112.index("CREATE OR REPLACE FUNCTION"))
+        self.assertIn("when t.position_index <= 8 then 'A' when t.position_index <= 12 then 'B' else 'C'", ROLLBACK_112)
+        self.assertIn("update atlas_private.booking_settings set public_instant_confirm = false where id = true;", ROLLBACK_112)
+        self.assertIn("delete from supabase_migrations.schema_migrations where version = '20261029090000';", ROLLBACK_112)
+        for line in ROLLBACK_112.splitlines():
+            if line.lstrip().startswith("--"):
+                continue
+            self.assertIsNone(re.search(r"\b(drop (table|column)|truncate|delete from atlas_private)\b", line, re.I), line)
+
     def test_rollback_clears_exactly_the_release_ledger_rows(self):
         versions = [p.name.split("_")[0] for p in S106_S109]
         self.assertEqual(versions, ["20261023090000", "20261024090000", "20261025090000", "20261026090000"])
@@ -136,7 +173,7 @@ class KanelReleaseTooling(unittest.TestCase):
 
     def test_apply_bundles_embed_each_migration_verbatim_in_order(self):
         self.assertEqual(len(BUNDLES), len(RELEASE_MIGRATIONS))
-        self.assertEqual([p.name.split("_")[0] for p in RELEASE_MIGRATIONS][-1], "20261028090000")
+        self.assertEqual([p.name.split("_")[0] for p in RELEASE_MIGRATIONS][-1], "20261029090000")
         prev = "20261022090000"
         for bundle, migration in zip(BUNDLES, RELEASE_MIGRATIONS):
             text = bundle.read_text(encoding="utf-8")

@@ -1,14 +1,287 @@
--- S112 KANEL: immediately confirm public bookings with atomic adjacent stool allocation.
--- The legacy ?action=request path remains Requested with a temporary hold.
--- Apply migration before deploying the ?action=book Edge route and Netlify website.
--- Guest emails remain queued only; no provider is activated.
+-- S112 — Direct website booking with guest-chosen stools (KANEL × ALCEDO online bookings).
+--
+-- Owner decisions, 26 Oct 2026:
+--   * website bookings can be confirmed directly, with no staff step;
+--   * guests pick their exact stools on a map of the bar;
+--   * the stools carry the OWNER's numbers everywhere (staff and guests):
+--       1–4 left side from the bottom up, 5–12 along the top left to right,
+--       13–16 right side top to bottom;
+--   * a group sits on one side only: never across a corner (4|5, 12|13) and never
+--     across the physical gap in the top row between stools 10 and 11.
+--
+-- What this migration does:
+--   1. booking_settings.public_instant_confirm — the owner switch for direct
+--      confirmation. OFF by default: until the owner turns it on, the new
+--      ?action=book route creates 'requested' bookings exactly like ?action=request.
+--   2. Renumbers the 16 Bar stools to the owner's numbering. Every stool keeps its
+--      id and floor position (same physical stool, new number), so existing
+--      allocations and holds are untouched. Sections become L (1–4), T1 (5–10),
+--      T2 (11–12) and R (13–16); booking_find_contiguous_tables,
+--      booking_tables_contiguous_segment and booking_check_seat_group already
+--      enforce one section + consecutive numbers, so staff and guests get the
+--      same rule with no engine change.
+--   3. atlas_public_booking_availability adds booking_mode ('instant'|'request')
+--      and seat_map ({slot: [free stool numbers]}), and offers a slot only while a
+--      run of party_size free stools exists inside one section.
+--   4. atlas_public_booking_request takes booking_mode 'direct' (the edge function's
+--      ?action=book) and optional seats (stool numbers). Chosen stools are checked
+--      with booking_check_seat_group; a stool taken meanwhile is refused with
+--      hint atlas:seat_taken. Direct + switch on = 'confirmed' with permanent stools;
+--      otherwise 'requested' with an expiring hold on the chosen (or auto-found)
+--      stools, which staff Confirm then uses. The response adds seats and
+--      confirmation_email (false: the S108 outbox queues emails but has no provider).
+--   5. booking_lifecycle_notify alerts managers to confirmed website bookings too.
+--
+-- Production: apply with docs/release/sql/KANEL_apply_8_s112_public_direct_booking.sql
+-- after KANEL_S112_preflight_readonly.sql; roll back with KANEL_S112_rollback.sql.
 
-CREATE OR REPLACE FUNCTION public.atlas_public_booking_request(p_payload jsonb)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+-- 1. Owner switch ---------------------------------------------------------------
+alter table atlas_private.booking_settings
+  add column if not exists public_instant_confirm boolean not null default false;
+comment on column atlas_private.booking_settings.public_instant_confirm is
+  'Owner switch: website bookings made with ?action=book are confirmed immediately. '
+  'OFF by default; when off they are created as requested, like ?action=request.';
+
+-- 2. Owner stool numbering --------------------------------------------------------
+-- Seed id bb…NN carried Alcedo's original number NN; map each id to the owner's number.
+-- Two steps (temporary numbers first) because label and (area, position) are unique.
+with map(id, n) as (values
+  ('bb000000-0000-4000-8000-000000000013'::uuid, 1), ('bb000000-0000-4000-8000-000000000014'::uuid, 2),
+  ('bb000000-0000-4000-8000-000000000015'::uuid, 3), ('bb000000-0000-4000-8000-000000000016'::uuid, 4),
+  ('bb000000-0000-4000-8000-000000000001'::uuid, 5), ('bb000000-0000-4000-8000-000000000002'::uuid, 6),
+  ('bb000000-0000-4000-8000-000000000003'::uuid, 7), ('bb000000-0000-4000-8000-000000000004'::uuid, 8),
+  ('bb000000-0000-4000-8000-000000000005'::uuid, 9), ('bb000000-0000-4000-8000-000000000006'::uuid, 10),
+  ('bb000000-0000-4000-8000-000000000007'::uuid, 11), ('bb000000-0000-4000-8000-000000000008'::uuid, 12),
+  ('bb000000-0000-4000-8000-000000000009'::uuid, 13), ('bb000000-0000-4000-8000-000000000010'::uuid, 14),
+  ('bb000000-0000-4000-8000-000000000011'::uuid, 15), ('bb000000-0000-4000-8000-000000000012'::uuid, 16))
+update atlas_private.booking_tables t
+set position_index = 100 + m.n, label = 'Bar ' || m.n || ' (renumbering)'
+from map m
+where t.id = m.id and t.area_id = 'ba000000-0000-4000-8000-000000000001'
+  and (t.position_index is distinct from m.n or t.label is distinct from 'Bar ' || m.n);
+
+update atlas_private.booking_tables t
+set position_index = t.position_index - 100,
+    label = 'Bar ' || (t.position_index - 100),
+    segment = case when t.position_index - 100 <= 4 then 'L'
+                   when t.position_index - 100 <= 10 then 'T1'
+                   when t.position_index - 100 <= 12 then 'T2'
+                   else 'R' end,
+    updated_at = pg_catalog.now()
+where t.area_id = 'ba000000-0000-4000-8000-000000000001' and t.position_index between 101 and 116;
+
+update atlas_private.booking_tables t
+set segment = case when t.position_index <= 4 then 'L' when t.position_index <= 10 then 'T1'
+                   when t.position_index <= 12 then 'T2' else 'R' end
+where t.area_id = 'ba000000-0000-4000-8000-000000000001' and t.position_index between 1 and 16
+  and t.segment is distinct from case when t.position_index <= 4 then 'L' when t.position_index <= 10 then 'T1'
+                                      when t.position_index <= 12 then 'T2' else 'R' end;
+
+update atlas_private.booking_areas set circular_adjacency = false
+where id = 'ba000000-0000-4000-8000-000000000001';
+
+comment on column atlas_private.booking_tables.segment is
+  'Physical seating section within an area. Adjacency never crosses sections. '
+  'NULL = the area is not segmented. Bar (owner numbering, S112): L = 1-4, T1 = 5-10, T2 = 11-12, R = 13-16.';
+
+-- 3. Stool helpers for the public path ----------------------------------------------
+-- Free stools (by number) in an area for a window: bookable, open to online guests,
+-- not temporarily unavailable or inside an unavailable window, and free including
+-- the turnaround buffer and live holds (booking_table_free).
+create or replace function atlas_private.booking_public_free_seats(
+  p_area_id uuid, p_start timestamptz, p_end timestamptz
+)
+returns integer[]
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select coalesce(pg_catalog.array_agg(t.position_index order by t.position_index), array[]::integer[])
+  from atlas_private.booking_tables t
+  where t.area_id = p_area_id and t.position_index is not null
+    and t.is_bookable and not t.block_online and not t.temporarily_unavailable
+    and not (t.unavailable_from is not null and t.unavailable_until is not null
+             and t.unavailable_from < p_end and t.unavailable_until > p_start)
+    and atlas_private.booking_table_free(t.id, p_start, p_end, null);
+$function$;
+revoke all on function atlas_private.booking_public_free_seats(uuid, timestamptz, timestamptz) from public, anon, authenticated;
+
+-- Does p_free contain p_party consecutive numbers inside one section?
+create or replace function atlas_private.booking_public_has_run(
+  p_area_id uuid, p_free integer[], p_party integer
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  rec record;
+  run_len integer := 0;
+  prev_pos integer;
+  prev_seg text;
+begin
+  if p_party is null or p_party < 1 then return false; end if;
+  for rec in
+    select t.position_index as pos, t.segment as seg
+    from atlas_private.booking_tables t
+    where t.area_id = p_area_id and t.position_index = any(coalesce(p_free, array[]::integer[]))
+    order by t.position_index
+  loop
+    if prev_pos is not null and rec.pos = prev_pos + 1 and rec.seg is not distinct from prev_seg then
+      run_len := run_len + 1;
+    else
+      run_len := 1;
+    end if;
+    if run_len >= p_party then return true; end if;
+    prev_pos := rec.pos; prev_seg := rec.seg;
+  end loop;
+  return false;
+end
+$function$;
+revoke all on function atlas_private.booking_public_has_run(uuid, integer[], integer) from public, anon, authenticated;
+
+-- Stool numbers -> stool ids in the online area. Refuses unknown or staff-only stools.
+create or replace function atlas_private.booking_public_seat_ids(p_area_id uuid, p_seats integer[])
+returns uuid[]
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  ids uuid[];
+begin
+  if p_seats is null or pg_catalog.cardinality(p_seats) < 1
+     or pg_catalog.array_position(p_seats, null) is not null
+     or (select pg_catalog.count(distinct x) from pg_catalog.unnest(p_seats) x) <> pg_catalog.cardinality(p_seats) then
+    raise exception 'Choose each stool once.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  select pg_catalog.array_agg(t.id order by t.position_index) into ids
+  from atlas_private.booking_tables t
+  where t.area_id = p_area_id and t.position_index = any(p_seats) and not t.block_online;
+  if coalesce(pg_catalog.cardinality(ids), 0) <> pg_catalog.cardinality(p_seats) then
+    raise exception 'A chosen stool cannot be booked online.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  return ids;
+end
+$function$;
+revoke all on function atlas_private.booking_public_seat_ids(uuid, integer[]) from public, anon, authenticated;
+
+-- The stool numbers a reservation holds (permanent allocation, else live hold).
+create or replace function atlas_private.booking_public_reservation_seats(p_reservation_id uuid)
+returns integer[]
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select coalesce(
+    (select pg_catalog.array_agg(t.position_index order by t.position_index)
+       from atlas_private.reservation_tables rt join atlas_private.booking_tables t on t.id = rt.table_id
+      where rt.reservation_id = p_reservation_id and rt.released_at is null),
+    (select pg_catalog.array_agg(t.position_index order by t.position_index)
+       from atlas_private.booking_holds h join atlas_private.booking_tables t on t.id = h.table_id
+      where h.reservation_id = p_reservation_id),
+    array[]::integer[]);
+$function$;
+revoke all on function atlas_private.booking_public_reservation_seats(uuid) from public, anon, authenticated;
+
+-- 4. Public availability: + booking_mode + seat_map ---------------------------------
+create or replace function public.atlas_public_booking_availability(
+  p_date date, p_party_size integer, p_tz text default 'Atlantic/Reykjavik'
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  s atlas_private.booking_settings;
+  v_area uuid;
+  dur integer := 120;
+  step integer;
+  dow smallint;
+  h atlas_private.settings_business_hours;
+  open_min integer;
+  last_start integer;
+  m integer;
+  day_midnight timestamptz;
+  slot_start timestamptz;
+  slot_end timestamptz;
+  free integer[];
+  slots jsonb := '[]'::jsonb;
+  seat_map jsonb := '{}'::jsonb;
+  mode text;
+begin
+  select * into s from atlas_private.booking_settings where id = true;
+  if not s.public_online_enabled then
+    raise exception 'Online booking is not available right now.' using errcode = '22023', hint = 'atlas:disabled';
+  end if;
+  if p_party_size is null or p_party_size < 1 or p_party_size > coalesce(s.max_party_online, 4) then
+    raise exception 'Online booking is for parties of 1 to %.' , coalesce(s.max_party_online, 4) using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if p_date is null or p_date < (pg_catalog.now() at time zone p_tz)::date
+     or p_date > (pg_catalog.now() at time zone p_tz)::date + coalesce(s.advance_days, 90) then
+    raise exception 'That date is outside the booking window.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  mode := case when coalesce(s.public_instant_confirm, false) then 'instant' else 'request' end;
+
+  select id into v_area from atlas_private.booking_areas
+   where online_bookable and is_active order by display_order limit 1;
+  if v_area is null then
+    return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size, 'slots', slots,
+      'booking_mode', mode, 'seat_map', seat_map);
+  end if;
+
+  dow := extract(dow from p_date)::smallint;
+  select * into h from atlas_private.settings_business_hours where weekday = dow;
+  if not found or not h.is_open or h.open_time is null then
+    return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size, 'slots', slots,
+      'booking_mode', mode, 'seat_map', seat_map);
+  end if;
+  open_min := (extract(hour from h.open_time) * 60 + extract(minute from h.open_time))::int;
+  last_start := atlas_private.booking_day_last_start_minutes(dow, dur);
+  if last_start is null then
+    return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size, 'slots', slots,
+      'booking_mode', mode, 'seat_map', seat_map);
+  end if;
+  step := coalesce(s.slot_interval_minutes, 15);
+  day_midnight := (p_date::text || ' 00:00')::timestamp at time zone p_tz;
+
+  m := open_min;
+  while m <= last_start loop
+    slot_start := day_midnight + pg_catalog.make_interval(mins => m);
+    slot_end := slot_start + pg_catalog.make_interval(mins => dur);
+    if slot_start > pg_catalog.now() then
+      free := atlas_private.booking_public_free_seats(v_area, slot_start, slot_end);
+      if atlas_private.booking_public_has_run(v_area, free, p_party_size) then
+        slots := slots || pg_catalog.to_jsonb(slot_start);
+        -- Keyed by exactly the same text as the slot entry.
+        seat_map := seat_map || pg_catalog.jsonb_build_object(pg_catalog.to_jsonb(slot_start) #>> '{}', pg_catalog.to_jsonb(free));
+      end if;
+    end if;
+    m := m + step;
+  end loop;
+
+  return pg_catalog.jsonb_build_object('date', p_date, 'party_size', p_party_size,
+    'duration_minutes', dur, 'slots', slots, 'booking_mode', mode, 'seat_map', seat_map);
+end
+$function$;
+revoke all on function public.atlas_public_booking_availability(date,integer,text) from public, anon, authenticated;
+grant execute on function public.atlas_public_booking_availability(date,integer,text) to service_role;
+
+-- 5. Public request / direct booking --------------------------------------------------
+create or replace function public.atlas_public_booking_request(p_payload jsonb)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
 declare
   p jsonb := coalesce(p_payload, '{}'::jsonb);
   s atlas_private.booking_settings;
@@ -25,7 +298,8 @@ declare
   v_raw_idem text := nullif(p->>'idempotency_key','');
   v_idem text;
   v_mode text := coalesce(nullif(p->>'booking_mode',''), 'request');
-  v_direct boolean := v_mode = 'direct';
+  v_direct boolean;
+  v_seats integer[];
   v_status text;
   v_area uuid;
   run uuid[];
@@ -42,12 +316,24 @@ begin
   if not s.public_online_enabled then
     raise exception 'Online booking is not available right now.' using errcode = '22023', hint = 'atlas:disabled';
   end if;
+  -- Direct confirmation only while the owner switch is on; otherwise a request.
+  v_direct := v_mode = 'direct' and coalesce(s.public_instant_confirm, false);
 
   if v_party is null or v_start is null or v_name is null then
     raise exception 'A name, party size and time are required.' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
   if v_party < 1 or v_party > coalesce(s.max_party_online, 4) then
     raise exception 'Online booking is for parties of 1 to %.', coalesce(s.max_party_online, 4) using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if p ? 'seats' and p->'seats' <> 'null'::jsonb then
+    if pg_catalog.jsonb_typeof(p->'seats') <> 'array' then
+      raise exception 'Invalid stool selection.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+    select pg_catalog.array_agg((value #>> '{}')::int order by ordinality) into v_seats
+    from pg_catalog.jsonb_array_elements(p->'seats') with ordinality;
+    if coalesce(pg_catalog.cardinality(v_seats), 0) <> v_party then
+      raise exception 'Choose one stool per guest.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
   end if;
 
   if v_raw_idem is not null then
@@ -60,7 +346,9 @@ begin
         raise exception 'That request conflicts with an earlier one.' using errcode = '22023', hint = 'atlas:invalid_request';
       end if;
       return pg_catalog.jsonb_build_object('reference', existing.booking_reference,
-        'public_token', existing.public_token, 'status', existing.status);
+        'public_token', existing.public_token, 'status', existing.status,
+        'seats', pg_catalog.to_jsonb(atlas_private.booking_public_reservation_seats(existing.id)),
+        'confirmation_email', false);
     end if;
   end if;
 
@@ -71,10 +359,10 @@ begin
   if not atlas_private.booking_within_hours(v_start, v_dur, tz) then
     raise exception 'That time is outside opening hours.' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
-
-  if v_direct and pg_catalog.mod(atlas_private.booking_local_minutes(v_start, tz), coalesce(nullif(s.slot_interval_minutes,0),15)) <> 0 then
+  if pg_catalog.mod(atlas_private.booking_local_minutes(v_start, tz), coalesce(nullif(s.slot_interval_minutes,0),15)) <> 0 then
     raise exception 'Choose a valid booking interval.' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
+
   select id into v_area from atlas_private.booking_areas
    where online_bookable and is_active order by display_order limit 1;
   if v_area is null then
@@ -84,9 +372,18 @@ begin
   v_end := v_start + pg_catalog.make_interval(mins => v_dur);
 
   perform 1 from atlas_private.booking_tables t where t.area_id = v_area order by t.id for update;
-  run := atlas_private.booking_find_contiguous_tables(v_area, v_party, v_start, v_end, null);
-  if run is null then
-    raise exception 'That time is no longer available.' using errcode = '23505', hint = 'atlas:conflict';
+  if v_seats is not null then
+    run := atlas_private.booking_public_seat_ids(v_area, v_seats);
+    begin
+      perform atlas_private.booking_check_seat_group(run, v_area, v_party, v_start, v_end, null);
+    exception when unique_violation then
+      raise exception 'A chosen stool was just booked.' using errcode = '23505', hint = 'atlas:seat_taken';
+    end;
+  else
+    run := atlas_private.booking_find_contiguous_tables(v_area, v_party, v_start, v_end, null);
+    if run is null then
+      raise exception 'That time is no longer available.' using errcode = '23505', hint = 'atlas:conflict';
+    end if;
   end if;
 
   v_ref := atlas_private.booking_public_reference();
@@ -113,20 +410,29 @@ begin
   insert into atlas_private.reservation_status_history (reservation_id, from_status, to_status, note)
   values (v_id, null, v_status, case when v_direct then 'public online confirmed booking' else 'public online request' end);
   insert into atlas_private.booking_events (event_type, reservation_id, payload)
-  values ('reservation_created', v_id, pg_catalog.jsonb_build_object('party_size', v_party, 'source', 'web', 'channel', 'public', 'status', v_status));
+  values ('reservation_created', v_id, pg_catalog.jsonb_build_object('party_size', v_party, 'source', 'web',
+    'channel', 'public', 'status', v_status, 'guest_chose_seats', v_seats is not null));
 
-  return pg_catalog.jsonb_build_object('reference', v_ref, 'public_token', v_token, 'status', v_status);
+  -- confirmation_email stays false: the S108 outbox queues the guest email but no
+  -- provider delivers it yet, and the website only promises an email when true.
+  return pg_catalog.jsonb_build_object('reference', v_ref, 'public_token', v_token, 'status', v_status,
+    'seats', pg_catalog.to_jsonb(atlas_private.booking_public_reservation_seats(v_id)),
+    'confirmation_email', false);
+exception
+  when invalid_text_representation or numeric_value_out_of_range then
+    raise exception 'Invalid booking.' using errcode = '22023', hint = 'atlas:invalid_request';
 end
 $function$;
 revoke all on function public.atlas_public_booking_request(jsonb) from public, anon, authenticated;
 grant execute on function public.atlas_public_booking_request(jsonb) to service_role;
 
-CREATE OR REPLACE FUNCTION atlas_private.booking_lifecycle_notify()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+-- 6. Lifecycle notifications: confirmed website bookings alert managers too -----------
+create or replace function atlas_private.booking_lifecycle_notify()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
 declare
   s atlas_private.booking_settings;
   from_email text;
@@ -192,9 +498,9 @@ begin
   end if;
 
   -- In-app inbox for every event (works without push delivery), plus an optional
-  -- phone push for the actionable NEW REQUEST only — routed to 'bookings' so the
-  -- service worker opens the booking, not Messages. Both target active
-  -- managers/admins only.
+  -- phone push for a NEW website booking (request or confirmed) — routed to
+  -- 'bookings' so the service worker opens the booking, not Messages. Both target
+  -- active managers/admins only.
   for m in select id from public.profiles where active and role in ('admin','manager') loop
     insert into atlas_private.booking_notifications (audience_user_id, reservation_id, kind, title, body, route)
     values (m.id, new.id, inbox_kind, inbox_title, inbox_body, 'bookings');

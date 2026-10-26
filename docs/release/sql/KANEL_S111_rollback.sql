@@ -10,6 +10,15 @@
 
 begin;
 
+-- Refuse while S112 is recorded: KANEL_S112_rollback.sql must run first.
+do $guard$
+begin
+  if exists (select 1 from supabase_migrations.schema_migrations where version >= '20261029000000') then
+    raise exception 'KANEL S111 rollback refused: S112 is recorded — run KANEL_S112_rollback.sql first';
+  end if;
+end
+$guard$;
+
 do $cron$
 declare scheduled boolean;
 begin

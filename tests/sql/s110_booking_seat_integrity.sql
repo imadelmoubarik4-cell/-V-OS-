@@ -1,7 +1,7 @@
 -- S110 acceptance — booking seat integrity (staff create + assign/move).
 -- Runs on a replayed database at S110. Seeds its own actors and bookings in ONE
--- transaction and rolls back. Bar = 16 one-seat stools, sections A 1–8, B 9–12,
--- C 13–16; turnaround 15 min (S106). Every refusal is checked by SQLSTATE:
+-- transaction and rolls back. Bar = 16 one-seat stools in the owner's numbering (S112):
+-- sections L 1–4, T1 5–10, T2 11–12, R 13–16; turnaround 15 min (S106). Every refusal is checked by SQLSTATE:
 -- 22023 invalid_parameter_value (atlas:invalid_request), 23505 unique_violation
 -- (atlas:conflict), 42501 insufficient_privilege (atlas:forbidden).
 begin;
@@ -30,8 +30,8 @@ begin
      or not has_function_privilege('service_role', 'public.atlas_bookings_assign(uuid,text,uuid,jsonb)', 'EXECUTE') then
     raise exception 's110: service_role lost execute on the staff RPCs';
   end if;
-  if (atlas_private.booking_table_json('bb000000-0000-4000-8000-000000000001')->>'segment') is distinct from 'A'
-     or (atlas_private.booking_table_json('bb000000-0000-4000-8000-000000000009')->>'segment') is distinct from 'B' then
+  if (atlas_private.booking_table_json((select id from atlas_private.booking_tables where label = 'Bar 1'))->>'segment') is distinct from 'L'
+     or (atlas_private.booking_table_json((select id from atlas_private.booking_tables where label = 'Bar 13'))->>'segment') is distinct from 'R' then
     raise exception 's110: table JSON must expose the section (segment)';
   end if;
 end $$;
@@ -51,7 +51,9 @@ declare
   other_tbl uuid := 'bb000000-0000-4000-8000-0000000000ff';
 
 begin
-  for i in 1..16 loop b[i] := ('bb000000-0000-4000-8000-0000000000' || lpad(i::text, 2, '0'))::uuid; end loop;
+  -- b[n] is the stool labelled Bar n.
+  select array_agg(id order by position_index) into b
+    from atlas_private.booking_tables where area_id = bar and position_index between 1 and 16;
 
   -- 1. Parties 1–4, auto-assign: N adjacent stools inside one section, confirmed.
   for k in 1..4 loop
@@ -103,8 +105,8 @@ begin
   -- 4. Explicit create refusals: sections, gaps, capacity, duplicates, unknown seat.
   begin
     perform public.atlas_bookings_create(mgr, 'manager', jsonb_build_object('party_size', 2, 'start_at', d::text || ' 21:00',
-      'source', 'phone', 'area_id', bar, 'table_ids', jsonb_build_array(b[8], b[9])));
-    raise exception 's110: create on Bar 8+9 (crosses A|B) was allowed';
+      'source', 'phone', 'area_id', bar, 'table_ids', jsonb_build_array(b[10], b[11])));
+    raise exception 's110: create on Bar 10+11 (crosses the T1|T2 gap) was allowed';
   exception when invalid_parameter_value then null; end;
   begin
     perform public.atlas_bookings_create(mgr, 'manager', jsonb_build_object('party_size', 2, 'start_at', d::text || ' 21:00',
@@ -157,8 +159,8 @@ begin
     where rt.reservation_id = r1 and rt.released_at is null;
   if seats <> 'Bar 5+Bar 6' then raise exception 's110: move to Bar 5+6 should hold exactly Bar 5+6 (got %)', seats; end if;
   begin
-    perform public.atlas_bookings_assign(mgr, 'manager', r1, jsonb_build_array(b[8], b[9]));
-    raise exception 's110: move to Bar 8+9 (crosses A|B) was allowed';
+    perform public.atlas_bookings_assign(mgr, 'manager', r1, jsonb_build_array(b[12], b[13]));
+    raise exception 's110: move to Bar 12+13 (crosses the T2|R corner) was allowed';
   exception when invalid_parameter_value then null; end;
   begin
     perform public.atlas_bookings_assign(mgr, 'manager', r1, jsonb_build_array(b[16]));
@@ -183,7 +185,7 @@ begin
   exception when unique_violation then null; end;
   -- A party of 4 needs 4 adjacent stools in one section.
   r := public.atlas_bookings_create(mgr, 'manager', jsonb_build_object('party_size', 4, 'start_at', d::text || ' 23:00',
-    'source', 'phone', 'area_id', bar, 'guest_name', 'S110 four', 'table_ids', jsonb_build_array(b[9], b[10], b[11], b[12])));
+    'source', 'phone', 'area_id', bar, 'guest_name', 'S110 four', 'table_ids', jsonb_build_array(b[1], b[2], b[3], b[4])));
   r4 := (r->'reservation'->>'id')::uuid;
   begin
     perform public.atlas_bookings_assign(mgr, 'manager', r4, jsonb_build_array(b[13], b[14], b[15]));
