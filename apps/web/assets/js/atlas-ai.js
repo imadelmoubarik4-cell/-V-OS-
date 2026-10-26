@@ -34,65 +34,18 @@
   // what every robot shows; this module only reports what Alcedo is doing.
   const robotBot = () => root.AtlasBot?.robot || null;
 
-  // ---------- icons (lucide 0.454.0 paths, inline so streaming never re-scans the DOM) ----------
-
-  const ICONS = {
-    sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
-    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
-    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-    pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
-    'pin-off': '<path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/>',
-    ellipsis: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
-    history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
-    pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
-    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    check: '<path d="M20 6 9 17l-5-5"/>',
-    'circle-check': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
-    'circle-alert': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
-    'triangle-alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
-    'loader-circle': '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
-    'chevron-down': '<path d="m6 9 6 6 6-6"/>',
-    'chevron-right': '<path d="m9 18 6-6-6-6"/>',
-    'chevron-left': '<path d="m15 18-6-6 6-6"/>',
-    'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
-    'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-    square: '<rect width="14" height="14" x="5" y="5" rx="2"/>',
-    mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
-    'mic-off': '<line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" x2="12" y1="19" y2="22"/>',
-    'audio-lines': '<path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/>',
-    'phone-off': '<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="22" x2="2" y1="2" y2="22"/>',
-    copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
-    'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-    'file-text': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
-    paperclip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
-    camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
-    image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
-    package: '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',
-    martini: '<path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/>',
-    truck: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
-    'list-checks': '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
-    'calendar-days': '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
-    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    'messages-square': '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
-    'book-open': '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
-    'chart-no-axes-column': '<line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>',
-    settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
-    archive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
-    'trash-2': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
-    'panel-left': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
-    lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-    'wifi-off': '<path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/>',
-    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
-    database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
-    thermometer: '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
-    megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'
-  };
+  // ---------- icons ----------
+  //
+  // The ALCEDO icon set (alcedo-icons.js) returns an <svg> string, so streamed
+  // markup never needs a DOM re-scan. Glyphs are filled paths in currentColor;
+  // atlas-ai.css sizes them with width and height. The assistant itself is the
+  // robot badge (atlas-bot.js).
 
   function icon(name, extraClass = '') {
     if (name === 'atlas-bot' && root.AtlasBot) return root.AtlasBot.html({ size: 18, className: extraClass });
-    const body = ICONS[name] || ICONS.sparkles;
-    return `<svg class="icon${extraClass ? ` ${extraClass}` : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
+    const className = `icon${extraClass ? ` ${extraClass}` : ''}`;
+    if (root.AlcedoIcons?.svg) return root.AlcedoIcons.svg(name, { className });
+    return `<span class="${className}" aria-hidden="true"></span>`;
   }
 
   // ---------- small helpers ----------
@@ -933,7 +886,7 @@
     trigger?.focus?.();
   }
 
-  function openMenu(trigger, items) {
+  function openMenu(trigger, items, { align = 'right' } = {}) {
     closeMenu();
     const menu = document.createElement('div');
     menu.className = 'atlas-menu ai-menu';
@@ -946,10 +899,18 @@
     const rect = trigger.getBoundingClientRect();
     const rootRect = state.root.getBoundingClientRect();
     const width = 200;
-    let left = rect.right - rootRect.left - width;
-    if (left < 8) left = Math.max(8, rect.left - rootRect.left);
-    menu.style.left = `${Math.min(left, rootRect.width - width - 8)}px`;
-    menu.style.top = `${rect.bottom - rootRect.top + 4}px`;
+    // The menu lines up with its trigger's right edge (align: 'left' for the
+    // composer's attach button); with no room below it opens above. It grows
+    // from the corner nearest its trigger (origin-aware motion).
+    let left = align === 'left' ? rect.left - rootRect.left : rect.right - rootRect.left - width;
+    const alignLeft = align === 'left' || left < 8;
+    if (left < 8) left = rect.left - rootRect.left;
+    left = Math.max(8, Math.min(left, rootRect.width - width - 8));
+    const height = menu.offsetHeight || 0;
+    const above = rect.bottom + 4 + height > (root.innerHeight || 0) - 8 && rect.top - 4 - height >= 8;
+    menu.style.left = `${left}px`;
+    menu.style.top = `${above ? rect.top - rootRect.top - 4 - height : rect.bottom - rootRect.top + 4}px`;
+    menu.style.setProperty('--atlas-origin', `${above ? 'bottom' : 'top'} ${alignLeft ? 'left' : 'right'}`);
     trigger.setAttribute('aria-expanded', 'true');
     const buttons = [...menu.querySelectorAll('[role="menuitem"]')];
     buttons[0]?.focus();
@@ -1125,13 +1086,13 @@
     const manager = isManager();
     const operational = OPERATIONAL_ROLES.includes(role());
     const list = [
-      { label: 'What’s low before tonight?', prompt: 'What is low before tonight?' },
-      { label: 'Who’s on tomorrow?', prompt: 'Who is working tomorrow?' }
+      { label: 'What’s low before tonight?', prompt: 'What is low before tonight?', icon: 'package' },
+      { label: 'Who’s on tomorrow?', prompt: 'Who is working tomorrow?', icon: 'calendar-days' }
     ];
-    if (manager) list.push({ label: 'Does this delivery match our order?', prompt: 'Does this delivery match our order?', photo: true });
-    else list.push({ label: 'Which recipes can’t we make tonight?', prompt: 'Which recipes can we not make tonight?' });
-    if (operational) list.push({ label: 'Count the back bar by voice', live: true });
-    else list.push({ label: 'What’s on today’s checklist?', prompt: 'What is on today’s opening checklist?' });
+    if (manager) list.push({ label: 'Does this delivery match our order?', prompt: 'Does this delivery match our order?', photo: true, icon: 'camera' });
+    else list.push({ label: 'Which recipes can’t we make tonight?', prompt: 'Which recipes can we not make tonight?', icon: 'martini' });
+    if (operational) list.push({ label: 'Count the back bar by voice', live: true, icon: 'audio-lines' });
+    else list.push({ label: 'What’s on today’s checklist?', prompt: 'What is on today’s opening checklist?', icon: 'list-checks' });
     return list;
   }
 
@@ -1146,7 +1107,7 @@
       ${bot}
       <h2 class="ai-empty__greeting">What can I help with${name ? `, ${escapeHtml(name)}` : ''}?</h2>
       ${state.composer.context ? `<p class="ai-empty__context">Ask about ${escapeHtml(state.composer.context.label)}, or anything else about the venue.</p>` : ''}
-      <div class="ai-empty__chips" role="list">${suggestions().map((item, index) => `<button type="button" role="listitem" class="atlas-chip" data-ai-suggest="${index}">${item.photo ? icon('camera') : item.live ? icon('audio-lines') : ''}${escapeHtml(item.label)}</button>`).join('')}</div>
+      <div class="ai-empty__chips" role="list">${suggestions().map((item, index) => `<button type="button" role="listitem" class="ai-suggest" data-ai-suggest="${index}">${icon(item.icon)}<span>${escapeHtml(item.label)}</span></button>`).join('')}</div>
     </div>`;
   }
 
@@ -1190,7 +1151,9 @@
     state.root.classList.toggle('has-messages', conv.messages.length > 0);
     syncTabBar();
     if (conv.loading) {
-      container.innerHTML = `<div class="ai-loading" aria-busy="true"><div class="msg-user"><div class="atlas-skel" style="width:46%;height:40px;border-radius:16px"></div></div><div class="atlas-skel" style="width:30%"></div><div class="atlas-skel" style="width:92%;margin-top:12px"></div><div class="atlas-skel" style="width:74%;margin-top:10px"></div><span class="sr-only">Loading conversation</span></div>`;
+      // The final layout with grey bars at the real sizes: a question bubble,
+      // the who-line, then three lines of answer.
+      container.innerHTML = `<div class="ai-loading" aria-busy="true"><div class="msg-user"><div class="atlas-skel ai-skel-bubble"></div></div><div class="ai-skel-who"><div class="atlas-skel ai-skel-mark"></div><div class="atlas-skel ai-skel-name"></div></div><div class="ai-skel-lines"><div class="atlas-skel"></div><div class="atlas-skel"></div><div class="atlas-skel"></div></div><span class="sr-only">Loading conversation</span></div>`;
       return;
     }
     if (conv.error) {
@@ -1297,9 +1260,13 @@
     const chips = visible.map((record) => {
       const route = recordRoute(record);
       const label = humanText(record.label, RECORD_TYPES[record.type]?.label || 'Record');
+      // The kind ("Item", "Recipe") is a caption drawn by CSS from data-kind,
+      // so the link's text stays the record's own name.
+      const kind = RECORD_TYPES[record.type]?.label;
+      const kindAttr = kind && kind !== label ? ` data-kind="${escapeHtml(kind)}"` : '';
       return route
-        ? `<a class="record-chip" href="${escapeHtml(route)}" data-ai-route="${escapeHtml(route)}">${icon(recordIcon(record.type))}${escapeHtml(label)}</a>`
-        : `<span class="record-chip">${icon(recordIcon(record.type))}${escapeHtml(label)}</span>`;
+        ? `<a class="record-chip" href="${escapeHtml(route)}" data-ai-route="${escapeHtml(route)}"${kindAttr}>${icon(recordIcon(record.type))}${escapeHtml(label)}</a>`
+        : `<span class="record-chip"${kindAttr}>${icon(recordIcon(record.type))}${escapeHtml(label)}</span>`;
     }).join('');
     const more = !expanded && records.length > 6 ? `<button type="button" class="record-chip record-chip--more" data-ai-records-more="${escapeHtml(message.key)}">+${records.length - 6} more</button>` : '';
     return `<div class="records" aria-label="Linked records">${chips}${more}</div>`;
@@ -1310,7 +1277,7 @@
     const text = message.content || '';
     const body = text
       ? `<div class="msg-ai__text" data-ai-text>${formatAnswer(text, { emphasiseFirst: message.status === 'complete' && !message.fallback && message.grounding !== 'replaced' })}</div>`
-      : streaming ? '<div class="ai-skel-lines" aria-hidden="true"><div class="atlas-skel" style="width:92%"></div><div class="atlas-skel" style="width:74%"></div></div><div class="msg-ai__text" data-ai-text hidden></div>' : '';
+      : streaming ? '<div class="ai-skel-lines" aria-hidden="true"><div class="atlas-skel"></div><div class="atlas-skel"></div></div><div class="msg-ai__text" data-ai-text hidden></div>' : '';
     const fallback = message.fallback ? `<p class="msg-ai__label"><span class="atlas-pill atlas-pill--plain">Quick answer</span> From Alcedo records. Alcedo AI is off, so this is a fixed check, not a full answer.</p>` : '';
     const fallbackLines = message.fallbackLines?.length ? `<ul class="msg-ai__lines">${message.fallbackLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : '';
     const fallbackAction = message.fallbackAction ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ai-fallback-action="${escapeHtml(message.key)}">${escapeHtml(message.fallbackAction.label)}</button>` : '';
@@ -1323,7 +1290,7 @@
     </div>` : '';
     return `<article class="msg-ai${streaming ? ' is-streaming' : ''}" data-ai-msg="${escapeHtml(message.key)}" aria-busy="${streaming}">
       <div class="msg-ai__who">${root.AtlasBot ? root.AtlasBot.html(streaming ? { size: 24, follow: true, className: 'ai-mark-bot' } : { size: 24, state: message.error ? 'error' : 'idle', className: 'ai-mark-bot' }) : `<span class="ai-mark">${icon('sparkles')}</span>`}Alcedo</div>
-      ${fallback}${stepsMarkup(message)}${body}${fallbackLines}${fallbackAction}${stopped}${error}${recordsMarkup(message)}${evidenceMarkup(message)}${proposals}${actions}
+      ${fallback}${stepsMarkup(message)}${body}${fallbackLines}${fallbackAction}${stopped}${error}${recordsMarkup(message)}${proposals}${evidenceMarkup(message)}${actions}
     </article>`;
   }
 
@@ -1423,10 +1390,10 @@
     const recipients = Array.isArray(preview.recipients) && preview.recipients.length ? `<p class="approval__recipients">Goes to ${escapeHtml(preview.recipients.join(', '))}</p>` : '';
     const willChange = (preview.will_change || []).filter(Boolean);
     const willNot = (preview.will_not_change || []).filter(Boolean);
-    const note = willChange.length || willNot.length ? `<div class="approval__note">${icon('info')}<div>
-        ${willChange.length ? `<p><strong>Will change:</strong> ${escapeHtml(willChange.join(' '))}</p>` : ''}
-        ${willNot.length ? `<p><strong>Will not change:</strong> ${escapeHtml(willNot.join(' '))}</p>` : ''}
-      </div></div>` : '';
+    const note = willChange.length || willNot.length ? `<dl class="approval__note">
+        ${willChange.length ? `<div><dt>Will change<span class="sr-only">:</span></dt><dd>${escapeHtml(willChange.join(' '))}</dd></div>` : ''}
+        ${willNot.length ? `<div><dt>Will not change<span class="sr-only">:</span></dt><dd>${escapeHtml(willNot.join(' '))}</dd></div>` : ''}
+      </dl>` : '';
 
     let pill = '<span class="atlas-pill atlas-pill--info">Needs approval</span>';
     if (!allowed && info.executable) pill = '<span class="atlas-pill atlas-pill--warning">Waiting for a manager</span>';
@@ -1985,12 +1952,17 @@
       ? `<span class="file-chip file-chip--voice">${icon('mic')}Voice note${state.composer.duration ? ` · ${durationLabel(state.composer.duration)}` : ''}<button type="button" class="file-chip__x" data-ai-voice-clear aria-label="Remove voice note label">${icon('x')}</button></span>` : '';
     const chips = state.composer.attachments.map((attachment) => {
       const thumb = attachment.preview ? `<img src="${escapeHtml(attachment.preview)}" alt="">` : icon(attachment.kind === 'image' ? 'image' : 'file-text');
-      const status = attachment.status === 'uploading' ? `<span class="file-chip__progress" role="progressbar" aria-label="Uploading ${escapeHtml(attachment.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(attachment.progress * 100)}"><span style="width:${Math.round(attachment.progress * 100)}%"></span></span>`
+      const status = attachment.status === 'uploading' ? `<span class="file-chip__progress" role="progressbar" aria-label="Uploading ${escapeHtml(attachment.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(attachment.progress * 100)}"><span></span></span>`
         : attachment.status === 'error' ? `<span class="file-chip__error">${escapeHtml(attachment.error)}</span>` : `<span class="file-chip__meta">${escapeHtml(bytesLabel(attachment.size))}</span>`;
       return `<span class="file-chip file-chip--upload${attachment.status === 'error' ? ' is-error' : ''}" data-ai-att="${escapeHtml(attachment.key)}"><span class="file-chip__thumb">${thumb}</span><span class="file-chip__body"><span class="file-chip__name">${escapeHtml(attachment.name)}</span>${status}</span><button type="button" class="file-chip__x" data-ai-remove-att="${escapeHtml(attachment.key)}" aria-label="Remove ${escapeHtml(attachment.name)}">${icon('x')}</button></span>`;
     }).join('');
     container.innerHTML = voiceChip + chips;
     container.hidden = !(voiceChip || chips);
+    // Progress widths go through the CSSOM (no inline style attributes).
+    state.composer.attachments.forEach((attachment) => {
+      const bar = attachment.status === 'uploading' ? container.querySelector(`[data-ai-att="${attachment.key}"] .file-chip__progress > span`) : null;
+      if (bar) bar.style.width = `${Math.round(attachment.progress * 100)}%`;
+    });
     const prompts = el('prompts');
     const hasPhoto = state.composer.attachments.some((attachment) => attachment.kind === 'image');
     if (prompts) {
@@ -2037,7 +2009,7 @@
       ...(phone ? [{ label: 'Take photo', icon: 'camera', run: () => el('fileCamera').click() }] : []),
       { label: phone ? 'Choose from library' : 'Choose photo', icon: 'image', run: () => el('filePhoto').click() },
       { label: 'Attach file', icon: 'paperclip', run: () => el('fileAny').click() }
-    ]);
+    ], { align: 'left' });
   }
 
   // ---------- voice note ----------
@@ -2169,7 +2141,7 @@
       : status === 'replaced' ? FIXED_COPY.voice_session_replaced
         : status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.';
     const retry = retryable && status !== 'replaced'
-      ? `<button type="button" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '';
+      ? `<button type="button" class="atlas-btn atlas-btn--secondary" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '';
     const bot = root.AtlasBot ? root.AtlasBot.liveHtml({ key: 'ai-voice', framing: 'bust', size: 44, state: liveBotState(status), label: `Alcedo, ${label.toLowerCase()}` }) : '';
     return `<div class="voice" role="region" aria-label="Live voice" data-state="${escapeHtml(status)}">
       <div class="voice__top">${bot}<span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
@@ -2178,9 +2150,9 @@
       ${live.showTranscript && lines ? `<div class="voice__transcript">${lines}</div>` : ''}
       <div class="voice__controls">
         ${broken
-          ? `${handoff ? `<button type="button" data-ai-live-takeover>${icon('audio-lines')}Continue here</button>` : ''}${retry}`
-          : `<button type="button" data-ai-live-mute aria-pressed="${status === 'muted'}">${icon(status === 'muted' ? 'mic' : 'mic-off')}${status === 'muted' ? 'Unmute' : 'Mute'}</button>`}
-        <button type="button" class="end" data-ai-live-end>${icon('phone-off')}End</button>
+          ? `${handoff ? `<button type="button" class="atlas-btn atlas-btn--secondary" data-ai-live-takeover>${icon('audio-lines')}Continue here</button>` : ''}${retry}`
+          : `<button type="button" class="atlas-btn atlas-btn--secondary" data-ai-live-mute aria-pressed="${status === 'muted'}">${icon(status === 'muted' ? 'mic' : 'mic-off')}${status === 'muted' ? 'Unmute' : 'Mute'}</button>`}
+        <button type="button" class="atlas-btn atlas-btn--danger-solid end" data-ai-live-end>${icon('phone-off')}End</button>
       </div>
     </div>`;
   }
@@ -2401,6 +2373,9 @@
     return 'proposed';
   }
 
+  // A missing value is a grey dash, never ink at full size.
+  const DASH = '<span class="ai-dash">—</span>';
+
   const DECISION_PILLS = {
     proposed: ['Proposed', 'info'], approved: ['Approved', 'positive'], dismissed: ['Dismissed', 'neutral'], expired: ['Expired', 'neutral'], done: ['Done', 'positive']
   };
@@ -2491,9 +2466,9 @@
               <span role="cell" class="ai-dec-row__main"><span class="ai-dec-row__t">${escapeHtml(row.title)}</span><span class="ai-dec-row__m">${escapeHtml(subtitle)}</span></span>
               <span role="cell" class="ai-dec-row__cell" data-label="Source">${escapeHtml(row.source)}</span>
               <span role="cell" class="ai-dec-row__cell"><span class="atlas-pill atlas-pill--${tone}">${pillLabel}</span></span>
-              <span role="cell" class="ai-dec-row__cell" data-label="Decided by">${escapeHtml(row.decidedBy || '—')}</span>
-              <span role="cell" class="ai-dec-row__cell num" data-label="When">${escapeHtml(row.when ? whenLabel(row.when) : '—')}</span>
-              <span role="cell" class="ai-dec-row__cell" data-label="Outcome">${escapeHtml(row.outcome || '—')}</span>
+              <span role="cell" class="ai-dec-row__cell" data-label="Decided by">${row.decidedBy ? escapeHtml(row.decidedBy) : DASH}</span>
+              <span role="cell" class="ai-dec-row__cell num" data-label="When">${row.when ? escapeHtml(whenLabel(row.when)) : DASH}</span>
+              <span role="cell" class="ai-dec-row__cell" data-label="Outcome">${row.outcome ? escapeHtml(row.outcome) : DASH}</span>
             </button>`;
           }).join('')}
         </div>

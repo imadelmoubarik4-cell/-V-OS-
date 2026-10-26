@@ -1,390 +1,552 @@
-/* Atlas AI workspace (#ai) — docs/design/Atlas_Experience_Redesign.md §6.28, §7.2, §8.7.
+/* Alcedo AI workspace (#ai) — "Basalt & Kingfisher" (docs/design/Alcedo_Redesign_2026.md).
  *
- * Visual reference: docs/design/atlas-reference.html (#ai, #ai-approval, #ai-voice).
- * Uses the redesign tokens with the spec values as fallbacks; defines no :root
- * variables. Everything is scoped to the Atlas AI roots (.atlas-ai, and the
- * .ai-layer sheets/dialogs it opens on <body>).
+ * The conversation is a document on the white sheet: one 720px reading column
+ * (--reading-max) that the thread title, the turns and the composer all share,
+ * so every block starts on the same left edge and ends on the same right edge.
+ * Assistant text is set as body copy (16/26 ink, no bubble); the person's turns
+ * sit in a --bg-muted block on the right. Linked records, the change to approve
+ * and "How Alcedo knows" are bordered inline cards (8px, no shadow); the only
+ * filled control is the approval's near-black primary. The composer is the one
+ * floating surface (shadow, 12px corners); live voice takes its place in the
+ * same frame. The conversation list shares the sheet, split by a 1px rule.
+ *
+ * Motion (Emil Kowalski): press scale on small controls, 120-180ms colour and
+ * disclosure transitions, dialogs and sheets enter through @starting-style
+ * (interruptible), streaming shows a still kingfisher caret that blinks, the
+ * spinner turns at 0.8s. Nothing animates on keyboard actions; hover styles
+ * only for fine pointers.
  *
  * Buttons, pills, chips, alerts, empty states, inputs, menus and toasts are the
- * shared components from atlas-components.css; this file only lays out the
- * Atlas AI workspace and its own parts (conversation list, messages,
- * evidence, approval cards, composer, voice panel, Decisions).
- * Everything sits in @layer atlas.modules (declared in atlas-tokens.css).
+ * shared components (atlas-components.css). Tokens only, from atlas-tokens.css;
+ * no :root variables here. Everything is scoped to the Alcedo AI roots
+ * (.atlas-ai, and the .ai-layer sheets/dialogs it opens on <body>) and sits in
+ * @layer atlas.modules (declared in atlas-tokens.css).
  */
 @layer atlas.modules {
 
 
 /* ---------- shell fit ---------- */
 
-/* The workspace is full-bleed inside the shell's content area. */
+/* The workspace is full-bleed inside the sheet: the list and the thread are
+   two panes of the one white sheet, split by a 1px rule. */
 body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; padding: 0; }
 
 .atlas-ai {
-  --ai-gutter: 40px;
-  --ai-reading: var(--reading-max, 720px);
+  --ai-gutter: var(--s-8);
+  --ai-reading: var(--reading-max);
+  --ai-list-w: 264px;
   position: relative;
-  color: var(--text, #17191e);
-  background: var(--bg, #ffffff);
-  font: var(--type-body, 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif));
+  color: var(--text);
+  background: var(--bg);
+  font: var(--type-body);
   -webkit-font-smoothing: antialiased;
 }
 .atlas-ai *, .atlas-ai *::before, .atlas-ai *::after,
 .ai-layer *, .ai-layer *::before, .ai-layer *::after { box-sizing: border-box; }
-.atlas-ai h1, .atlas-ai h2, .atlas-ai h3, .atlas-ai h4, .atlas-ai p,
+.atlas-ai h1, .atlas-ai h2, .atlas-ai h3, .atlas-ai h4, .atlas-ai p, .atlas-ai dl, .atlas-ai dd,
 .ai-layer h2, .ai-layer h3, .ai-layer p { margin: 0; }
-/* The reset is for Atlas AI's own controls only. This layer (atlas.modules)
+/* The reset is for Alcedo AI's own controls only. This layer (atlas.modules)
  * beats atlas.components whatever the specificity, so design-system parts
  * (.atlas-btn, .atlas-input, …; every class starting "atlas-") are excluded:
- * a primary button keeps its --text-on-accent label (S90, review P1-2). */
-.atlas-ai :is(button, input, textarea, select):not([class*="atlas-"]),
-.ai-layer :is(button, input, textarea, select):not([class*="atlas-"]) { font: inherit; color: inherit; }
-.atlas-ai button, .ai-layer button { cursor: pointer; }
-.atlas-ai a:not([class*="atlas-"]) { color: var(--accent-text, #1a5ec0); text-decoration: none; }
-.atlas-ai .icon, .ai-layer .icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-.atlas-ai .icon--md { width: 18px; height: 18px; }
-.atlas-ai .icon--lg { width: 20px; height: 20px; }
+ * a primary button keeps its --text-on-accent label (S90, review P1-2). It
+ * carries the lowest specificity (:where) so every rule below that colours
+ * one of these controls (the send button's white arrow) wins. */
+:where(.atlas-ai, .ai-layer) :where(button, input, textarea, select):not([class*="atlas-"]) { font: inherit; color: inherit; }
+.atlas-ai button, .ai-layer button { cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.atlas-ai a { -webkit-tap-highlight-color: transparent; }
+/* Icons are ALCEDO glyphs (filled, currentColor), sized here. */
+.atlas-ai .icon, .ai-layer .icon { display: block; width: var(--icon-sm); height: var(--icon-sm); flex: none; }
+.atlas-ai .icon--md { width: var(--icon-md); height: var(--icon-md); }
+.atlas-ai .icon--lg { width: var(--icon-lg); height: var(--icon-lg); }
 .atlas-ai .num { font-variant-numeric: tabular-nums; }
-.atlas-ai .muted, .ai-layer .muted { color: var(--text-2, #5b616b); }
+.atlas-ai .muted, .ai-layer .muted { color: var(--text-2); }
+.atlas-ai .ai-dash { color: var(--text-3); }
 .atlas-ai .sr-only, .ai-layer .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .atlas-ai :where(button, a, input, select, textarea, [tabindex]):focus-visible,
 .ai-layer :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--accent, #1f6fdb); outline-offset: 2px; border-radius: var(--r-sm, 6px);
+  outline: var(--focus-outline); outline-offset: var(--focus-offset); border-radius: var(--r-sm);
 }
 
 /* ---------- layout ---------- */
 
+/* The workspace fills the sheet: window height minus the top bar (--ai-top,
+   measured by atlas-ai.js) and the sheet's bottom inset. */
 .atlas-ai .ai-layout {
-  display: grid; grid-template-columns: 272px minmax(0, 1fr);
-  height: calc(100vh - var(--ai-top, 56px)); height: calc(100dvh - var(--ai-top, 56px)); min-height: 480px;
+  display: grid; grid-template-columns: var(--ai-list-w) minmax(0, 1fr);
+  height: calc(100vh - var(--ai-top, var(--topbar-h)) - var(--sheet-inset));
+  height: calc(100dvh - var(--ai-top, var(--topbar-h)) - var(--sheet-inset));
+  min-height: 480px;
 }
 .atlas-ai .ai-scrim { display: none; }
 
-/* conversation list */
-.atlas-ai .ai-list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line, #e7e7e3); background: var(--bg-subtle, #f7f7f5); }
+/* ---------- conversation list ---------- */
+
+.atlas-ai .ai-list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--bg); }
 .atlas-ai .ai-list:focus { outline: none; }
-.atlas-ai .ai-list__top { padding: 16px 12px 0; display: grid; gap: 10px; }
-.atlas-ai .ai-list__head { display: flex; gap: 8px; }
+.atlas-ai .ai-list__top { display: grid; gap: var(--s-2); padding: var(--s-4) var(--s-3) var(--s-1); }
+.atlas-ai .ai-list__head { display: flex; align-items: center; gap: var(--s-1); }
 .atlas-ai .ai-list__head .atlas-btn { flex: 1; justify-content: flex-start; }
 .atlas-ai .ai-list__close { display: none; }
 .atlas-ai .ai-search { position: relative; }
-.atlas-ai .ai-search .icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-3, #80858e); pointer-events: none; }
+.atlas-ai .ai-search .icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-3); pointer-events: none; }
 .atlas-ai .ai-search .atlas-input { padding-left: 34px; }
-.atlas-ai .ai-list__scroll { flex: 1; overflow: auto; padding: 0 8px 16px; }
-.atlas-ai .ai-list__label { font: 500 12px/16px var(--font-sans, sans-serif); color: var(--text-3, #80858e); padding: 16px 8px 6px; }
-.atlas-ai .ai-list__group { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
-.atlas-ai .ai-conv-row { min-width: 0; }
-.atlas-ai .ai-list__note { padding: 16px 8px; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .ai-list__skel { display: grid; gap: 14px; padding: 20px 8px; }
-.atlas-ai .ai-list__skel .atlas-skel:nth-child(odd) { width: 80%; }
-.atlas-ai .ai-link { border: 0; background: none; padding: 0; color: var(--accent-text, #1a5ec0); font: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.atlas-ai .ai-conv-row { position: relative; }
-.atlas-ai .ai-conv { display: block; padding: 8px 40px 8px 10px; border-radius: var(--r-md, 8px); color: var(--text, #17191e); text-decoration: none; }
-.atlas-ai .ai-conv:hover { background: var(--bg-muted, #efefec); }
-.atlas-ai .ai-conv[aria-current="true"] { background: var(--surface, #fff); box-shadow: 0 0 0 1px var(--line, #e7e7e3), 0 1px 2px rgba(23, 25, 30, .05); }
-.atlas-ai .ai-conv__t { display: block; font: 500 14px/20px var(--font-sans, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atlas-ai .ai-conv__m { display: block; font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atlas-ai .ai-conv__menu { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; opacity: 0; }
-.atlas-ai .ai-conv-row:hover .ai-conv__menu, .atlas-ai .ai-conv-row.is-current .ai-conv__menu, .atlas-ai .ai-conv__menu:focus-visible, .atlas-ai .ai-conv__menu[aria-expanded="true"] { opacity: 1; }
+.atlas-ai .ai-list__modes .atlas-segmented { width: 100%; }
+.atlas-ai .ai-list__modes .atlas-segmented > button { flex: 1; }
+.atlas-ai .ai-list__scroll { flex: 1; overflow: auto; padding: 0 var(--s-2) var(--s-4); overscroll-behavior: contain; }
+.atlas-ai .ai-list__label { padding: var(--s-4) 10px var(--s-1); font: var(--type-caption); color: var(--text-3); }
+.atlas-ai .ai-list__group { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.atlas-ai .ai-conv-row { position: relative; min-width: 0; }
+.atlas-ai .ai-list__note { padding: var(--s-4) 10px; color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .ai-list__skel { display: grid; gap: var(--s-5); padding: var(--s-6) 10px; }
+.atlas-ai .ai-list__skel .atlas-skel { width: 72%; height: 12px; }
+.atlas-ai .ai-list__skel .atlas-skel:nth-child(even) { width: 48%; }
+.atlas-ai .ai-link { border: 0; background: none; padding: 0; color: var(--accent-text); font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* A row is the title in ink over a grey line of when or what; the open one
+   is the neutral --bg-muted pill the sidebar uses. */
+.atlas-ai .ai-conv {
+  display: block; padding: 7px 36px 7px 10px; border-radius: var(--r-sm); color: var(--text); text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.atlas-ai .ai-conv[aria-current="true"] { background: var(--bg-muted); }
+.atlas-ai .ai-conv__t { display: block; font: var(--type-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-ai .ai-conv[aria-current="true"] .ai-conv__t { font-weight: 500; }
+.atlas-ai .ai-conv__m { display: block; margin-top: 1px; font: var(--type-caption); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-ai .ai-conv__menu { position: absolute; right: 4px; top: 50%; width: 28px; height: 28px; transform: translateY(-50%); opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
+.atlas-ai .ai-conv-row.is-current .ai-conv__menu, .atlas-ai .ai-conv__menu:focus-visible, .atlas-ai .ai-conv__menu[aria-expanded="true"] { opacity: 1; }
 
-/* thread */
+/* ---------- thread ---------- */
+
 .atlas-ai .ai-thread { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.atlas-ai .ai-thread__head { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 16px 0 24px; border-bottom: 1px solid var(--line-subtle, #f0f0ed); flex: none; }
-.atlas-ai .ai-thread__list-btn { display: none; margin-left: -8px; }
-.atlas-ai .ai-thread__title { flex: 1; min-width: 0; font: var(--type-heading, 600 15px/22px var(--font-sans, sans-serif)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atlas-ai .ai-thread__title-btn { max-width: 100%; border: 0; background: none; padding: 4px 6px; margin-left: -6px; border-radius: var(--r-sm, 6px); font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-.atlas-ai .ai-thread__title-btn:hover { background: var(--bg-muted, #efefec); }
-.atlas-ai .ai-thread__title-input { height: 32px; font-weight: 600; }
-.atlas-ai .ai-scroll { flex: 1; overflow: auto; padding: 32px var(--ai-gutter) 24px; overscroll-behavior: contain; }
-.atlas-ai.is-dragging .ai-scroll { background: var(--accent-soft, #edf3fd); }
+/* The title row shares the reading column's edges. */
+.atlas-ai .ai-thread__head {
+  display: flex; align-items: center; gap: var(--s-1); flex: none; height: 52px;
+  padding: 0 max(var(--s-4), calc((100% - var(--ai-reading)) / 2 - var(--s-2)));
+  border-bottom: 1px solid var(--line);
+}
+.atlas-ai .ai-thread__list-btn { display: none; margin-left: calc(-1 * var(--s-2)); }
+.atlas-ai .ai-thread__title { flex: 1; min-width: 0; font: var(--type-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-ai .ai-thread__title > span { padding: 0 var(--s-2); }
+.atlas-ai .ai-thread__title-btn {
+  max-width: 100%; margin: 0; padding: 6px var(--s-2); border: 0; border-radius: var(--r-sm); background: transparent;
+  font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.atlas-ai .ai-thread__title-input { height: var(--control-sm); font-weight: 600; }
+/* The thread dissolves into the composer's edge rather than stopping on a line. */
+.atlas-ai .ai-scroll {
+  flex: 1; overflow: auto; padding: 40px var(--ai-gutter) var(--s-8); overscroll-behavior: contain; scrollbar-gutter: stable both-edges;
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - var(--s-6)), transparent);
+  mask-image: linear-gradient(to bottom, black calc(100% - var(--s-6)), transparent);
+}
+.atlas-ai.is-dragging .ai-scroll { background: var(--accent-soft); }
 .atlas-ai .ai-col { max-width: var(--ai-reading); margin: 0 auto; }
 
-/* empty state */
-.atlas-ai .ai-empty { min-height: 100%; display: grid; align-content: safe center; justify-items: center; gap: 12px; padding: 12vh 0 24px; text-align: center; }
-.atlas-ai .ai-empty__greeting { position: relative; font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -0.02em; font-variation-settings: 'opsz' 72; color: var(--text, #17191e); }
-.atlas-ai .ai-empty__context { color: var(--text-2, #5b616b); }
-.atlas-ai .ai-empty__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; max-width: 560px; }
+/* ---------- empty state ---------- */
+
+/* The robot and the greeting read as one unit (the robot's transparent band
+   under its feet tucks under the greeting's top); the suggestions are a
+   two-column set of prompts under it. */
+.atlas-ai .ai-empty { min-height: 100%; display: grid; align-content: safe center; justify-items: center; gap: var(--s-3); padding: 10vh 0 var(--s-6); text-align: center; }
+.atlas-ai .ai-empty__greeting { position: relative; font: var(--type-display); letter-spacing: var(--track-display); color: var(--text); text-wrap: balance; }
+.atlas-ai .ai-empty__context { max-width: 440px; color: var(--text-2); font: var(--type-body); text-wrap: pretty; }
+.atlas-ai .ai-empty__chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); width: min(624px, 100%); margin-top: var(--s-4); }
+.atlas-ai .ai-suggest {
+  display: flex; align-items: center; gap: 10px; min-height: var(--touch); margin: 0; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); color: var(--text);
+  font: var(--type-body); text-align: left;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), transform var(--motion-press) var(--ease-out);
+}
+.atlas-ai .ai-suggest > .icon { color: var(--text-3); }
+.atlas-ai .ai-suggest > span { min-width: 0; }
+.atlas-ai .ai-suggest:active { transform: scale(var(--press-scale)); }
 .atlas-ai .ai-empty--off { padding-top: 8vh; }
-.atlas-ai .ai-empty--off .atlas-empty { max-width: 520px; }
+.atlas-ai .ai-empty--off .atlas-empty { max-width: 480px; }
 
-/* messages */
-.atlas-ai .msg-user { display: flex; justify-content: flex-end; margin-bottom: 28px; }
-.atlas-ai .msg-user__inner { max-width: 80%; display: grid; justify-items: end; gap: 6px; }
-.atlas-ai .msg-user__bubble { padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: var(--bg-muted, #efefec); font: var(--type-body-lg, 400 15px/24px var(--font-sans, sans-serif)); overflow-wrap: anywhere; }
-.atlas-ai .msg-user__attach { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.atlas-ai .msg-photo { position: relative; margin: 0; width: 120px; height: 84px; border-radius: var(--r-md, 8px); overflow: hidden; border: 1px solid var(--line, #e7e7e3); background: var(--bg-subtle, #f7f7f5); }
-.atlas-ai .msg-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.atlas-ai .msg-photo figcaption { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 6px; border-radius: 4px; background: rgba(23, 25, 30, .6); color: #fff; font: 500 12px/16px var(--font-sans, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atlas-ai .file-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: var(--r-md, 8px); border: 1px solid var(--line, #e7e7e3); background: var(--surface, #fff); font: 500 13px/18px var(--font-sans, sans-serif); color: var(--text, #17191e); }
-.atlas-ai .file-chip .icon { width: 14px; height: 14px; color: var(--text-2, #5b616b); }
-.atlas-ai .file-chip--voice { background: var(--bg-subtle, #f7f7f5); color: var(--text-2, #5b616b); }
-.atlas-ai .msg-note { display: flex; gap: 8px; align-items: flex-start; margin: -8px 0 28px; padding: 8px 12px; border-radius: var(--r-md, 8px); background: var(--bg-subtle, #f7f7f5); color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .msg-note .icon { margin-top: 1px; }
-
-.atlas-ai .msg-ai { margin-bottom: 32px; }
-.atlas-ai .msg-ai__who { display: flex; align-items: center; gap: 8px; font: 500 13px/18px var(--font-sans, sans-serif); margin-bottom: 8px; }
-/* The Atlas AI robot (atlas-bot.js): live in the empty state and the voice panel.
-   The robot and the greeting read as one unit: the transparent band under its
-   feet (about 12% of its box) tucks under the greeting's top, so its feet sit
-   close to the text without the drawn robot ever touching it. */
+/* The Alcedo robot (atlas-bot.js): live in the empty state and the voice panel.
+   Its sizes are the approved scale (176 / 136 phone / 96 short screen). */
 .atlas-ai .ai-empty__bot { margin-bottom: -18px; }
 .atlas-ai .ai-empty__bot .atlas-bot-live { width: 176px; height: 176px; }
-.atlas-ai .voice__top .atlas-bot-live { width: 44px; height: 44px; margin: -8px -2px -8px -4px; }
+.atlas-ai .voice__top .atlas-bot-live { width: 44px; height: 44px; margin: -8px -2px -8px -6px; }
 /* Short screens (phone landscape): a smaller robot and tighter spacing; when the
    empty state is still taller than the space, it scrolls instead of clipping the
    robot above the fold ('safe center' above). */
 @media (max-height: 560px) {
   /* The workspace fills the window instead of pushing the page into a scroll. */
   .atlas-ai .ai-layout { min-height: 0; }
-  .atlas-ai .ai-empty { padding: 8px 0 16px; gap: 8px; }
+  .atlas-ai .ai-empty { padding: var(--s-2) 0 var(--s-4); gap: var(--s-2); }
   .atlas-ai .ai-empty__bot { margin-bottom: -12px; }
   .atlas-ai .ai-empty__bot .atlas-bot-live { width: 96px; height: 96px; }
   .atlas-ai .ai-empty__greeting { font-size: 22px; line-height: 28px; }
-  .atlas-ai .ai-empty__chips { margin-top: 4px; }
+  .atlas-ai .ai-empty__chips { margin-top: var(--s-1); }
   .atlas-ai .composer-hint { display: none; }
 }
-.atlas-ai .ai-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--accent-soft, #edf3fd); color: var(--accent, #1f6fdb); display: grid; place-items: center; }
-.atlas-ai .ai-mark .icon { width: 14px; height: 14px; }
-.atlas-ai .msg-ai__text { font: var(--type-body-lg, 400 15px/24px var(--font-sans, sans-serif)); color: var(--text, #17191e); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.atlas-ai .msg-ai__text p + p, .atlas-ai .msg-ai__text p + ul, .atlas-ai .msg-ai__text p + ol, .atlas-ai .msg-ai__text ul + p, .atlas-ai .msg-ai__text ol + p { margin-top: 10px; }
+
+/* ---------- the person's turn ---------- */
+
+.atlas-ai .msg-user { display: flex; justify-content: flex-end; margin-bottom: 40px; }
+.atlas-ai .msg-user__inner { max-width: min(85%, 560px); display: grid; justify-items: end; gap: var(--s-2); }
+.atlas-ai .msg-user__bubble { padding: 10px 14px; border-radius: var(--r-xl); background: var(--bg-muted); color: var(--text); font: var(--type-body-lg); overflow-wrap: anywhere; }
+.atlas-ai .msg-user__attach { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.atlas-ai .msg-photo { position: relative; margin: 0; width: 132px; height: 92px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); background: var(--bg-subtle); }
+.atlas-ai .msg-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.atlas-ai .msg-photo figcaption { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 6px; border-radius: var(--r-xs); background: var(--ink); color: var(--text-on-accent); font: var(--type-caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-ai .file-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); font: var(--type-label); color: var(--text); }
+.atlas-ai .file-chip .icon { width: 14px; height: 14px; color: var(--text-3); }
+.atlas-ai .file-chip--voice { border-color: transparent; background: var(--bg-subtle); color: var(--text-2); }
+.atlas-ai .msg-note { display: flex; gap: var(--s-2); align-items: flex-start; margin: -20px 0 40px; padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); background: var(--bg-subtle); color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .msg-note .icon { margin-top: 1px; color: var(--text-3); }
+
+/* ---------- Alcedo's turn: a typeset answer ---------- */
+
+.atlas-ai .msg-ai { margin-bottom: 48px; }
+.atlas-ai .msg-ai__who { display: flex; align-items: center; gap: var(--s-2); margin-bottom: 10px; font: 600 13px/18px var(--font-sans); color: var(--text); }
+.atlas-ai .ai-mark { display: grid; place-items: center; width: 24px; height: 24px; color: var(--text-2); }
+.atlas-ai .msg-ai__text { font: 400 16px/26px var(--font-sans); color: var(--text); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; text-wrap: pretty; }
+.atlas-ai .msg-ai__text > * + * { margin-top: 14px; }
 .atlas-ai .msg-ai__text strong { font-weight: 600; }
-.atlas-ai .msg-ai__text ul, .atlas-ai .msg-ai__text ol, .atlas-ai .msg-ai__lines { margin: 8px 0 0; padding-left: 20px; }
-.atlas-ai .msg-ai__text li + li, .atlas-ai .msg-ai__lines li + li { margin-top: 4px; }
-.atlas-ai .msg-ai__lines { font: var(--type-body-lg, 400 15px/24px var(--font-sans, sans-serif)); }
-.atlas-ai .msg-ai__label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .msg-ai > .atlas-btn { margin-top: 12px; }
-.atlas-ai .msg-ai__stopped { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .msg-ai__stopped .icon { width: 12px; height: 12px; }
-.atlas-ai .msg-ai > .atlas-alert { margin-top: 12px; }
-.atlas-ai .ai-skel-lines { display: grid; gap: 10px; margin-top: 6px; }
+.atlas-ai .msg-ai__text ul, .atlas-ai .msg-ai__text ol, .atlas-ai .msg-ai__lines { margin-bottom: 0; padding-left: 22px; }
+.atlas-ai .msg-ai__text li + li, .atlas-ai .msg-ai__lines li + li { margin-top: 6px; }
+.atlas-ai .msg-ai__text li::marker, .atlas-ai .msg-ai__lines li::marker { color: var(--text-3); }
+.atlas-ai .msg-ai__lines { margin-top: 10px; font: 400 16px/26px var(--font-sans); }
+.atlas-ai .msg-ai__label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-bottom: 10px; color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .msg-ai > .atlas-btn { margin-top: var(--s-4); }
+.atlas-ai .msg-ai__stopped { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .msg-ai__stopped .icon { width: 12px; height: 12px; color: var(--text-3); }
+.atlas-ai .msg-ai > .atlas-alert { margin-top: var(--s-4); }
+/* While the answer streams, a kingfisher caret follows the last word. */
+.atlas-ai .msg-ai.is-streaming .msg-ai__text > :last-child::after {
+  content: ''; display: inline-block; width: 2px; height: 18px; margin-left: 3px; vertical-align: -3px;
+  border-radius: 1px; background: var(--accent-brand); animation: ai-caret 1s steps(2, jump-none) infinite;
+}
+/* Before the first word: the answer's own lines as flat grey bars. */
+.atlas-ai .ai-skel-lines { display: grid; gap: 14px; padding-top: 7px; }
+.atlas-ai .ai-skel-lines .atlas-skel { width: 92%; height: 12px; }
+.atlas-ai .ai-skel-lines .atlas-skel:nth-child(2) { width: 74%; }
+.atlas-ai .ai-skel-lines .atlas-skel:nth-child(3) { width: 58%; }
+.atlas-ai .ai-loading .msg-user { margin-bottom: 40px; }
+.atlas-ai .ai-skel-bubble { width: 46%; height: 44px; border-radius: var(--r-xl); }
+.atlas-ai .ai-skel-who { display: flex; align-items: center; gap: var(--s-2); margin-bottom: 10px; }
+.atlas-ai .ai-skel-mark { width: 24px; height: 24px; border-radius: var(--r-pill); }
+.atlas-ai .ai-skel-name { width: 56px; height: 12px; }
 
-.atlas-ai .steps-line { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; margin: 0 0 12px; padding: 4px 10px 4px 8px; border: 0; border-radius: var(--r-pill, 999px); background: var(--bg-subtle, #f7f7f5); color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); text-align: left; min-height: 28px; }
+/* What Alcedo did: a quiet line ("Checked stock and looked through recipes")
+   that opens into the steps, each with its time. */
+.atlas-ai .steps-line {
+  display: inline-flex; align-items: center; gap: var(--s-2); max-width: 100%; min-height: 28px; margin: 0 0 10px -6px; padding: 0 6px;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: var(--type-meta); text-align: left;
+  transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+}
 .atlas-ai .steps-line > span { min-width: 0; }
-.atlas-ai .steps-line .icon { width: 14px; height: 14px; }
-.atlas-ai .steps-line .icon--ok { color: var(--positive, #177a52); }
-.atlas-ai .steps-line .icon--chev { color: var(--text-3, #80858e); transition: transform var(--dur-2, 180ms) var(--ease-out, ease-out); }
+.atlas-ai .steps-line .icon { width: 16px; height: 16px; }
+.atlas-ai .steps-line .icon--ok { color: var(--positive); }
+.atlas-ai .steps-line .icon--chev { width: 14px; height: 14px; color: var(--text-3); transition: transform var(--dur-2) var(--ease-out); }
 .atlas-ai .steps-line[aria-expanded="true"] .icon--chev { transform: rotate(180deg); }
-.atlas-ai .steps-line.is-running .icon { color: var(--accent, #1f6fdb); }
-.atlas-ai .icon--spin { animation: ai-spin 1s linear infinite; }
-.atlas-ai .steps-list { list-style: none; margin: -4px 0 12px; padding: 0 0 0 8px; display: grid; gap: 4px; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .steps-list li { display: flex; align-items: center; gap: 8px; }
-.atlas-ai .steps-list .icon { width: 14px; height: 14px; color: var(--positive, #177a52); }
-.atlas-ai .steps-list__ms { color: var(--text-3, #80858e); font-variant-numeric: tabular-nums; }
+.atlas-ai .steps-line.is-running { color: var(--text-2); cursor: default; }
+.atlas-ai .steps-line.is-running .icon { color: var(--accent-brand); }
+.atlas-ai .icon--spin { animation: ai-spin .8s linear infinite; }
+.atlas-ai .steps-list { list-style: none; display: grid; margin: -2px 0 var(--s-4) 1px; padding: 0 0 0 17px; border-left: 1px solid var(--line); color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .steps-list li { display: flex; align-items: center; gap: var(--s-2); padding: 3px 0; }
+.atlas-ai .steps-list .icon { width: 14px; height: 14px; color: var(--text-3); }
+.atlas-ai .steps-list__ms { margin-left: auto; padding-left: var(--s-3); color: var(--text-3); font-variant-numeric: tabular-nums; }
 
-.atlas-ai .records { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
-.atlas-ai .record-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--r-md, 8px); border: 1px solid var(--line, #e7e7e3); background: var(--surface, #fff); font: 500 13px/18px var(--font-sans, sans-serif); color: var(--text, #17191e); text-decoration: none; max-width: 100%; }
-.atlas-ai .record-chip:hover { border-color: var(--line-strong, #d4d4cf); }
-.atlas-ai .record-chip .icon { width: 14px; height: 14px; color: var(--text-2, #5b616b); }
-.atlas-ai .record-chip--more { color: var(--text-2, #5b616b); }
+/* Linked records: small cards with the record's name over its kind. */
+.atlas-ai .records { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: 18px; }
+.atlas-ai .record-chip {
+  display: inline-grid; grid-template-columns: 16px auto; grid-template-rows: auto auto; align-content: center; column-gap: 10px;
+  max-width: 100%; min-height: 44px; margin: 0; padding: 5px 14px 5px 11px;
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface);
+  color: var(--text); font: 500 13px/18px var(--font-sans); text-decoration: none; text-align: left;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), transform var(--motion-press) var(--ease-out);
+}
+.atlas-ai .record-chip .icon { grid-row: 1 / span 2; align-self: center; color: var(--text-3); }
+.atlas-ai .record-chip[data-kind]::after { content: attr(data-kind); grid-column: 2; font: var(--type-caption); color: var(--text-3); }
+.atlas-ai a.record-chip:active, .atlas-ai button.record-chip:active { transform: scale(var(--press-scale)); }
+.atlas-ai .record-chip--more { grid-template-columns: auto; color: var(--text-2); }
 
-.atlas-ai .evidence { margin-top: 16px; border: 1px solid var(--line, #e7e7e3); border-radius: var(--r-lg, 12px); overflow: hidden; }
-.atlas-ai .evidence__head { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 10px 14px; border: 0; background: var(--bg-subtle, #f7f7f5); font: 500 13px/18px var(--font-sans, sans-serif); color: var(--text, #17191e); text-align: left; border-radius: 0; }
-.atlas-ai .evidence.is-open .evidence__head { border-bottom: 1px solid var(--line-subtle, #f0f0ed); }
-.atlas-ai .evidence__head .icon { width: 14px; height: 14px; }
-.atlas-ai .evidence__head .muted { font-weight: 400; margin-left: auto; font-size: 12px; }
-.atlas-ai .evidence__head .icon--chev { color: var(--text-3, #80858e); transition: transform var(--dur-2, 180ms); }
+/* How Alcedo knows: the answer's footnotes, one row per source, the kind of
+   claim in its status colour. */
+.atlas-ai .evidence { margin-top: var(--s-4); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
+.atlas-ai .evidence__head {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%; min-height: 40px; margin: 0; padding: 0 14px;
+  border: 0; border-radius: 0; background: transparent; color: var(--text); font: var(--type-label); text-align: left;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.atlas-ai .evidence.is-open .evidence__head { border-bottom: 1px solid var(--line-subtle); }
+.atlas-ai .evidence__head .icon { color: var(--text-3); }
+.atlas-ai .evidence__head .muted { margin-left: auto; font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.atlas-ai .evidence__head .icon--chev { width: 14px; height: 14px; transition: transform var(--dur-2) var(--ease-out); }
 .atlas-ai .evidence.is-open .evidence__head .icon--chev { transform: rotate(180deg); }
-.atlas-ai .evidence__row { display: grid; grid-template-columns: 124px minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--line-subtle, #f0f0ed); font: var(--type-body, 400 14px/20px var(--font-sans, sans-serif)); }
+.atlas-ai .evidence__row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: var(--s-3); align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--line-subtle); font: var(--type-body); }
 .atlas-ai .evidence__row:first-child { border-top: 0; }
 .atlas-ai .evidence__statement { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.atlas-ai .evidence__row .src { font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); white-space: nowrap; text-align: right; }
-.atlas-ai .evidence__row a.src { color: var(--accent-text, #1a5ec0); }
-.atlas-ai .kind { font: 500 12px/16px var(--font-sans, sans-serif); white-space: nowrap; }
-.atlas-ai .kind--fact { color: var(--positive, #177a52); }
-.atlas-ai .kind--calc { color: var(--accent-text, #1a5ec0); }
-.atlas-ai .kind--est { color: var(--text-2, #5b616b); }
-.atlas-ai .kind--interp { color: var(--text-2, #5b616b); font-style: italic; }
-.atlas-ai .kind--missing { color: var(--warning, #93580a); }
+.atlas-ai .evidence__row .src { font: var(--type-caption); color: var(--text-3); white-space: nowrap; text-align: right; }
+.atlas-ai .evidence__row a.src { color: var(--accent-text); text-decoration: none; }
+.atlas-ai .kind { font: 500 12px/20px var(--font-sans); white-space: nowrap; }
+.atlas-ai .kind--fact { color: var(--positive); }
+.atlas-ai .kind--calc { color: var(--accent-text); }
+.atlas-ai .kind--est { color: var(--text-2); }
+.atlas-ai .kind--interp { color: var(--text-2); font-style: italic; }
+.atlas-ai .kind--missing { color: var(--warning); }
 
-/* approval card */
-.atlas-ai .approval { margin-top: 16px; border: 1px solid var(--line-strong, #d4d4cf); border-radius: var(--r-lg, 12px); box-shadow: var(--shadow-1, 0 1px 2px rgba(23, 25, 30, .05)); overflow: hidden; background: var(--surface, #fff); animation: ai-enter var(--dur-2, 180ms) var(--ease-out, ease-out); }
-.atlas-ai .approval__head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; }
-.atlas-ai .approval__icon { width: 32px; height: 32px; border-radius: var(--r-md, 8px); display: grid; place-items: center; flex: none; background: var(--accent-soft, #edf3fd); color: var(--accent, #1f6fdb); }
-.atlas-ai .approval__titles { flex: 1; min-width: 0; }
-.atlas-ai .approval__titles h4 { font: var(--type-heading, 600 15px/22px var(--font-sans, sans-serif)); overflow-wrap: anywhere; }
-.atlas-ai .approval__titles p { font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); }
-.atlas-ai .approval__lines { margin: 0 16px; border-top: 1px solid var(--line-subtle, #f0f0ed); }
-.atlas-ai .approval__line { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; padding: 8px 0; font: var(--type-body, 400 14px/20px var(--font-sans, sans-serif)); border-bottom: 1px solid var(--line-subtle, #f0f0ed); }
-.atlas-ai .approval__line--3 { grid-template-columns: minmax(0, 1fr) 96px 104px; }
+/* ---------- the change to approve ---------- */
+
+/* A proposal reads as a small document: what it is, its lines with right-
+   aligned figures, what will and will not change, then the decision. */
+.atlas-ai .approval { margin-top: var(--s-4); border: 1px solid var(--line-strong); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
+.atlas-ai .approval__head { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: start; column-gap: 10px; padding: 14px var(--s-4) 12px; }
+.atlas-ai .approval__icon { display: grid; place-items: center; height: 20px; color: var(--text-2); }
+.atlas-ai .approval__titles { min-width: 0; }
+.atlas-ai .approval__titles h4 { font: var(--type-heading); overflow-wrap: anywhere; }
+.atlas-ai .approval__titles p { margin-top: 1px; font: var(--type-meta); color: var(--text-2); }
+.atlas-ai .approval__head .atlas-pill { margin-top: -1px; }
+.atlas-ai .approval__lines { margin: 0 var(--s-4); border-top: 1px solid var(--line); }
+.atlas-ai .approval__line { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s-3); padding: 9px 0; font: var(--type-body); border-bottom: 1px solid var(--line-subtle); }
+.atlas-ai .approval__line--3 { grid-template-columns: minmax(0, 1fr) 104px 112px; }
 .atlas-ai .approval__line > span:first-child { overflow-wrap: anywhere; }
-.atlas-ai .approval__line .is-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text, #17191e); overflow-wrap: anywhere; }
-.atlas-ai .approval__line .unit { color: var(--text-2, #5b616b); margin-left: 4px; }
-.atlas-ai .approval__line--total { font-weight: 600; border-bottom: 0; }
-.atlas-ai .approval__line--more { color: var(--text-2, #5b616b); }
-.atlas-ai .approval__warn { display: flex; gap: 8px; margin: 10px 16px 0; padding: 10px 12px; border-radius: var(--r-md, 8px); background: var(--warning-soft, #fdf3e2); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .approval__warn .icon { color: var(--warning-icon, #c07a12); margin-top: 1px; }
+.atlas-ai .approval__line .is-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); overflow-wrap: anywhere; }
+.atlas-ai .approval__line .unit { margin-left: 4px; color: var(--text-3); }
+.atlas-ai .approval__line--total { padding-top: 10px; border-top: 1px solid var(--line); border-bottom: 0; font-weight: 600; }
+.atlas-ai .approval__line--more { color: var(--text-3); }
+.atlas-ai .approval__line--more + .approval__line--total, .atlas-ai .approval__line:has(+ .approval__line--total) { border-bottom: 0; }
+.atlas-ai .approval__warn { display: flex; gap: var(--s-2); margin: 12px var(--s-4) 0; padding: 10px 12px; border: 1px solid var(--warning-line); border-radius: var(--r-sm); background: var(--warning-soft); color: var(--warning); font: var(--type-meta); }
+.atlas-ai .approval__warn .icon { margin-top: 1px; color: var(--warning-icon); }
 .atlas-ai .approval__warn ul { margin: 0; padding-left: 16px; }
-.atlas-ai .approval__recipients { margin: 10px 16px 0; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .approval__note { display: flex; gap: 8px; align-items: flex-start; margin: 4px 16px 0; padding: 10px 0 0; font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); }
-.atlas-ai .approval__note .icon { width: 14px; height: 14px; margin-top: 1px; }
-.atlas-ai .approval__note p + p { margin-top: 4px; }
-.atlas-ai .approval__note strong { font-weight: 500; color: var(--text, #17191e); }
-.atlas-ai .approval__failed { margin: 12px 16px 0; }
-.atlas-ai .approval__foot { display: flex; align-items: center; gap: 8px; padding: 12px 16px; margin-top: 12px; border-top: 1px solid var(--line-subtle, #f0f0ed); background: var(--bg-subtle, #f7f7f5); }
-.atlas-ai .approval__foot .spacer { flex: 1; min-width: 0; font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); }
-.atlas-ai .approval__foot--done .spacer { color: var(--text, #17191e); font-size: 13px; }
-.atlas-ai .approval__reason { color: var(--warning, #93580a); }
-.atlas-ai .approval--collapsed { display: flex; align-items: center; gap: 8px; padding: 10px 14px; box-shadow: none; border-color: var(--line, #e7e7e3); background: var(--bg-subtle, #f7f7f5); color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .approval--collapsed strong { font-weight: 500; }
+.atlas-ai .approval__recipients { margin: 12px var(--s-4) 0; color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .approval__note { display: grid; gap: 6px; margin: 14px var(--s-4) 0; font: var(--type-meta); }
+.atlas-ai .approval__note > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--s-3); }
+.atlas-ai .approval__note dt { font-weight: 500; color: var(--text); }
+.atlas-ai .approval__note dd { color: var(--text-2); }
+.atlas-ai .approval__failed { margin: 14px var(--s-4) 0; }
+.atlas-ai .approval__foot { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-4); padding: 12px var(--s-4); border-top: 1px solid var(--line-subtle); }
+.atlas-ai .approval__foot .spacer { flex: 1; min-width: 0; font: var(--type-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.atlas-ai .approval__foot--done .spacer { color: var(--text); }
+.atlas-ai .approval__reason { color: var(--warning); }
+.atlas-ai .approval[data-status="executed"] { border-color: var(--line); }
+.atlas-ai .approval--collapsed { display: flex; align-items: center; gap: var(--s-2); padding: 10px 14px; border-color: var(--line); color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .approval--collapsed .icon { color: var(--text-3); }
+.atlas-ai .approval--collapsed strong { font-weight: 500; color: var(--text); }
 
-.atlas-ai .msg-actions { display: flex; gap: 2px; margin-top: 10px; color: var(--text-3, #80858e); }
-.atlas-ai .msg-actions .atlas-icon-btn { width: 30px; height: 30px; color: var(--text-3, #80858e); }
-.atlas-ai .msg-actions .atlas-icon-btn:hover { color: var(--text, #17191e); }
+.atlas-ai .msg-actions { display: flex; gap: 2px; margin: var(--s-3) 0 0 -6px; }
+.atlas-ai .msg-actions .atlas-icon-btn { width: var(--control-sm); height: var(--control-sm); color: var(--text-3); }
 
-/* composer */
-.atlas-ai .composer-wrap { flex: none; padding: 0 var(--ai-gutter) 20px; }
-.atlas-ai .composer-prompts { max-width: var(--ai-reading); margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+/* ---------- composer ---------- */
+
+/* The one floating surface: white, 12px corners and the popover shadow over
+   the thread's faded edge; the field is set like the answer text. */
+.atlas-ai .composer-wrap { flex: none; padding: 0 var(--ai-gutter) var(--s-4); }
+.atlas-ai .composer-prompts { max-width: var(--ai-reading); margin: 0 auto var(--s-2); display: flex; flex-wrap: wrap; gap: 6px; }
 .atlas-ai .composer {
-  max-width: var(--ai-reading); margin: 0 auto; border: 1px solid var(--line-strong, #d4d4cf); border-radius: var(--r-xl, 16px); background: var(--surface, #fff);
-  box-shadow: 0 1px 2px rgba(23, 25, 30, .04), 0 8px 24px rgba(23, 25, 30, .05); padding: 10px 10px 8px 14px;
+  max-width: var(--ai-reading); margin: 0 auto; padding: 12px 10px var(--s-2) var(--s-4);
+  border: 1px solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-pop);
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
 }
-.atlas-ai .composer:focus-within { border-color: var(--accent, #1f6fdb); box-shadow: 0 0 0 3px rgba(31, 111, 219, .16), 0 8px 24px rgba(23, 25, 30, .05); }
+/* The field is focused whenever the thread is open, so focus is a kingfisher
+   edge rather than a ring around the whole composer. */
+.atlas-ai .composer:focus-within { border-color: var(--accent-brand); }
 
 .atlas-ai .composer textarea {
-  display: block; width: 100%; margin: 0; border: 0; border-radius: 0; resize: none; outline: none; box-shadow: none; background: transparent;
-  font: var(--type-body-lg, 400 15px/24px var(--font-sans, sans-serif)); color: var(--text, #17191e); min-height: 28px; height: 28px; padding: 2px 0; overflow-y: hidden;
+  display: block; width: 100%; min-height: 28px; height: 28px; margin: 0; padding: 2px 0;
+  border: 0; border-radius: 0; resize: none; outline: none; box-shadow: none; background: transparent;
+  font: var(--type-body-lg); color: var(--text); overflow-y: hidden;
 }
 .atlas-ai .composer textarea:focus, .atlas-ai .composer textarea:focus-visible { border: 0; outline: none; box-shadow: none; background: transparent; margin: 0; }
-.atlas-ai .composer textarea::placeholder { color: var(--text-3, #80858e); }
+.atlas-ai .composer textarea::placeholder { color: var(--text-3); }
 .atlas-ai .composer.is-offline textarea { cursor: not-allowed; }
-.atlas-ai .composer__attachments { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px -4px; }
-.atlas-ai .file-chip--upload { min-height: 44px; padding: 4px 4px 4px 4px; gap: 8px; max-width: 260px; }
-.atlas-ai .file-chip--upload.is-error { border-color: var(--danger, #c0362c); }
-.atlas-ai .file-chip__thumb { width: 34px; height: 34px; border-radius: 6px; overflow: hidden; display: grid; place-items: center; background: var(--bg-subtle, #f7f7f5); flex: none; }
+.atlas-ai .composer__attachments { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px -6px; }
+.atlas-ai .file-chip--upload { min-height: 48px; max-width: 260px; padding: 5px 4px 5px 5px; gap: 10px; border-radius: var(--r-lg); }
+.atlas-ai .file-chip--upload.is-error { border-color: var(--danger); }
+.atlas-ai .file-chip__thumb { display: grid; place-items: center; width: 36px; height: 36px; flex: none; overflow: hidden; border-radius: var(--r-sm); background: var(--bg-subtle); color: var(--text-3); }
 .atlas-ai .file-chip__thumb img { width: 100%; height: 100%; object-fit: cover; }
 .atlas-ai .file-chip__body { display: grid; gap: 3px; min-width: 0; flex: 1; }
-.atlas-ai .file-chip__name { font: 500 13px/16px var(--font-sans, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atlas-ai .file-chip__meta { font: 400 12px/14px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); }
-.atlas-ai .file-chip__error { font: 400 12px/14px var(--font-sans, sans-serif); color: var(--danger, #c0362c); white-space: normal; }
-.atlas-ai .file-chip__progress { display: block; height: 2px; border-radius: 2px; background: var(--bg-muted, #efefec); overflow: hidden; width: 120px; }
-.atlas-ai .file-chip__progress > span { display: block; height: 100%; background: var(--accent, #1f6fdb); transition: width var(--dur-1, 120ms) linear; }
-.atlas-ai .file-chip__x { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; margin: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-2, #5b616b); flex: none; }
-.atlas-ai .file-chip__x:hover { background: var(--bg-muted, #efefec); }
+.atlas-ai .file-chip__name { font: 500 13px/16px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-ai .file-chip__meta { font: 400 12px/16px var(--font-sans); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.atlas-ai .file-chip__error { font: 400 12px/16px var(--font-sans); color: var(--danger); white-space: normal; }
+.atlas-ai .file-chip__progress { display: block; width: 120px; height: 2px; overflow: hidden; border-radius: 1px; background: var(--bg-muted); }
+.atlas-ai .file-chip__progress > span { display: block; width: 0; height: 100%; background: var(--accent-brand); }
+.atlas-ai .file-chip__x { display: inline-grid; place-items: center; width: 28px; height: 28px; flex: none; margin: 0; padding: 0; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-3); transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 .atlas-ai .file-chip__x .icon { width: 14px; height: 14px; }
-.atlas-ai .composer__bar, .atlas-ai .composer__record { display: flex; align-items: center; gap: 2px; margin-top: 6px; margin-left: -6px; min-height: 36px; }
+.atlas-ai .composer__bar, .atlas-ai .composer__record { display: flex; align-items: center; gap: 2px; min-height: var(--control-sm); margin: var(--s-2) 0 0 -6px; }
+.atlas-ai .composer__bar .atlas-icon-btn { width: var(--control-sm); height: var(--control-sm); color: var(--text-2); }
 .atlas-ai .composer__bar .spacer, .atlas-ai .composer__record .spacer { flex: 1; }
-.atlas-ai .composer__ctx { display: inline-flex; align-items: center; gap: 6px; height: 28px; max-width: 50%; padding: 0 2px 0 8px; margin-left: 4px; border-radius: var(--r-sm, 6px); background: var(--bg-subtle, #f7f7f5); font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); }
+.atlas-ai .composer__ctx { display: inline-flex; align-items: center; gap: 6px; height: 28px; max-width: 50%; margin-left: var(--s-1); padding: 0 2px 0 var(--s-2); border-radius: var(--r-sm); background: var(--bg-muted); color: var(--text-2); font: var(--type-caption); }
 .atlas-ai .composer__ctx > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atlas-ai .composer__ctx .icon { width: 13px; height: 13px; }
-.atlas-ai .composer__ctx-x { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; margin: 0; border: 0; border-radius: 4px; background: transparent; color: var(--text-2, #5b616b); }
-.atlas-ai .composer__ctx-x:hover { background: var(--bg-muted, #efefec); }
-.atlas-ai .send { width: 32px; height: 32px; margin: 0 0 0 4px; padding: 0; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--accent, #1f6fdb); color: #fff; flex: none; }
-.atlas-ai .send:hover { background: var(--accent-hover, #195fc0); }
-.atlas-ai .send .icon { width: 16px; height: 16px; stroke-width: 2; }
-.atlas-ai .send[disabled] { background: var(--bg-muted, #efefec); color: var(--text-3, #80858e); cursor: not-allowed; }
-.atlas-ai .send--stop { background: var(--text, #17191e); }
-.atlas-ai .send--stop:hover { background: #2c2f36; }
-.atlas-ai .send--stop .icon { width: 12px; height: 12px; fill: currentColor; }
-.atlas-ai .composer-hint { max-width: var(--ai-reading); margin: 8px auto 0; text-align: center; font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-3, #80858e); }
+.atlas-ai .composer__ctx .icon { width: 14px; height: 14px; color: var(--text-3); }
+.atlas-ai .composer__ctx-x { display: inline-grid; place-items: center; width: 24px; height: 24px; margin: 0; padding: 0; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--text-3); }
+.atlas-ai .composer__ctx-x .icon { width: 12px; height: 12px; }
+/* Send: the composer's one filled control, near-black with a white arrow. */
+.atlas-ai .send {
+  display: grid; place-items: center; width: var(--control-sm); height: var(--control-sm); flex: none; margin: 0 0 0 6px; padding: 0;
+  border: 0; border-radius: var(--r-sm); background: var(--accent); color: var(--text-on-accent);
+  transition: background-color var(--dur-1) var(--ease-out), transform var(--motion-press) var(--ease-out);
+}
+.atlas-ai .send .icon { width: 16px; height: 16px; }
+.atlas-ai .send:active:not([disabled]) { transform: scale(var(--press-scale)); }
+.atlas-ai .send[disabled] { background: var(--bg-muted); color: var(--text-3); cursor: not-allowed; }
+.atlas-ai .send--stop .icon { width: 14px; height: 14px; }
+.atlas-ai .composer-hint { max-width: var(--ai-reading); margin: 10px auto 0; text-align: center; font: var(--type-caption); color: var(--text-3); }
 
 /* voice note recording bar */
-.atlas-ai .composer__record { gap: 8px; margin-left: 0; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger, #c0362c); box-shadow: 0 0 0 4px var(--danger-soft, #fcecea); flex: none; }
-.atlas-ai .rec-time { font-variant-numeric: tabular-nums; color: var(--text, #17191e); min-width: 36px; }
+.atlas-ai .composer__record { gap: 10px; margin-left: 0; color: var(--text-2); font: var(--type-meta); }
+.atlas-ai .rec-dot { width: 8px; height: 8px; flex: none; border-radius: var(--r-pill); background: var(--danger); animation: ai-pulse 1.4s var(--ease-in-out) infinite; }
+.atlas-ai .rec-time { min-width: 36px; color: var(--text); font: 500 14px/20px var(--font-sans); font-variant-numeric: tabular-nums; }
 .atlas-ai .rec-level { display: flex; align-items: center; gap: 3px; height: 24px; }
-.atlas-ai .rec-level i { width: 3px; height: 4px; border-radius: 2px; background: var(--text-2, #5b616b); transition: height 80ms linear; }
+.atlas-ai .rec-level i { width: 3px; height: 4px; border-radius: 2px; background: var(--text-2); }
 
-/* live voice panel */
-.atlas-ai .voice { display: flex; flex-direction: column; gap: 10px; max-width: var(--ai-reading); margin: 0 auto 8px; padding: 14px 14px 12px; border-radius: var(--r-xl, 16px); background: #1b1e24; color: #fff; box-shadow: var(--shadow-pop, 0 2px 6px rgba(23, 25, 30, .06), 0 12px 32px rgba(23, 25, 30, .10)); animation: ai-enter var(--dur-3, 240ms) var(--ease-out, ease-out); }
-.atlas-ai .voice__top { display: flex; align-items: center; gap: 10px; }
-.atlas-ai .voice__state { font: 500 14px/18px var(--font-sans, sans-serif); display: flex; align-items: center; gap: 8px; }
-.atlas-ai .voice__state::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #9aa0a9; box-shadow: 0 0 0 4px rgba(154, 160, 169, .18); }
-.atlas-ai .voice[data-state="listening"] .voice__state::before, .atlas-ai .voice[data-state="interrupted"] .voice__state::before { background: #5fd49a; box-shadow: 0 0 0 4px rgba(95, 212, 154, .18); }
-.atlas-ai .voice[data-state="thinking"] .voice__state::before { background: #5c9dff; box-shadow: 0 0 0 4px rgba(92, 157, 255, .22); animation: ai-pulse 1.2s ease-in-out infinite; }
-.atlas-ai .voice[data-state="speaking"] .voice__state::before { background: #fff; box-shadow: 0 0 0 4px rgba(255, 255, 255, .18); }
-.atlas-ai .voice[data-state="muted"] .voice__state::before { background: #f0b44c; box-shadow: 0 0 0 4px rgba(240, 180, 76, .2); }
-.atlas-ai .voice[data-state="disconnected"] .voice__state::before, .atlas-ai .voice[data-state="error"] .voice__state::before { background: #ff8a80; box-shadow: 0 0 0 4px rgba(255, 138, 128, .2); }
-.atlas-ai .voice__time { margin-left: auto; font: 400 12px/16px var(--font-sans, sans-serif); color: rgba(255, 255, 255, .6); font-variant-numeric: tabular-nums; }
-.atlas-ai .voice__toggle { border: 0; background: transparent; color: rgba(255, 255, 255, .7); font: 500 12px/16px var(--font-sans, sans-serif); padding: 6px 8px; margin: -6px -6px -6px 0; border-radius: var(--r-sm, 6px); min-height: 32px; }
-.atlas-ai .voice__toggle:hover { color: #fff; background: rgba(255, 255, 255, .08); }
-.atlas-ai .voice__wave { display: flex; align-items: center; gap: 3px; height: 28px; }
-.atlas-ai .voice__wave i { width: 3px; height: 5px; border-radius: 2px; background: rgba(255, 255, 255, .85); }
-.atlas-ai .voice__transcript { font: var(--type-body, 400 14px/20px var(--font-sans, sans-serif)); color: rgba(255, 255, 255, .86); overflow-wrap: anywhere; }
-.atlas-ai .voice__transcript .is-interim { color: rgba(255, 255, 255, .5); }
-.atlas-ai .voice__transcript .is-atlas { font-style: italic; }
-.atlas-ai .voice__error { font: var(--type-body, 400 14px/20px var(--font-sans, sans-serif)); color: rgba(255, 255, 255, .86); }
-.atlas-ai .voice__controls { display: flex; gap: 8px; }
-.atlas-ai .voice__controls button { flex: 1; height: 44px; margin: 0; border-radius: var(--r-lg, 12px); border: 0; background: rgba(255, 255, 255, .1); color: #fff; font: 500 14px/18px var(--font-sans, sans-serif); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.atlas-ai .voice__controls button:hover { background: rgba(255, 255, 255, .16); }
-.atlas-ai .voice__controls .end { background: #e5484d; }
-.atlas-ai .voice__controls .end:hover { background: #d63f44; }
-.atlas-ai .voice :focus-visible { outline-color: #9cc3ff; }
+/* ---------- live voice ---------- */
+
+/* Voice takes the composer's place in the same frame: Alcedo and the call's
+   state, the level, the last words, then Mute and End. The state is a dot in
+   its status hue; the level bars are ink while listening, kingfisher while
+   Alcedo speaks. */
+.atlas-ai .voice {
+  display: grid; gap: var(--s-3); max-width: var(--ai-reading); margin: 0 auto;
+  padding: 12px 12px 12px var(--s-4); border: 1px solid var(--line-strong); border-radius: var(--r-xl);
+  background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop);
+  transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
+}
+@starting-style { .atlas-ai .voice { opacity: 0; transform: translateY(var(--move-md)); } }
+.atlas-ai .voice__top { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+.atlas-ai .voice__state { display: flex; align-items: center; gap: var(--s-2); font: var(--type-heading); }
+.atlas-ai .voice__state::before { content: ''; width: 8px; height: 8px; flex: none; border-radius: var(--r-pill); background: var(--text-3); }
+.atlas-ai .voice[data-state="listening"] .voice__state::before, .atlas-ai .voice[data-state="interrupted"] .voice__state::before { background: var(--positive); }
+.atlas-ai .voice[data-state="thinking"] .voice__state::before { background: var(--accent-brand); animation: ai-pulse 1.2s var(--ease-in-out) infinite; }
+.atlas-ai .voice[data-state="speaking"] .voice__state::before { background: var(--accent-brand); }
+.atlas-ai .voice[data-state="muted"] .voice__state::before { background: var(--warning-icon); }
+.atlas-ai .voice[data-state="disconnected"] .voice__state::before, .atlas-ai .voice[data-state="error"] .voice__state::before,
+.atlas-ai .voice[data-state="inactive"] .voice__state::before, .atlas-ai .voice[data-state="replaced"] .voice__state::before { background: var(--danger); }
+.atlas-ai .voice__time { margin-left: auto; font: var(--type-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.atlas-ai .voice__toggle { min-height: var(--control-sm); margin: 0; padding: 0 var(--s-2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: var(--type-label); transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
+.atlas-ai .voice__wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 40px; }
+.atlas-ai .voice__wave i { width: 3px; height: 5px; border-radius: 2px; background: var(--text); }
+.atlas-ai .voice[data-state="speaking"] .voice__wave i { background: var(--accent-brand); }
+.atlas-ai :is(.voice[data-state="connecting"], .voice[data-state="thinking"], .voice[data-state="muted"], .voice[data-state="reconnecting"]) .voice__wave i { background: var(--line-strong); }
+.atlas-ai .voice__transcript { font: var(--type-body); color: var(--text-2); overflow-wrap: anywhere; }
+.atlas-ai .voice__transcript .is-interim { color: var(--text-3); }
+.atlas-ai .voice__transcript .is-atlas { color: var(--text); }
+.atlas-ai .voice__error { font: var(--type-body); color: var(--text); }
+.atlas-ai .voice__controls { display: flex; gap: var(--s-2); }
+.atlas-ai .voice__controls .atlas-btn { flex: 1; height: var(--control-lg); }
 .atlas-ai.is-voice .composer, .atlas-ai.is-voice .composer-hint, .atlas-ai.is-voice .composer-prompts { display: none; }
 
-/* menus */
-.atlas-ai .ai-menu { position: absolute; }
+/* menus (the shared .atlas-menu, placed by atlas-ai.js next to its trigger) */
+.atlas-ai .ai-menu { position: absolute; z-index: var(--z-overlay); width: 200px; }
 
 /* ---------- Decisions ---------- */
 
 .atlas-ai .ai-decisions { min-width: 0; overflow: auto; }
-.atlas-ai .ai-decisions__inner { max-width: 1200px; margin: 0 auto; padding: 32px var(--ai-gutter) 80px; }
-.atlas-ai .ai-decisions__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.atlas-ai .ai-decisions__title { font: var(--type-title, 600 24px/32px var(--font-sans, sans-serif)); letter-spacing: -0.015em; }
-.atlas-ai .ai-decisions__title:focus { outline: none; }
-.atlas-ai .ai-decisions__sub { color: var(--text-2, #5b616b); margin-top: 4px; }
-.atlas-ai .ai-decisions__toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 12px; }
+.atlas-ai .ai-decisions__inner { max-width: calc(var(--page-max) + 160px); margin: 0 auto; padding: var(--page-gutter) var(--page-gutter) var(--s-16); }
+.atlas-ai .ai-decisions__title { font: var(--type-title); letter-spacing: var(--track-title); }
+.atlas-ai .ai-decisions__title:focus, .atlas-ai .ai-decisions .page-head__title:focus { outline: none; }
+.atlas-ai .ai-decisions__toolbar { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-5) 0 var(--s-3); }
 .atlas-ai .ai-decisions__toolbar .atlas-select { width: auto; min-width: 150px; }
 /* Compact filters with a mouse; touch keeps the shared 44 px / 16 px select. */
-@media (pointer: fine) { .atlas-ai .ai-decisions__toolbar .atlas-select { height: 32px; font-size: 13px; } }
-.atlas-ai .ai-decisions__skel { display: grid; gap: 16px; padding: 16px 0; }
-.atlas-ai .ai-decisions__foot { margin-top: 12px; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
-.atlas-ai .ai-dec-table { border: 1px solid var(--line, #e7e7e3); border-radius: var(--r-lg, 12px); overflow: hidden; background: var(--surface, #fff); }
-.atlas-ai .ai-dec-row { display: grid; grid-template-columns: minmax(0, 2.4fr) 96px 116px minmax(0, 1fr) 128px minmax(0, 1.2fr); gap: 12px; align-items: center; width: 100%; min-height: 56px; margin: 0; padding: 10px 16px; border: 0; border-top: 1px solid var(--line-subtle, #f0f0ed); border-radius: 0; background: transparent; text-align: left; font: var(--type-body, 400 14px/20px var(--font-sans, sans-serif)); color: var(--text, #17191e); }
-.atlas-ai .ai-dec-row:not(.ai-dec-row--head):not([disabled]):hover { background: #fafaf8; }
+@media (pointer: fine) { .atlas-ai .ai-decisions__toolbar .atlas-select { height: var(--control-sm); font-size: 13px; } }
+.atlas-ai .ai-decisions__skel { display: grid; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.atlas-ai .ai-decisions__skel .atlas-skel { height: 56px; border-radius: 0; background: var(--bg); box-shadow: inset 0 -1px 0 var(--line-subtle); }
+.atlas-ai .ai-decisions__skel .atlas-skel::before { content: ''; display: block; width: 40%; height: 12px; margin: 22px 16px 0; border-radius: var(--r-xs); background: var(--bg-muted); }
+.atlas-ai .ai-decisions__foot { margin-top: var(--s-3); color: var(--text-3); font: var(--type-meta); }
+.atlas-ai .ai-dec-table { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
+.atlas-ai .ai-dec-row {
+  display: grid; grid-template-columns: minmax(0, 2.2fr) 96px 120px minmax(0, 1.3fr) 136px minmax(0, 1fr); gap: var(--s-4); align-items: center;
+  width: 100%; min-height: 56px; margin: 0; padding: 10px var(--s-4); border: 0; border-top: 1px solid var(--line-subtle); border-radius: 0;
+  background: transparent; color: var(--text); font: var(--type-body); text-align: left;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
 .atlas-ai .ai-dec-row[disabled] { cursor: default; }
 .atlas-ai .ai-dec-row.is-selected { background: var(--accent-soft); }
-.atlas-ai .ai-dec-row--head { min-height: 36px; border-top: 0; background: var(--bg-subtle, #f7f7f5); font: 500 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); }
+.atlas-ai .ai-dec-row--head { min-height: 40px; border-top: 0; color: var(--text-3); font: var(--type-caption); }
+.atlas-ai .ai-dec-row--head + .ai-dec-row { border-top-color: var(--line); }
 .atlas-ai .ai-dec-row__main { display: grid; gap: 2px; min-width: 0; }
 .atlas-ai .ai-dec-row__t { font-weight: 500; overflow-wrap: anywhere; }
-.atlas-ai .ai-dec-row__m { font: 400 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atlas-ai .ai-dec-row__cell { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.atlas-ai .ai-dec-row__m { font: var(--type-caption); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-ai .ai-dec-row__cell { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.atlas-ai .ai-dec-row:not(.ai-dec-row--head) > .ai-dec-row__cell:nth-child(2),
+.atlas-ai .ai-dec-row:not(.ai-dec-row--head) > .ai-dec-row__cell:nth-child(n+4) { color: var(--text-2); }
+.atlas-ai .ai-dec-row__cell.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- hover (fine pointers only) ---------- */
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-ai .ai-conv:hover { background: var(--bg-hover); }
+  .atlas-ai .ai-conv[aria-current="true"]:hover { background: var(--bg-muted); }
+  .atlas-ai .ai-conv-row:hover .ai-conv__menu { opacity: 1; }
+  .atlas-ai .ai-thread__title-btn:hover { background: var(--bg-hover); }
+  .atlas-ai .ai-suggest:hover { border-color: var(--line-strong); background: var(--bg-hover); }
+  .atlas-ai .steps-line:not(.is-running):hover { color: var(--text); background: var(--bg-hover); }
+  .atlas-ai a.record-chip:hover, .atlas-ai button.record-chip:hover { border-color: var(--line-strong); background: var(--bg-hover); }
+  .atlas-ai .evidence__head:hover { background: var(--bg-hover); }
+  .atlas-ai .evidence__row a.src:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .atlas-ai .msg-actions .atlas-icon-btn:hover { color: var(--text); }
+  .atlas-ai .file-chip__x:hover, .atlas-ai .composer__ctx-x:hover { background: var(--bg-muted); color: var(--text); }
+  .atlas-ai .send:not([disabled]):hover { background: var(--accent-hover); }
+  .atlas-ai .voice__toggle:hover { background: var(--bg-hover); color: var(--text); }
+  .atlas-ai .ai-dec-row:not(.ai-dec-row--head):not([disabled]):not(.is-selected):hover { background: var(--bg-hover); }
+}
 
 /* ---------- sheets and dialogs (appended to <body>) ---------- */
 
-.ai-layer-scrim { position: fixed; inset: 0; z-index: 90; background: var(--overlay, rgba(23, 25, 30, .32)); animation: ai-fade var(--dur-3, 240ms) var(--ease-out, ease-out); }
+/* Dialogs scale in from .96 and stay centred; the Decision sheet slides in
+   from the right on the drawer curve. Both enter through @starting-style, so
+   an interrupted open settles from where it is. */
+.ai-layer-scrim { position: fixed; inset: 0; z-index: 90; background: var(--overlay); transition: opacity var(--dur-3) var(--ease-out); }
+@starting-style { .ai-layer-scrim { opacity: 0; } }
 .ai-layer {
-  position: fixed; z-index: 91; background: #fff; color: #17191e; border-radius: var(--r-xl, 16px);
-  box-shadow: var(--shadow-modal, 0 4px 12px rgba(23, 25, 30, .08), 0 32px 80px rgba(23, 25, 30, .20));
-  font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);
-  animation: ai-enter var(--dur-3, 240ms) var(--ease-out, ease-out);
+  position: fixed; z-index: 91; border-radius: var(--r-xl); background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-modal); font: var(--type-body);
 }
 .ai-layer:focus { outline: none; }
-.ai-layer.ai-dialog { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100vw - 32px)); padding: 24px; display: grid; gap: 12px; animation: ai-fade var(--dur-3, 240ms) var(--ease-out, ease-out); }
-.ai-layer.ai-dialog form { display: grid; gap: 16px; }
-.ai-layer.ai-dialog h2 { font: 600 17px/24px var(--font-sans, sans-serif); }
-.ai-layer.ai-dialog p { color: #5b616b; }
-.ai-layer .ai-dialog__foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-.ai-layer.ai-sheet { top: 8px; right: 8px; bottom: 8px; width: min(480px, calc(100vw - 16px)); display: flex; flex-direction: column; overflow: hidden; }
-.ai-layer .ai-sheet__head { display: flex; align-items: flex-start; gap: 12px; padding: 20px 24px 16px; border-bottom: 1px solid #f0f0ed; }
+.ai-layer.ai-dialog {
+  left: 50%; top: 50%; display: grid; gap: var(--s-3); width: min(440px, calc(100vw - 32px)); padding: var(--s-6);
+  transform: translate(-50%, -50%); transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
+}
+@starting-style { .ai-layer.ai-dialog { opacity: 0; transform: translate(-50%, -50%) scale(.96); } }
+.ai-layer.ai-dialog form { display: grid; gap: var(--s-4); }
+.ai-layer.ai-dialog h2 { font: var(--type-section); letter-spacing: var(--track-section); }
+.ai-layer.ai-dialog p { color: var(--text-2); }
+.ai-layer .ai-dialog__foot { display: flex; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-2); }
+.ai-layer.ai-sheet {
+  top: var(--s-2); right: var(--s-2); bottom: var(--s-2); display: flex; flex-direction: column; width: min(480px, calc(100vw - 16px)); overflow: hidden;
+  transition: opacity var(--dur-3) var(--ease-drawer), transform var(--dur-3) var(--ease-drawer);
+}
+@starting-style { .ai-layer.ai-sheet { opacity: 0; transform: translateX(var(--s-6)); } }
+.ai-layer .ai-sheet__head { display: flex; align-items: flex-start; gap: var(--s-3); padding: 20px var(--s-6) var(--s-4); border-bottom: 1px solid var(--line); }
 .ai-layer .ai-sheet__head > div { flex: 1; min-width: 0; }
-.ai-layer .ai-sheet__head h2 { font: 600 18px/24px var(--font-sans, sans-serif); letter-spacing: -0.005em; }
-.ai-layer .ai-sheet__head p { font: 400 13px/18px var(--font-sans, sans-serif); color: #5b616b; margin-top: 2px; }
-.ai-layer .ai-sheet__body { flex: 1; overflow: auto; padding: 20px 24px 24px; display: grid; gap: 20px; align-content: start; }
-.ai-layer .ai-sheet__body h3 { font: 600 15px/22px var(--font-sans, sans-serif); margin-bottom: 6px; }
-.ai-layer .ai-sheet__body section p { color: #17191e; }
-.ai-layer .ai-sheet__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.ai-layer .ai-sheet__list li { display: grid; gap: 2px; padding: 8px 12px; border: 1px solid #e7e7e3; border-radius: 8px; }
-.ai-layer .ai-sheet__list span { color: #5b616b; font-size: 13px; }
-.ai-layer .ai-sheet__form { display: grid; gap: 16px; padding-top: 16px; border-top: 1px solid #f0f0ed; }
+.ai-layer .ai-sheet__head h2 { font: var(--type-section); letter-spacing: var(--track-section); overflow-wrap: anywhere; }
+.ai-layer .ai-sheet__head p { margin-top: 2px; font: var(--type-meta); color: var(--text-2); }
+.ai-layer .ai-sheet__head .atlas-icon-btn { margin: -6px -10px 0 0; }
+.ai-layer .ai-sheet__body { flex: 1; display: grid; align-content: start; gap: var(--s-6); overflow: auto; padding: 20px var(--s-6) var(--s-6); overscroll-behavior: contain; }
+.ai-layer .ai-sheet__body h3 { margin-bottom: 6px; font: var(--type-heading); }
+.ai-layer .ai-sheet__body section p { color: var(--text); }
+.ai-layer .ai-sheet__body section p.muted { color: var(--text-2); }
+.ai-layer .ai-sheet__list { list-style: none; display: grid; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.ai-layer .ai-sheet__list li { display: grid; gap: 2px; padding: 10px 12px; }
+.ai-layer .ai-sheet__list li + li { border-top: 1px solid var(--line-subtle); }
+.ai-layer .ai-sheet__list strong { font-weight: 500; }
+.ai-layer .ai-sheet__list span { color: var(--text-2); font: var(--type-meta); font-variant-numeric: tabular-nums; }
+.ai-layer .ai-sheet__body > .atlas-btn { justify-self: start; }
+.ai-layer .ai-sheet__form { display: grid; gap: var(--s-4); padding-top: 20px; border-top: 1px solid var(--line); }
 .ai-layer .ai-sheet__actions { display: flex; justify-content: flex-end; }
-.ai-layer .ai-sheet__error { color: #c0362c; font: 400 12px/16px var(--font-sans, sans-serif); }
-.ai-layer .ai-sheet__body > .atlas-skel { height: 16px; }
+.ai-layer .ai-sheet__error { color: var(--danger); font: var(--type-meta); }
+.ai-layer .ai-sheet__body > .atlas-skel { height: 14px; }
+.ai-layer .ai-sheet__body > .atlas-skel:nth-child(even) { width: 64%; }
 
 /* ---------- motion ---------- */
 
 @keyframes ai-spin { to { transform: rotate(360deg); } }
-@keyframes ai-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-@keyframes ai-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
-@keyframes ai-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@keyframes ai-fade { from { opacity: 0; } to { opacity: 1; } }
-.ai-layer.ai-dialog { animation-name: ai-fade; }
+@keyframes ai-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes ai-caret { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Press feedback for the small controls. */
+.atlas-ai .file-chip__x:active, .atlas-ai .composer__ctx-x:active { transform: scale(var(--press-scale)); }
 
 @media (prefers-reduced-motion: reduce) {
   .atlas-ai *, .atlas-ai *::before, .atlas-ai *::after, .ai-layer, .ai-layer *, .ai-layer-scrim {
     animation-duration: 0ms; animation-iteration-count: 1; transition-duration: 0ms; scroll-behavior: auto;
   }
-  .atlas-ai .atlas-skel { animation: none; background: var(--bg-muted, #efefec); }
+  /* The skeleton's 150 ms reveal still completes; the caret stays lit. */
+  .atlas-ai .atlas-skel { animation-delay: 0ms; }
 }
-html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::before, html.atlas-reduce-motion .ai-layer {
+html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::before, html.atlas-reduce-motion .atlas-ai *::after, html.atlas-reduce-motion .ai-layer {
   animation-duration: 0ms; animation-iteration-count: 1; transition-duration: 0ms;
 }
 
@@ -392,12 +554,13 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
 
 @media (pointer: coarse) {
   .atlas-ai .msg-actions .atlas-icon-btn { width: 44px; height: 44px; }
-  .atlas-ai .send { width: 44px; height: 44px; }
-  .atlas-ai .record-chip { height: 44px; }
-  .atlas-ai .evidence__row a.src { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+  .atlas-ai .send { width: 44px; height: 44px; border-radius: var(--r-lg); }
+  .atlas-ai .composer__bar .atlas-icon-btn { width: 44px; height: 44px; }
+  .atlas-ai .record-chip { min-height: 44px; }
+  .atlas-ai .evidence__row a.src { display: inline-flex; align-items: center; justify-content: flex-end; min-height: 44px; min-width: 44px; }
   .atlas-ai .steps-line { min-height: 44px; }
   .atlas-ai .evidence__head { min-height: 44px; }
-  .atlas-ai .ai-conv { min-height: 52px; padding-top: 10px; padding-bottom: 10px; }
+  .atlas-ai .ai-conv { min-height: 52px; padding-top: 9px; padding-bottom: 9px; }
   .atlas-ai .ai-conv__menu { opacity: 1; width: 44px; height: 44px; }
   .atlas-ai .composer__ctx { height: 44px; }
   .atlas-ai .composer__ctx-x, .atlas-ai .file-chip__x { width: 44px; height: 44px; }
@@ -406,71 +569,85 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   /* Design-system touch height for the field (--control-lg, 44 px): the one
      line of text sits in the middle and the frame loses the same space above,
      so the composer does not look taller. */
-  .atlas-ai .composer { padding-top: 2px; }
+  .atlas-ai .composer { padding-top: 2px; padding-bottom: 4px; }
   .atlas-ai .composer__bar { margin-top: 0; }
-  .atlas-ai .composer textarea { font-size: 16px; min-height: var(--control-lg, 44px); height: var(--control-lg, 44px); padding: 10px 0; }
+  .atlas-ai .composer textarea { font-size: 16px; min-height: var(--control-lg); height: var(--control-lg); padding: 10px 0; }
 }
 
 /* ---------- widths ---------- */
 
 @media (max-width: 1279px) {
-  .atlas-ai { --ai-gutter: 32px; }
-  .atlas-ai .ai-layout { grid-template-columns: 240px minmax(0, 1fr); }
+  .atlas-ai { --ai-gutter: var(--s-6); --ai-list-w: 240px; }
 }
 
 /* 768–1023: the list opens as a left sheet from the thread header. */
 @media (max-width: 1023px) {
-  .atlas-ai { --ai-gutter: 24px; }
   .atlas-ai .ai-layout { grid-template-columns: minmax(0, 1fr); }
-  .atlas-ai .ai-list { position: fixed; top: 0; bottom: 0; left: 0; z-index: 91; width: min(320px, 88vw); transform: translateX(-102%); visibility: hidden; transition: transform var(--dur-3, 240ms) var(--ease-out, ease-out), visibility 0s linear var(--dur-3, 240ms); box-shadow: var(--shadow-modal, 0 4px 12px rgba(23, 25, 30, .08), 0 32px 80px rgba(23, 25, 30, .20)); border-right: 0; }
-  .atlas-ai.is-list-open .ai-list { transform: none; visibility: visible; transition: transform var(--dur-3, 240ms) var(--ease-out, ease-out); }
-  .atlas-ai.is-list-open .ai-scrim { display: block; position: fixed; inset: 0; z-index: 90; background: var(--overlay, rgba(23, 25, 30, .32)); }
+  .atlas-ai .ai-list {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 91; width: min(320px, 88vw); border-right: 0;
+    box-shadow: var(--shadow-modal); transform: translateX(-102%); visibility: hidden;
+    transition: transform var(--dur-2) var(--ease-drawer), visibility 0s linear var(--dur-2);
+  }
+  .atlas-ai.is-list-open .ai-list { transform: none; visibility: visible; transition: transform var(--dur-3) var(--ease-drawer); }
+  .atlas-ai.is-list-open .ai-scrim { display: block; position: fixed; inset: 0; z-index: 90; background: var(--overlay); }
   .atlas-ai .ai-list__close { display: inline-grid; }
   .atlas-ai .ai-thread__list-btn { display: inline-grid; }
-  .atlas-ai .ai-dec-row { grid-template-columns: minmax(0, 2fr) 116px minmax(0, 1fr) 110px; }
+  .atlas-ai .ai-dec-row { grid-template-columns: minmax(0, 2fr) 116px minmax(0, 1fr) 120px; }
   .atlas-ai .ai-dec-row > :nth-child(2), .atlas-ai .ai-dec-row > :nth-child(6) { display: none; }
 }
 
-/* Phone (<768): own top bar (history · Atlas AI · new), composer fixed at the bottom. */
+/* Phone (<768): the sheet is the screen. Own top bar (history · Alcedo AI ·
+   new), the composer fixed at the bottom on its own white bar. */
 @media (max-width: 767px) {
-  .atlas-ai { --ai-gutter: 16px; }
-  .atlas-ai .ai-layout { display: block; height: auto; min-height: calc(100vh - 52px); min-height: calc(100dvh - 52px - env(safe-area-inset-top)); }
+  .atlas-ai { --ai-gutter: var(--page-gutter); }
+  .atlas-ai .ai-layout { display: block; height: auto; min-height: calc(100vh - var(--topbar-h)); min-height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top)); }
   .atlas-ai .ai-thread__head { display: none; }
-  .atlas-ai .ai-list { width: 100vw; }
-  .atlas-ai .ai-scroll { overflow: visible; padding: 12px var(--ai-gutter) calc(220px + env(safe-area-inset-bottom)); }
+  .atlas-ai .ai-list { width: 100vw; padding-top: env(safe-area-inset-top); }
+  .atlas-ai .ai-scroll { overflow: visible; padding: var(--s-5) var(--ai-gutter) calc(220px + env(safe-area-inset-bottom)); -webkit-mask-image: none; mask-image: none; }
+  .atlas-ai .msg-user { margin-bottom: 32px; }
   .atlas-ai .msg-user__inner { max-width: 88%; }
+  .atlas-ai .msg-ai { margin-bottom: 40px; }
   .atlas-ai .msg-ai__text, .atlas-ai .msg-user__bubble { font-size: 16px; line-height: 26px; }
-  .atlas-ai .evidence__row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .atlas-ai .evidence__row .src { text-align: left; white-space: normal; }
-  .atlas-ai .approval__line--3 { grid-template-columns: minmax(0, 1fr) 48px 84px; }
-  .atlas-ai .approval__line .unit { display: none; }
-  .atlas-ai .approval__head { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: start; row-gap: 6px; }
+  .atlas-ai .evidence__row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'kind src' 'text text'; row-gap: 2px; }
+  .atlas-ai .evidence__row .kind { grid-area: kind; }
+  .atlas-ai .evidence__row .src { grid-area: src; white-space: normal; }
+  /* The source keeps its 44 px target without pushing the statement down. */
+  .atlas-ai .evidence__row a.src { margin-block: -12px; }
+  .atlas-ai .evidence__statement { grid-area: text; }
+  .atlas-ai .approval__line--3 { grid-template-columns: minmax(0, 1fr) 76px 84px; gap: var(--s-2); }
+  .atlas-ai .approval__head { grid-template-columns: 16px minmax(0, 1fr); row-gap: var(--s-2); }
   .atlas-ai .approval__head .atlas-pill { grid-column: 2; justify-self: start; }
+  .atlas-ai .approval__note > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .atlas-ai .approval__foot { flex-wrap: wrap; }
   .atlas-ai .approval__foot .spacer { flex-basis: 100%; order: 3; }
+  /* Done: what happened reads first, then the way to it. */
+  .atlas-ai .approval__foot--done .spacer { order: 0; }
   .atlas-ai .approval__foot .atlas-btn--primary { flex: 1; }
-  .atlas-ai .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line, #e7e7e3); background: var(--bg, #ffffff); }
+  .atlas-ai .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; padding: var(--s-2) 12px calc(var(--s-2) + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
+  .atlas-ai .composer { box-shadow: none; }
+  .atlas-ai .voice { box-shadow: none; }
   .atlas-ai .composer-hint { display: none; }
   /* The empty state keeps the phone tab bar; the composer sits above it. */
-  .atlas-ai.has-tabbar .composer-wrap { bottom: calc(56px + env(safe-area-inset-bottom)); }
+  .atlas-ai.has-tabbar .composer-wrap { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
   .atlas-ai .ai-empty { padding-top: 8vh; min-height: 0; }
   .atlas-ai .ai-empty__bot .atlas-bot-live { width: 136px; height: 136px; }
-  .atlas-ai .ai-empty__chips { flex-direction: column; align-items: stretch; width: 100%; }
-  .atlas-ai .ai-empty__chips .atlas-chip { justify-content: flex-start; }
-  .atlas-ai .ai-decisions__inner { padding: 12px var(--ai-gutter) 80px; }
-  .atlas-ai .ai-decisions__head { flex-direction: column; align-items: stretch; }
-  .atlas-ai .ai-decisions__toolbar { flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(-1 * var(--ai-gutter)); padding-inline: var(--ai-gutter); }
+  .atlas-ai .ai-empty__greeting { max-width: 320px; }
+  .atlas-ai .ai-empty__chips { grid-template-columns: minmax(0, 1fr); width: 100%; margin-top: var(--s-3); }
+  .atlas-ai .ai-decisions__inner { padding: var(--s-3) var(--ai-gutter) var(--s-20); }
+  .atlas-ai .ai-decisions__toolbar { flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(-1 * var(--ai-gutter)); padding-inline: var(--ai-gutter); scrollbar-width: none; }
   .atlas-ai .ai-decisions__toolbar .atlas-select { min-width: 140px; flex: none; }
-  .atlas-ai .ai-dec-table { border-radius: 0; border-left: 0; border-right: 0; margin-inline: calc(-1 * var(--ai-gutter)); }
-  .atlas-ai .ai-dec-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main status' 'meta meta'; row-gap: 4px; min-height: 64px; padding: 10px var(--ai-gutter); }
+  .atlas-ai .ai-dec-table { margin-inline: calc(-1 * var(--ai-gutter)); border-radius: 0; border-left: 0; border-right: 0; }
+  .atlas-ai .ai-dec-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main status' 'meta meta'; row-gap: var(--s-1); min-height: 64px; padding: 12px var(--ai-gutter); }
   .atlas-ai .ai-dec-row--head { display: none; }
+  .atlas-ai .ai-dec-row--head + .ai-dec-row { border-top: 0; }
   .atlas-ai .ai-dec-row > .ai-dec-row__main { grid-area: main; }
   .atlas-ai .ai-dec-row > :nth-child(3) { grid-area: status; display: block; }
-  .atlas-ai .ai-dec-row > :nth-child(5) { grid-area: meta; display: block; color: var(--text-2, #5b616b); font-size: 13px; }
+  .atlas-ai .ai-dec-row > :nth-child(5) { grid-area: meta; display: block; font: var(--type-meta); }
   .atlas-ai .ai-dec-row > :nth-child(2), .atlas-ai .ai-dec-row > :nth-child(4), .atlas-ai .ai-dec-row > :nth-child(6) { display: none; }
-  .ai-layer.ai-sheet { top: 12px; left: 0; right: 0; bottom: 0; width: auto; border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; }
-  .ai-layer .ai-sheet__head, .ai-layer .ai-sheet__body { padding-left: 16px; padding-right: 16px; }
-  .ai-layer .ai-sheet__body { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .ai-layer.ai-sheet { top: var(--s-3); left: 0; right: 0; bottom: 0; width: auto; border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  @starting-style { .ai-layer.ai-sheet { opacity: 1; transform: translateY(100%); } }
+  .ai-layer .ai-sheet__head, .ai-layer .ai-sheet__body { padding-left: var(--s-4); padding-right: var(--s-4); }
+  .ai-layer .ai-sheet__body { padding-bottom: calc(var(--s-6) + env(safe-area-inset-bottom)); }
 }
 
 /* Last, so it wins over the display rules above for toggled elements. */

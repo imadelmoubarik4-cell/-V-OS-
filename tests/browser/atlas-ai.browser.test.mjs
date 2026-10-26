@@ -473,7 +473,8 @@ test('approval card buttons keep the design-system colours and pass AA contrast'
   try {
     await page.waitForSelector('[data-ai-approval] .atlas-btn--primary');
     const primary = await contrastOf(page.locator('[data-ai-approval] .atlas-btn--primary').first());
-    assert.equal(primary.color, 'rgb(16, 32, 31)', `${primary.label}: the primary label is ink, got ${primary.color}`);
+    // 2026 redesign: the primary is the near-black --accent fill with the white --text-on-accent label.
+    assert.equal(primary.color, 'rgb(255, 255, 255)', `${primary.label}: the primary label is white on the near-black fill, got ${primary.color}`);
     assert.ok(primary.ratio >= 4.5, `${primary.label}: ${primary.ratio.toFixed(2)}:1`);
     const buttons = page.locator('[data-ai-approval] .atlas-btn');
     for (let index = 0; index < await buttons.count(); index += 1) {

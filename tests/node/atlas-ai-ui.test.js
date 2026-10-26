@@ -99,7 +99,10 @@ test('stylesheet defines no global tokens and honours reduced motion', () => {
   assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /!important/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /@media \(pointer: coarse\)/);
-  assert.match(css, /var\(--accent, #1f6fdb\)/);
+  // 2026 redesign: tokens only. The send button fills with the near-black --accent, and the
+  // stylesheet carries no hard-coded colour literals or token fallbacks.
+  assert.match(css, /background: var\(--accent\); color: var\(--text-on-accent\)/);
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /#[0-9a-f]{3,8}\b/i);
   assert.doesNotMatch(css, /backdrop-filter|linear-gradient\(1|radial-gradient/);
 });
 
