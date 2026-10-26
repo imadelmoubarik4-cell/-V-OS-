@@ -73,7 +73,6 @@
     root: null,
     tab: 'imports',
     params: {},
-    summary: null, summaryError: null, summaryLoading: false, summaryAt: 0,
     imports: { rows: [], loading: false, loaded: false, error: null, query: '', filter: 'all', busy: new Set() },
     issues: { code: null, rows: [], total: 0, offset: 0, loading: false, error: null },
     pars: { items: null, loading: false, error: null, query: '', category: '', supplier: '', cover: '', coverApplied: null, edits: new Map(), conflicts: null, saving: false, saveError: null, focusItem: null },
@@ -209,32 +208,16 @@
 
   // ---------- data loading ----------
 
-  function issueCount(code) {
-    const issue = (state.summary?.issues || []).find((entry) => entry.code === code);
-    return issue ? Number(issue.count) || 0 : null;
-  }
-  function recordIssueTotal() {
-    if (!state.summary?.issues) return null;
-    return state.summary.issues.filter((entry) => entry.code !== 'catalog.pending_approval').reduce((sum, entry) => sum + (Number(entry.count) || 0), 0);
-  }
-
-  async function loadSummary({ force = false } = {}) {
-    if (!isManager() || state.summaryLoading) return;
-    if (!force && state.summary && Date.now() - state.summaryAt < 30000) return;
-    state.summaryLoading = true;
-    try {
-      state.summary = await rpc('atlas_data_review_summary', {});
-      state.summaryError = null;
-      state.summaryAt = Date.now();
-    } catch (error) {
-      state.summaryError = error;
-    } finally {
-      state.summaryLoading = false;
-      syncBadge();
-      contributeChanged();
-      if (visible()) render();
-    }
-  }
+  // The review summary (atlas_data_review_summary) is owned by the eager shard
+  // data-home.js — a single fetch and a single copy. The workspace reads it back
+  // through window.AtlasDataHome and asks the shard to refresh after a mutation;
+  // it never fetches the summary itself.
+  const dataHome = () => root.AtlasDataHome;
+  function summary() { return dataHome()?.summary?.() ?? null; }
+  function summaryError() { return dataHome()?.summaryError?.() ?? null; }
+  function issueCount(code) { return dataHome()?.issueCount?.(code) ?? null; }
+  function recordIssueTotal() { return dataHome()?.recordIssueTotal?.() ?? null; }
+  function loadSummary(options = {}) { return dataHome()?.loadSummary?.(options) ?? Promise.resolve(); }
 
   async function loadImports({ quiet = false } = {}) {
     if (state.imports.loading) return;
@@ -344,40 +327,11 @@
   }
 
   // ---------- nav badge + Home attention ----------
-
-  function pendingApprovals() {
-    return issueCount('catalog.pending_approval');
-  }
-
-  function syncBadge() {
-    const count = isManager() ? pendingApprovals() : null;
-    root.document?.querySelectorAll('[data-nav-badge="data"]').forEach((badge) => {
-      badge.hidden = !count;
-      badge.textContent = count ? String(count) : '';
-    });
-    const link = root.document?.querySelector('.atlas-sidebar .nav-item[data-nav-id="data"]');
-    if (link) link.setAttribute('aria-label', count ? `Data, ${plural(count, 'change', 'changes')} waiting for approval` : 'Data');
-  }
-
-  function contributeChanged() {
-    root.AtlasShell?.emit?.('notify:changed', { source: 'home:data' });
-    if (root.AtlasShell?.current?.() === 'dashboard') root.AtlasShell?.renderHome?.('data');
-  }
-
-  function focusRows() {
-    if (!isManager()) return [];
-    const count = pendingApprovals();
-    if (!count) return [];
-    return [{
-      id: 'catalog-approvals',
-      severity: 'info',
-      icon: 'badge-check',
-      roles: MANAGERS,
-      title: `${plural(count, 'catalogue change', 'catalogue changes')} ${count === 1 ? 'is' : 'are'} waiting for your approval`,
-      detail: 'New names, barcodes, items and duplicates from scans, imports and Alcedo AI',
-      action: { label: 'Review', route: '#data/approvals' }
-    }];
-  }
+  // The nav badge, the Home attention row and the review summary itself live in
+  // the eager shard data-home.js (window.AtlasDataHome). pendingApprovals is kept
+  // here as a thin delegator because the workspace's tabs and page header show
+  // the same count.
+  function pendingApprovals() { return dataHome()?.pendingApprovals?.() ?? null; }
 
   // ---------- markup: page ----------
 
@@ -838,11 +792,11 @@
   }
 
   function issuesMarkup() {
-    if (state.summaryError && !state.summary) {
-      return alertMarkup({ title: 'Record issues couldn\'t be loaded.', body: friendlyError(state.summaryError, 'Your records are safe. Try again.'), action: retryButton('summary') });
+    if (summaryError() && !summary()) {
+      return alertMarkup({ title: 'Record issues couldn\'t be loaded.', body: friendlyError(summaryError(), 'Your records are safe. Try again.'), action: retryButton('summary') });
     }
-    if (!state.summary) return skeletonRows();
-    const all = (state.summary.issues || []).filter((entry) => Number(entry.count) > 0);
+    if (!summary()) return skeletonRows();
+    const all = (summary().issues || []).filter((entry) => Number(entry.count) > 0);
     // Requests waiting for a decision have their own tab (Waiting for
     // approval); they are linked from here, not a second chip (review P2-18).
     const waiting = all.filter((entry) => entry.entity_type === 'catalog_change_request').reduce((sum, entry) => sum + Number(entry.count), 0);
@@ -935,7 +889,6 @@
         const status = payload?.request?.status;
         root.AtlasModal.close(modal, 'saved');
         toast(status === 'failed' ? 'The decision was recorded but couldn\'t be applied. Check it in Waiting for approval.' : 'Decision saved.');
-        state.summaryAt = 0;
         await loadSummary({ force: true });
         loadIssueRows();
       } catch (error) {
@@ -1094,7 +1047,6 @@
         state.pars.edits.clear();
         state.pars.conflicts = null;
         toast(`${plural(saved, 'par level', 'par levels')} saved.`);
-        state.summaryAt = 0;
         loadSummary({ force: true });
         await loadPars({ cover: state.pars.coverApplied });
         try { if (typeof loadAll === 'function') loadAll(); } catch { /* shell data refresh is best effort */ } // eslint-disable-line no-undef
@@ -1368,7 +1320,6 @@
       const status = payload?.request?.status;
       root.AtlasModal.close(modal, 'saved');
       toast(decision === 'reject' ? 'Request rejected.' : status === 'failed' ? 'Approved, but the change couldn\'t be applied. Nothing was changed.' : 'Approved and applied.');
-      state.summaryAt = 0;
       loadSummary({ force: true });
       loadQueue();
     } catch (error) {
@@ -1392,7 +1343,6 @@
       const payload = await edge(cfg.ITEM_MASTER_API, 'catalog-backfill', { method: 'POST', body: { limit: 100 } });
       const created = Number(payload?.proposals?.created) || 0;
       toast(created ? `${plural(created, 'suggestion is', 'suggestions are')} waiting for approval.` : 'No new suggestions. Items either have their details or can\'t be read.');
-      state.summaryAt = 0;
       loadSummary({ force: true });
       loadQueue();
     } catch (error) {
@@ -1577,7 +1527,7 @@
     applyParams(params);
     render();
     if (!isManager()) return;
-    loadSummary({ force: Date.now() - state.summaryAt > 5000 });
+    loadSummary();
     if (!state.imports.loaded || ['imports', 'import'].includes(state.tab)) loadImports({ quiet: state.imports.loaded });
     if (!state.review.summary) loadReviewSummary().then(() => { if (visible()) render(); });
     if (state.tab === 'issues' && state.issues.code) loadIssueRows();
@@ -1615,28 +1565,29 @@
     state.initialized = true;
     ensureRoot();
     root.AtlasShell.registerView('data', { root: () => ensureRoot(), title: 'Data', display: 'block', onShow, onHide });
-    // Retired view ids (Real VÁ Data) open the matching Data tab.
-    root.AtlasShell.registerView('sprint3-review', { root: null, guard: () => { root.AtlasShell.navigate('#data/import-review'); return false; } });
-    root.AtlasShell.home?.contribute?.('data', { order: 60, focusRows });
+    // The retired view redirect (sprint3-review), the Home contribution, the
+    // nav-reachable actions (data.pars, data.approvals) and the review summary
+    // all live in the eager shard data-home.js so they work before this heavy
+    // workspace is loaded. Only data.import stays here: its context is ['data'],
+    // so it is reachable only once the Data workspace is open, and its run opens
+    // the uploader, a workspace function.
     root.AtlasShell.actions?.register?.({ id: 'data.import', label: 'Import a file', icon: 'upload', keywords: ['import', 'upload', 'csv', 'excel', 'spreadsheet'], roles: MANAGERS, contexts: ['data'], run: () => { if (root.location.hash !== '#data') root.location.hash = '#data'; root.setTimeout(openUpload, 0); } });
-    root.AtlasShell.actions?.register?.({ id: 'data.pars', label: 'Set par levels', icon: 'gauge', keywords: ['par', 'par levels', 'reorder'], roles: MANAGERS, contexts: ['data', 'inventory'], run: () => root.AtlasShell.navigate('#data/pars') });
-    root.AtlasShell.actions?.register?.({ id: 'data.approvals', label: 'Review catalogue changes', icon: 'badge-check', keywords: ['approve', 'alias', 'barcode', 'duplicate', 'catalogue'], roles: MANAGERS, contexts: ['data', 'home'], run: () => root.AtlasShell.navigate('#data/approvals') });
-    root.AtlasShell.on?.('profile:ready', () => { loadSummary({ force: true }); if (visible()) render(); });
-    root.AtlasShell.onDataLoaded?.(() => loadSummary());
+    // Re-render when the shard's summary changes (a background refresh, or one
+    // this workspace asked for after a mutation) so counts stay live while open.
+    dataHome()?.onChange?.(() => { if (visible()) render(); });
+    root.AtlasShell.on?.('profile:ready', () => { if (visible()) render(); });
     root.document.addEventListener('click', handleClick);
     root.document.addEventListener('input', handleInput);
     root.document.addEventListener('change', handleChange);
     root.document.addEventListener('submit', handleSubmit);
     root.addEventListener('focus', () => { if (visible()) loadSummary({ force: true }); });
-    if (profile()) loadSummary({ force: true });
   }
 
   root.AtlasDataWorkspace = {
     open: (section = '') => root.AtlasShell?.navigate?.(section ? `#data/${section}` : '#data'),
-    refresh: () => { state.summaryAt = 0; return loadSummary({ force: true }); },
-    summary: () => state.summary,
-    pendingApprovals,
-    focusRows
+    refresh: () => loadSummary({ force: true }),
+    summary,
+    pendingApprovals
   };
 
   if (root.document?.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', init, { once: true });
