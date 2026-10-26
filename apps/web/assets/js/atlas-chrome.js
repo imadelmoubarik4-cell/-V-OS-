@@ -40,7 +40,7 @@
   // ---------- icons ----------
   // Inline Lucide SVG from the pinned library (no document-wide createIcons
   // pass for every panel render).
-  function icon(name, { size = 16, stroke = 1.75, className = '' } = {}) {
+  function icon(name, { size = 16, stroke = 1.5, className = '' } = {}) {
     // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), a touch larger than a
     // stroke icon so its face reads.
     if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: size + 4, className });

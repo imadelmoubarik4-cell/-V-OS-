@@ -94,14 +94,15 @@ test('pages use the swapped logos, favicons and manifest; no typed wordmark or "
     /<link rel="icon" type="image\/svg\+xml" href="assets\/brand\/favicon\.svg">/,
     /<link rel="apple-touch-icon" sizes="180x180" href="assets\/brand\/apple-touch-icon\.png">/,
     /<link rel="manifest" href="site\.webmanifest">/,
-    /class="atlas-brand__lockup" src="assets\/brand\/Atlas_Primary_Horizontal_Midnight\.svg" alt="Alcedo"/,
-    /class="atlas-brand__mark" src="assets\/brand\/Atlas_Mark_Midnight\.svg" alt="Alcedo"/,
-    /class="atlas-topbar__mark"[^>]*><img src="assets\/brand\/Atlas_Mark_Midnight\.svg"/,
-    /class="atlas-auth__lockup" src="assets\/brand\/Atlas_Primary_Stacked_Midnight\.svg" alt="Alcedo"/
+    // 2026 redesign: the app shows the ALCEDO kit in monochrome (black on light).
+    /class="atlas-brand__lockup" src="assets\/brand\/alcedo\/logo-black\.svg" alt="Alcedo"/,
+    /class="atlas-brand__mark" src="assets\/brand\/alcedo\/symbol-black\.svg" alt="Alcedo"/,
+    /class="atlas-topbar__mark"[^>]*><img src="assets\/brand\/alcedo\/symbol-black\.svg"/,
+    /class="atlas-auth__lockup" src="assets\/brand\/alcedo\/logo-black\.svg" alt="Alcedo"/
   ]) assert.match(index, pattern);
   for (const page of ['invitation.html', 'recovery.html']) {
     const html = readFileSync(path.join(WEB, page), 'utf8');
-    assert.match(html, /class="atlas-auth__lockup" src="assets\/brand\/Atlas_Primary_Stacked_Midnight\.svg" alt="Alcedo"/, page);
+    assert.match(html, /class="atlas-auth__lockup" src="assets\/brand\/alcedo\/logo-black\.svg" alt="Alcedo"/, page);
     assert.match(html, /<link rel="icon" type="image\/svg\+xml" href="assets\/brand\/favicon\.svg">/, page);
   }
   // menu.html is the venue's public menu: its own brand, no app favicon.
@@ -117,8 +118,8 @@ test('pages use the swapped logos, favicons and manifest; no typed wordmark or "
   const site = JSON.parse(readFileSync(path.join(WEB, 'site.webmanifest'), 'utf8'));
   assert.equal(site.name, 'Alcedo');
   assert.equal(site.short_name, 'Alcedo');
-  assert.equal(site.theme_color, '#08495C');
-  assert.equal(site.background_color, '#F8F5ED');
+  assert.equal(site.theme_color, '#f3f5f4');
+  assert.equal(site.background_color, '#f3f5f4');
   assert.equal(site.display, 'standalone');
   assert.equal(site.start_url, './');
   assert.equal(site.id, './');

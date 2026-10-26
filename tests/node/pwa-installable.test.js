@@ -48,7 +48,7 @@ test('index.html loads pwa.js and carries the PWA head metadata', () => {
   const index = read('index.html');
   assert.match(index, /<script src="assets\/js\/pwa\.js\?v=20261002-pwa2"><\/script>/);
   assert.match(index, /<link rel="manifest" href="site\.webmanifest">/);
-  assert.match(index, /<meta name="theme-color" content="#08495C">/);
+  assert.match(index, /<meta name="theme-color" content="#f3f5f4">/);
   assert.match(index, /<meta name="apple-mobile-web-app-capable" content="yes">/);
   assert.match(index, /<meta name="apple-mobile-web-app-title" content="Alcedo">/);
 });

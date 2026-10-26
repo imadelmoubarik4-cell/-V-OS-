@@ -3,31 +3,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Atlas components</title>
-<meta name="description" content="Living gallery of the Atlas design system. Loads the real atlas-tokens, atlas-base and atlas-components stylesheets. Not part of the app bundle.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>ALCEDO components</title>
+<meta name="description" content="Living gallery of the ALCEDO design system (Basalt &amp; Kingfisher). Loads the real atlas-tokens, atlas-base and atlas-components stylesheets and the self-hosted IBM Plex fonts. Not part of the app bundle.">
 <link rel="stylesheet" href="../../../apps/web/assets/css/atlas-tokens.css">
 <link rel="stylesheet" href="../../../apps/web/assets/css/atlas-base.css">
 <link rel="stylesheet" href="../../../apps/web/assets/css/atlas-components.css">
 <style>
-/* Gallery layout only (not a component). */
+/* Gallery layout only (not a component): the stone frame with the white
+   work sheet inside it, as in the app shell. */
 @layer atlas.modules {
-  .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-6); margin-top: var(--s-8); }
-  .gallery > .atlas-card { padding: var(--s-5); }
+  body { margin: 0; background: var(--bg-subtle); }
+  .gallery-sheet { min-height: calc(100dvh - 2 * var(--sheet-inset)); margin: var(--sheet-inset); padding: var(--page-gutter); border: 1px solid var(--line); border-radius: var(--r-sheet); background: var(--bg); }
+  .gallery-sheet > * { max-width: var(--page-max); margin-inline: auto; }
+  .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); margin-top: var(--s-6); }
+  .gallery > .atlas-card:not(:has(> .atlas-card__head)) { padding: var(--s-5); }
   .gallery h2 { margin: 0 0 var(--s-4); font: var(--type-heading); }
+  .gallery .atlas-card__head h2 { margin: 0; }
   .gallery .wide { grid-column: 1 / -1; }
+  .gallery .atlas-stack > .atlas-segmented { align-self: flex-start; }
+  .gallery .note { margin: var(--s-3) 0 0; font: var(--type-caption); color: var(--text-3); }
+  .gallery .sub { margin: var(--s-4) 0 var(--s-2); font: var(--type-label); color: var(--text-2); }
+  .gallery .sub:first-of-type { margin-top: 0; }
   .swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
   .swatch { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-md); font: var(--type-caption); }
   .swatch i { display: block; height: 36px; }
   .swatch span { display: block; padding: 6px 8px; color: var(--text-2); }
-  .type-spec > div { display: flex; align-items: baseline; gap: var(--s-4); padding: 6px 0; border-top: 1px solid var(--line-subtle); }
+  .sw-frame { background: var(--bg-subtle); } .sw-muted { background: var(--bg-muted); } .sw-ink { background: var(--text); } .sw-text2 { background: var(--text-2); }
+  .sw-primary { background: var(--accent); } .sw-hue { background: var(--accent-brand); } .sw-soft { background: var(--accent-soft); } .sw-positive { background: var(--positive); }
+  .sw-warning { background: var(--warning-icon); } .sw-danger { background: var(--danger); } .sw-line { background: var(--line); } .sw-line-strong { background: var(--line-strong); }
+  .type-spec > div { display: flex; align-items: baseline; gap: var(--s-4); padding: 8px 0; border-top: 1px solid var(--line-subtle); }
   .type-spec > div:first-child { border-top: 0; }
-  .type-spec code { flex: none; width: 140px; font: var(--type-caption); font-family: var(--font-mono); color: var(--text-2); }
+  .type-spec code { flex: none; width: 140px; font: var(--type-caption); font-family: var(--font-mono); color: var(--text-3); }
+  .t-display { font: var(--type-display); letter-spacing: var(--track-display); } .t-title { font: var(--type-title); letter-spacing: var(--track-title); }
+  .t-section { font: var(--type-section); } .t-heading { font: var(--type-heading); } .t-body { font: var(--type-body); }
+  .t-meta { font: var(--type-meta); color: var(--text-2); } .t-caption { font: var(--type-caption); color: var(--text-2); } .t-kpi { font: var(--type-kpi); letter-spacing: var(--track-kpi); }
+  .t-mono { font: 400 14px/20px var(--font-mono); }
+  .w-30 { width: 30%; } .w-40 { width: 40%; } .w-55 { width: 55%; } .w-66 { width: 66%; } .w-70 { width: 70%; } .w-82 { width: 82%; }
+  .skel-table { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+  .skel-table__row { display: grid; grid-template-columns: 2fr 1fr 1fr; align-items: center; gap: var(--s-4); height: 48px; padding: 0 12px; border-top: 1px solid var(--line-subtle); }
+  .skel-table__row:first-child { height: 36px; border-top: 0; border-bottom: 1px solid var(--line); font: var(--type-caption); color: var(--text-3); }
+  .skel-table__row > :last-child { justify-self: end; }
+  .skel-table .atlas-skel { width: 100%; }
+  .block-error { display: grid; gap: var(--s-2); justify-items: start; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--r-lg); }
+  .block-error p { margin: 0; font: var(--type-body); color: var(--text-2); }
+  .block-error p > svg { width: 14px; height: 14px; margin-right: 6px; color: var(--danger); vertical-align: -2px; }
   .demo-sheet { position: relative; height: 420px; overflow: hidden; border-radius: var(--r-lg); background: var(--bg-subtle); }
-  .demo-sheet .atlas-scrim, .demo-sheet .atlas-sheet, .demo-sheet .atlas-dialog { position: absolute; animation: none; }
+  .demo-sheet .atlas-scrim, .demo-sheet .atlas-sheet, .demo-sheet .atlas-dialog { position: absolute; animation: none; transition: none; }
   .demo-sheet .atlas-scrim { z-index: 0; }
+  .floaters { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-5); margin-top: var(--s-5); }
+  .floaters .atlas-tooltip { position: static; }
+  .floaters .atlas-menu, .floaters .atlas-popover { transition: none; }
   @media (max-width: 767px) {
+    .gallery-sheet { min-height: 0; border: 0; border-radius: 0; }
     .gallery { grid-template-columns: minmax(0, 1fr); }
     .swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .type-spec code { width: 110px; }
@@ -36,11 +63,11 @@
 </style>
 </head>
 <body>
-<main class="atlas-page" id="gallery">
+<main class="atlas-page gallery-sheet" id="gallery">
   <header class="page-head">
     <div class="page-head__text">
       <h1 class="page-head__title">Components</h1>
-      <p class="page-head__sub">The Atlas design system, rendered from the real stylesheets.</p>
+      <p class="page-head__sub">Basalt &amp; Kingfisher, rendered from the real stylesheets.</p>
     </div>
     <div class="page-head__actions">
       <button type="button" class="atlas-btn atlas-btn--secondary"><i data-lucide="download"></i>Export</button>
@@ -67,6 +94,7 @@
     <section class="atlas-card" id="buttons" aria-labelledby="g-buttons">
       <h2 id="g-buttons">Buttons</h2>
       <div class="atlas-stack atlas-stack--md">
+        <p class="sub">Primary, secondary, tertiary, danger</p>
         <div class="atlas-cluster">
           <button type="button" class="atlas-btn atlas-btn--primary" data-test="btn-primary">Create order</button>
           <button type="button" class="atlas-btn atlas-btn--secondary" data-test="btn-secondary">Edit</button>
@@ -74,6 +102,7 @@
           <button type="button" class="atlas-btn atlas-btn--danger" data-test="btn-danger">Delete item</button>
           <button type="button" class="atlas-btn atlas-btn--danger-solid" data-test="btn-danger-solid">Delete</button>
         </div>
+        <p class="sub">32 / 36 / 44, loading, disabled</p>
         <div class="atlas-cluster">
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-test="btn-sm">Small</button>
           <button type="button" class="atlas-btn atlas-btn--secondary" data-test="btn-md">Default</button>
@@ -81,10 +110,12 @@
           <button type="button" class="atlas-btn atlas-btn--primary is-loading" aria-busy="true" disabled>Saving</button>
           <button type="button" class="atlas-btn atlas-btn--secondary" disabled title="You're offline">Disabled</button>
         </div>
+        <p class="sub">Icon buttons and keyboard hints</p>
         <div class="atlas-cluster">
           <button type="button" class="atlas-icon-btn" aria-label="Notifications" data-atlas-tooltip="Notifications" data-test="icon-btn"><i data-lucide="bell"></i><span class="dot"></span></button>
           <button type="button" class="atlas-icon-btn" aria-label="More actions"><i data-lucide="ellipsis"></i></button>
-          <span class="kbd">⌘K</span>
+          <button type="button" class="atlas-icon-btn atlas-icon-btn--sm" aria-label="Edit"><i data-lucide="pencil"></i></button>
+          <span class="kbd">⌘</span><span class="kbd">K</span>
         </div>
       </div>
     </section>
@@ -134,6 +165,10 @@
           <div><p class="atlas-toggle-row__label" id="g-t2">Weekly summary</p><p class="atlas-toggle-row__help">Saving…</p></div>
           <button type="button" class="atlas-toggle is-pending" role="switch" aria-checked="false" aria-labelledby="g-t2"></button>
         </div>
+        <div class="atlas-toggle-row">
+          <div><p class="atlas-toggle-row__label" id="g-t3">Daily digest</p><p class="atlas-toggle-row__help">Off for this venue.</p></div>
+          <button type="button" class="atlas-toggle" role="switch" aria-checked="false" aria-labelledby="g-t3"></button>
+        </div>
         <div class="atlas-cluster">
           <label class="atlas-check-row"><input type="checkbox" class="atlas-check" checked>Counted</label>
           <label class="atlas-check-row"><input type="checkbox" class="atlas-check" id="g-indeterminate">Some</label>
@@ -142,6 +177,7 @@
           <label class="atlas-check-row"><input type="radio" class="atlas-radio" name="g-r">Case</label>
         </div>
         <div class="atlas-segmented" role="group" aria-label="Period">
+          <button type="button" aria-pressed="false">Day</button>
           <button type="button" aria-pressed="true" data-test="segment">Week</button>
           <button type="button" aria-pressed="false">Month</button>
         </div>
@@ -157,10 +193,10 @@
           <span class="atlas-pill atlas-pill--danger" data-test="pill-danger">Out</span>
           <span class="atlas-pill atlas-pill--info" data-test="pill-info">Needs approval</span>
           <span class="atlas-pill" data-test="pill-neutral">Not counted</span>
-          <span class="atlas-badge" data-test="badge">3</span>
-          <span class="atlas-badge atlas-badge--muted">12</span>
         </div>
         <div class="atlas-cluster">
+          <span class="atlas-badge" data-test="badge">3</span>
+          <span class="atlas-badge atlas-badge--muted">12</span>
           <span class="atlas-avatar atlas-avatar--sm atlas-avatar--a">IM</span>
           <span class="atlas-avatar atlas-avatar--b">SJ<span class="atlas-avatar__status"></span></span>
           <span class="atlas-avatar atlas-avatar--lg atlas-avatar--c">AK</span>
@@ -173,7 +209,21 @@
           <li class="sep" aria-hidden="true"></li>
           <li><span class="n">3</span>Import</li>
         </ol>
-        <div class="atlas-steps-compact"><span>Step 2 of 3 · Review</span><div class="atlas-progress"><i style="width:66%"></i></div></div>
+        <div class="atlas-steps-compact"><span>Step 2 of 3 · Review</span><div class="atlas-progress"><i class="w-66"></i></div></div>
+        <div class="atlas-stack atlas-stack--sm">
+          <div class="atlas-cluster atlas-cluster--between"><span class="t-meta">Stock counted</span><span class="t-meta num">41 of 62</span></div>
+          <div class="atlas-progress" role="progressbar" aria-valuenow="66" aria-valuemin="0" aria-valuemax="100" aria-label="Stock counted"><i class="w-66"></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wide" aria-labelledby="g-stats">
+      <div class="atlas-section__head"><h2 class="atlas-section__title" id="g-stats">Tonight <span class="atlas-badge atlas-badge--muted">4</span></h2><a class="atlas-section__link" href="#data">View all</a></div>
+      <div class="atlas-stats">
+        <a class="atlas-stat" href="#data"><p class="atlas-stat__label">Below par</p><p class="atlas-stat__value" data-test="kpi">4<span class="atlas-stat__unit">items</span></p><p class="atlas-stat__detail">Campari is almost out</p><span class="atlas-stat__link">Open inventory<i data-lucide="arrow-right"></i></span></a>
+        <a class="atlas-stat" href="#data"><p class="atlas-stat__label">Open orders</p><p class="atlas-stat__value">2</p><p class="atlas-stat__detail">One arrives today</p><span class="atlas-stat__link">Open purchasing<i data-lucide="arrow-right"></i></span></a>
+        <a class="atlas-stat" href="#data"><p class="atlas-stat__label">Covers booked</p><p class="atlas-stat__value">0</p><p class="atlas-stat__detail">No bookings yet tonight</p><span class="atlas-stat__link">Open bookings<i data-lucide="arrow-right"></i></span></a>
+        <a class="atlas-stat" href="#data"><p class="atlas-stat__label">On shift</p><p class="atlas-stat__value">—</p><p class="atlas-stat__detail">Shifts not published yet</p><span class="atlas-stat__link">Open shifts<i data-lucide="arrow-right"></i></span></a>
       </div>
     </section>
 
@@ -192,26 +242,19 @@
             <th class="col-actions"><span class="sr-only">Actions</span></th>
           </tr></thead>
           <tbody>
-            <tr class="is-selected"><td class="col-check"><input type="checkbox" class="atlas-check" checked aria-label="Select Campari"></td><td><span class="cell-primary">Campari</span><span class="cell-sub">700 ml · Back bar</span></td><td data-priority="2">Spirits</td><td class="is-num">2<span class="atlas-par atlas-par--warning"><i style="width:30%"></i></span></td><td class="is-num" data-priority="3">3.900 kr</td><td><span class="atlas-pill atlas-pill--warning">Below par</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Campari"><i data-lucide="ellipsis"></i></button></td></tr>
-            <tr><td class="col-check"><input type="checkbox" class="atlas-check" aria-label="Select Aperol"></td><td><span class="cell-primary">Aperol</span><span class="cell-sub">700 ml · Back bar</span></td><td data-priority="2">Spirits</td><td class="is-num">9</td><td class="is-num" data-priority="3">3.290 kr</td><td><span class="atlas-pill atlas-pill--positive">Counted</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Aperol"><i data-lucide="ellipsis"></i></button></td></tr>
+            <tr class="is-selected"><td class="col-check"><input type="checkbox" class="atlas-check" checked aria-label="Select Campari"></td><td><span class="cell-primary">Campari</span><span class="cell-sub">700 ml · Back bar</span></td><td data-priority="2">Spirits</td><td class="is-num">2<span class="atlas-par atlas-par--warning"><i class="w-30"></i></span></td><td class="is-num" data-priority="3">3.900 kr</td><td><span class="atlas-pill atlas-pill--warning">Below par</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Campari"><i data-lucide="ellipsis"></i></button></td></tr>
+            <tr><td class="col-check"><input type="checkbox" class="atlas-check" aria-label="Select Aperol"></td><td><span class="cell-primary">Aperol</span><span class="cell-sub">700 ml · Back bar</span></td><td data-priority="2">Spirits</td><td class="is-num">9<span class="atlas-par"><i class="w-82"></i></span></td><td class="is-num" data-priority="3">3.290 kr</td><td><span class="atlas-pill atlas-pill--positive">Counted</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Aperol"><i data-lucide="ellipsis"></i></button></td></tr>
+            <tr class="is-linked-target" aria-current="true"><td class="col-check"><input type="checkbox" class="atlas-check" aria-label="Select Tonic"></td><td><span class="cell-primary">Tonic water</span><span class="cell-sub">200 ml · Fridge</span></td><td data-priority="2">Mixers</td><td class="is-num">0<span class="atlas-par atlas-par--danger"><i></i></span></td><td class="is-num" data-priority="3">180 kr</td><td><span class="atlas-pill atlas-pill--danger">Out</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Tonic water"><i data-lucide="ellipsis"></i></button></td></tr>
             <tr><td class="col-check"><input type="checkbox" class="atlas-check" aria-label="Select Lime"></td><td><span class="cell-primary">Lime</span><span class="cell-sub">each · Fridge</span></td><td data-priority="2">Fresh fruit</td><td class="is-num">—</td><td class="is-num" data-priority="3">45 kr</td><td><span class="atlas-pill">Not counted</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Lime"><i data-lucide="ellipsis"></i></button></td></tr>
           </tbody>
         </table>
       </div>
       <ul class="atlas-table-list">
-        <li><a class="atlas-table-list__row" href="#data"><div class="atlas-table-list__body"><div class="atlas-table-list__title">Campari</div><div class="atlas-table-list__meta">700 ml · Back bar</div></div><div class="atlas-table-list__value">2<br><span class="atlas-pill atlas-pill--warning">Below par</span></div></a></li>
-        <li><a class="atlas-table-list__row" href="#data"><div class="atlas-table-list__body"><div class="atlas-table-list__title">Aperol</div><div class="atlas-table-list__meta">700 ml · Back bar</div></div><div class="atlas-table-list__value">9<br><span class="atlas-pill atlas-pill--positive">Counted</span></div></a></li>
+        <li><a class="atlas-table-list__row" href="#data"><div class="atlas-table-list__body"><div class="atlas-table-list__title">Campari</div><div class="atlas-table-list__meta">700 ml · Back bar · 3.900 kr</div></div><div class="atlas-table-list__value">2<br><span class="atlas-pill atlas-pill--warning">Below par</span></div></a></li>
+        <li><a class="atlas-table-list__row" href="#data"><div class="atlas-table-list__body"><div class="atlas-table-list__title">Aperol</div><div class="atlas-table-list__meta">700 ml · Back bar · 3.290 kr</div></div><div class="atlas-table-list__value">9<br><span class="atlas-pill atlas-pill--positive">Counted</span></div></a></li>
+        <li><a class="atlas-table-list__row" href="#data"><div class="atlas-table-list__body"><div class="atlas-table-list__title">Tonic water</div><div class="atlas-table-list__meta">200 ml · Fridge · 180 kr</div></div><div class="atlas-table-list__value">0<br><span class="atlas-pill atlas-pill--danger">Out</span></div></a></li>
       </ul>
-      <div class="atlas-table-foot"><span>3 items</span><span>Quantities are from the last verified count plus recorded movements.</span></div>
-    </section>
-
-    <section class="wide" aria-labelledby="g-stats">
-      <div class="atlas-section__head"><h2 class="atlas-section__title" id="g-stats">At a glance <span class="atlas-badge atlas-badge--muted">3</span></h2><a class="atlas-section__link" href="#data">View all</a></div>
-      <div class="atlas-stats">
-        <a class="atlas-stat" href="#data"><p class="atlas-stat__label"><i data-lucide="package"></i>Below par</p><p class="atlas-stat__value" data-test="kpi">4<span class="atlas-stat__unit">items</span></p><p class="atlas-stat__detail">Campari is almost out</p><span class="atlas-stat__link">Open inventory<i data-lucide="arrow-right"></i></span></a>
-        <a class="atlas-stat" href="#data"><p class="atlas-stat__label"><i data-lucide="truck"></i>Orders</p><p class="atlas-stat__value">2<span class="atlas-stat__unit">open</span></p><p class="atlas-stat__detail">One arrives today</p><span class="atlas-stat__link">Open purchasing<i data-lucide="arrow-right"></i></span></a>
-        <a class="atlas-stat" href="#data"><p class="atlas-stat__label"><i data-lucide="calendar-days"></i>On shift</p><p class="atlas-stat__value">—</p><p class="atlas-stat__detail">Shifts not published yet</p><span class="atlas-stat__link">Open shifts<i data-lucide="arrow-right"></i></span></a>
-      </div>
+      <div class="atlas-table-foot"><span>4 items</span><span>Quantities are from the last verified count plus recorded movements.</span></div>
     </section>
 
     <section class="atlas-card" id="feedback" aria-labelledby="g-rows">
@@ -219,18 +262,33 @@
       <ul class="atlas-list">
         <li class="atlas-row"><span class="atlas-row__icon atlas-row__icon--warning"><i data-lucide="package"></i></span><div class="atlas-row__body"><p class="atlas-row__title">Campari is almost out</p><p class="atlas-row__meta">Negroni and Boulevardier are affected</p></div><div class="atlas-row__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action">Order</button><i data-lucide="chevron-right" class="atlas-row__chevron"></i></div></li>
         <li class="atlas-row"><span class="atlas-row__icon"><i data-lucide="list-checks"></i></span><div class="atlas-row__body"><p class="atlas-row__title">Opening checklist</p><p class="atlas-row__meta">Not started · due 16:00</p></div><div class="atlas-row__end"><span class="atlas-pill">Not started</span></div></li>
+        <li class="atlas-row"><span class="atlas-row__icon"><i data-lucide="truck"></i></span><div class="atlas-row__body"><p class="atlas-row__title">Globus delivery</p><p class="atlas-row__meta">Order <span class="t-mono">PO-2219</span> · arrives 14:30</p></div><div class="atlas-row__end"><span class="atlas-row__value">24.600 kr</span></div></li>
       </ul>
     </section>
 
     <section class="atlas-card" aria-labelledby="g-alerts">
-      <h2 id="g-alerts">Alerts and states</h2>
+      <h2 id="g-alerts">Alerts and notices</h2>
       <div class="atlas-stack">
         <div class="atlas-alert atlas-alert--danger" role="alert" data-test="alert-danger"><i data-lucide="circle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Shifts couldn't be loaded.</p><p class="atlas-alert__body">Your changes are safe. Try again, or check your connection.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm">Try again</button></div></div>
         <div class="atlas-alert atlas-alert--warning" data-test="alert-warning"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Stock hasn't been counted yet</p><p class="atlas-alert__body">Quantities show "Not counted" until the first count.</p></div></div>
         <div class="atlas-alert atlas-alert--info" data-test="alert-info"><i data-lucide="info"></i><div class="atlas-alert__content"><p class="atlas-alert__body">Nothing here changes live records until you approve it.</p></div></div>
-        <div class="atlas-empty" data-test="empty"><div class="atlas-empty__icon"><i data-lucide="lock"></i></div><h3 class="atlas-empty__title">Purchasing is for managers</h3><p class="atlas-empty__text">Ask an administrator for access.</p><button type="button" class="atlas-btn atlas-btn--secondary">Go to Home</button></div>
-        <div class="atlas-stack atlas-stack--sm" aria-hidden="true"><span class="atlas-skel atlas-skel--title"></span><span class="atlas-skel"></span><span class="atlas-skel" style="width:70%"></span></div>
+        <div class="atlas-alert atlas-alert--positive"><i data-lucide="circle-check"></i><div class="atlas-alert__content"><p class="atlas-alert__body">Count approved. Stock levels are up to date.</p></div></div>
         <div class="atlas-upload" data-test="upload"><div class="atlas-upload__thumb"><i data-lucide="image"></i></div><div class="atlas-upload__body"><p class="atlas-upload__title">Delivery note</p><p class="atlas-upload__help">Photo or PDF, up to 25 MB.</p></div><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm">Choose</button></div>
+      </div>
+    </section>
+
+    <section class="atlas-card" aria-labelledby="g-states">
+      <h2 id="g-states">Empty, loading and error</h2>
+      <div class="atlas-stack">
+        <p class="sub">Loading: flat bars at the real size</p>
+        <div class="skel-table" aria-hidden="true">
+          <div class="skel-table__row"><span>Item</span><span>Category</span><span>On hand</span></div>
+          <div class="skel-table__row"><span class="atlas-skel w-70"></span><span class="atlas-skel w-55"></span><span class="atlas-skel w-40"></span></div>
+          <div class="skel-table__row"><span class="atlas-skel w-55"></span><span class="atlas-skel w-70"></span><span class="atlas-skel w-30"></span></div>
+        </div>
+        <p class="sub">Error: inside the block that failed</p>
+        <div class="block-error"><p><i data-lucide="circle-alert"></i>Couldn't load deliveries. Last updated 09:14.</p><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm">Retry</button></div>
+        <div class="atlas-empty" data-test="empty"><div class="atlas-empty__icon"><i data-lucide="lock"></i></div><h3 class="atlas-empty__title">Purchasing is for managers</h3><p class="atlas-empty__text">Ask an administrator for access.</p><button type="button" class="atlas-btn atlas-btn--secondary">Go to Home</button></div>
       </div>
     </section>
 
@@ -242,7 +300,7 @@
           <section class="atlas-sheet" role="dialog" aria-modal="false" aria-labelledby="g-sheet-title">
             <span class="atlas-sheet__grabber"></span>
             <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="g-sheet-title">Add item</h2><p class="atlas-sheet__desc">New items start as Not counted.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close"><i data-lucide="x"></i></button></header>
-            <div class="atlas-sheet__body"><div class="atlas-field"><label for="g-s-name">Name</label><input class="atlas-input" id="g-s-name"></div></div>
+            <div class="atlas-sheet__body"><div class="atlas-field"><label for="g-s-name">Name</label><input class="atlas-input" id="g-s-name"></div><div class="atlas-field"><label for="g-s-cat">Category</label><select class="atlas-select" id="g-s-cat"><option>Spirits</option></select></div></div>
             <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost">Cancel</button><button type="button" class="atlas-btn atlas-btn--primary">Add item</button></footer>
           </section>
         </div>
@@ -255,49 +313,52 @@
           </section>
         </div>
       </div>
-      <div class="atlas-cluster" style="margin-top:var(--s-5)">
+      <div class="floaters">
         <ul class="atlas-menu" role="menu" aria-label="Item actions" data-test="menu">
+          <li role="presentation" class="atlas-menu__label">Campari</li>
           <li><button type="button" class="atlas-menu__item" role="menuitem"><i data-lucide="pencil"></i>Edit item</button></li>
           <li><button type="button" class="atlas-menu__item" role="menuitem"><i data-lucide="copy"></i>Duplicate</button></li>
           <li role="separator" class="atlas-menu__sep"></li>
           <li><button type="button" class="atlas-menu__item atlas-menu__item--danger" role="menuitem"><i data-lucide="trash-2"></i>Delete item</button></li>
         </ul>
         <div class="atlas-popover"><p class="atlas-row__title">Par level</p><p class="atlas-row__meta">The quantity you want on hand after a delivery.</p></div>
-        <span class="atlas-tooltip" style="position:static">Notifications</span>
+        <span class="atlas-tooltip">Notifications</span>
         <div class="atlas-toast" data-test="toast"><i data-lucide="circle-check"></i><span class="atlas-toast__text">Order created</span><button type="button" class="atlas-toast__action">View</button></div>
       </div>
     </section>
 
     <section class="atlas-card" aria-labelledby="g-type">
-      <h2 id="g-type">Type</h2>
+      <h2 id="g-type">Type · IBM Plex Sans</h2>
       <div class="type-spec">
-        <div><code>--type-display</code><span style="font:var(--type-display);letter-spacing:var(--track-display)">Good evening</span></div>
-        <div><code>--type-title</code><span style="font:var(--type-title)">Inventory</span></div>
-        <div><code>--type-section</code><span style="font:var(--type-section)">Tonight</span></div>
-        <div><code>--type-heading</code><span style="font:var(--type-heading)">Needs attention</span></div>
-        <div><code>--type-body</code><span style="font:var(--type-body)">Campari is almost out</span></div>
-        <div><code>--type-meta</code><span style="font:var(--type-meta);color:var(--text-2)">Negroni is affected</span></div>
-        <div><code>--type-caption</code><span style="font:var(--type-caption);color:var(--text-2)">Updated 12 min ago</span></div>
-        <div><code>--type-kpi</code><span class="num" style="font:var(--type-kpi)">3.900 kr</span></div>
+        <div><code>--type-display</code><span class="t-display">Good evening</span></div>
+        <div><code>--type-title</code><span class="t-title">Inventory</span></div>
+        <div><code>--type-section</code><span class="t-section">Tonight</span></div>
+        <div><code>--type-heading</code><span class="t-heading">Needs attention</span></div>
+        <div><code>--type-body</code><span class="t-body">Campari is almost out</span></div>
+        <div><code>--type-meta</code><span class="t-meta">Negroni is affected</span></div>
+        <div><code>--type-caption</code><span class="t-caption">Updated 12 min ago</span></div>
+        <div><code>--type-kpi</code><span class="t-kpi num">3.900 kr</span></div>
+        <div><code>--font-mono</code><span class="t-mono">PO-2219</span></div>
       </div>
     </section>
 
     <section class="atlas-card" aria-labelledby="g-colour">
       <h2 id="g-colour">Colour</h2>
       <div class="swatches">
-        <div class="swatch"><i style="background:var(--bg-subtle)"></i><span>bg-subtle</span></div>
-        <div class="swatch"><i style="background:var(--bg-muted)"></i><span>bg-muted</span></div>
-        <div class="swatch"><i style="background:var(--text)"></i><span>text</span></div>
-        <div class="swatch"><i style="background:var(--text-2)"></i><span>text-2</span></div>
-        <div class="swatch"><i style="background:var(--accent)"></i><span>accent</span></div>
-        <div class="swatch"><i style="background:var(--accent-soft)"></i><span>accent-soft</span></div>
-        <div class="swatch"><i style="background:var(--positive)"></i><span>positive</span></div>
-        <div class="swatch"><i style="background:var(--warning-icon)"></i><span>warning</span></div>
-        <div class="swatch"><i style="background:var(--danger)"></i><span>danger</span></div>
-        <div class="swatch"><i style="background:var(--line)"></i><span>line</span></div>
-        <div class="swatch"><i style="background:var(--line-strong)"></i><span>line-strong</span></div>
-        <div class="swatch"><i style="background:var(--neutral-soft)"></i><span>neutral-soft</span></div>
+        <div class="swatch"><i class="sw-frame"></i><span>bg-subtle · frame</span></div>
+        <div class="swatch"><i class="sw-muted"></i><span>bg-muted</span></div>
+        <div class="swatch"><i class="sw-ink"></i><span>text · ink</span></div>
+        <div class="swatch"><i class="sw-text2"></i><span>text-2</span></div>
+        <div class="swatch"><i class="sw-primary"></i><span>accent · primary</span></div>
+        <div class="swatch"><i class="sw-hue"></i><span>accent-brand · kingfisher</span></div>
+        <div class="swatch"><i class="sw-soft"></i><span>accent-soft</span></div>
+        <div class="swatch"><i class="sw-positive"></i><span>positive</span></div>
+        <div class="swatch"><i class="sw-warning"></i><span>warning</span></div>
+        <div class="swatch"><i class="sw-danger"></i><span>danger</span></div>
+        <div class="swatch"><i class="sw-line"></i><span>line</span></div>
+        <div class="swatch"><i class="sw-line-strong"></i><span>line-strong</span></div>
       </div>
+      <p class="note">Colour stays under 3% of the screen: data, status and the one primary.</p>
     </section>
   </div>
 </main>

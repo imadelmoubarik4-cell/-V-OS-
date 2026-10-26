@@ -357,7 +357,7 @@
    may only be declared in this file. The mascot is unaffected — it reads none
    of these tokens and keeps its own reduced-motion handling. */
 @media (prefers-reduced-motion: reduce) {
-  :root { --move-sm: 0px; --move-md: 0px; }
+  :root { --move-sm: 0px; --move-md: 0px; --press-scale: 1; }
 }
 }
 

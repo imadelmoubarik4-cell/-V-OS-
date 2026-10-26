@@ -12,7 +12,7 @@
 // render when Alcedo AI is not configured, switched off, unreachable or the
 // device is offline, and are labelled as such. Record search is always on.
 //
-// Public: window.AtlasPalette = { open({ mode, query, trigger }), close(), isOpen(), clearRecent() }.
+// Public: window.AtlasPalette = { open({ mode, query, trigger, instant }), close(), isOpen(), clearRecent() }.
 (function () {
   'use strict';
 
@@ -496,7 +496,10 @@
     tag.title = state.context ? `Suggestions for ${state.context.label}. Backspace removes it.` : '';
   }
 
-  function open({ mode = 'search', query = '', trigger = null } = {}) {
+  // instant: opened from the keyboard (Cmd/Ctrl+K, "/", Enter or Space on the
+  // search). A keyboard action repeated all day never animates, so the layer
+  // carries .is-instant and atlas-shell.css skips the entrance.
+  function open({ mode = 'search', query = '', trigger = null, instant = false } = {}) {
     ensure();
     window.AtlasChrome?.closeMore?.();
     window.AtlasChrome?.closeAccountMenu?.({ restoreFocus: false });
@@ -514,6 +517,7 @@
     input.placeholder = mode === 'actions' ? 'Search actions' : 'Search or ask Alcedo';
     syncContext();
     layer.classList.toggle('is-phone', PHONE.matches);
+    layer.classList.toggle('is-instant', Boolean(instant));
     layer.hidden = false;
     document.body.classList.add('atlas-palette-open');
     render();
@@ -548,12 +552,12 @@
     if (!signedIn()) return;
     if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
       event.preventDefault();
-      if (state.open) close(); else open({ trigger: document.activeElement });
+      if (state.open) close(); else open({ trigger: document.activeElement, instant: true });
       return;
     }
     if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !state.open && !isTyping(event.target)) {
       event.preventDefault();
-      open({ trigger: document.activeElement });
+      open({ trigger: document.activeElement, instant: true });
     }
   });
 
@@ -562,7 +566,8 @@
     const trigger = target?.closest('#atlas-omni, #atlas-phone-search, #atlas-quick-actions');
     if (!trigger) return;
     event.preventDefault();
-    open({ mode: trigger.id === 'atlas-quick-actions' ? 'actions' : 'search', trigger });
+    // A click with detail 0 came from the keyboard (Enter or Space on the button).
+    open({ mode: trigger.id === 'atlas-quick-actions' ? 'actions' : 'search', trigger, instant: event.detail === 0 });
   });
 
   PHONE.addEventListener('change', () => { if (state.open) layer.classList.toggle('is-phone', PHONE.matches); });

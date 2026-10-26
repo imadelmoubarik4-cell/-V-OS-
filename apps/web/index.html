@@ -14,18 +14,19 @@
 <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 <!-- PWA: installable, full-screen, themed status bar on iOS and Android. -->
-<meta name="theme-color" content="#08495C">
+<meta name="theme-color" content="#f3f5f4">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Alcedo">
 <meta property="og:title" content="Alcedo">
 <meta property="og:image" content="assets/brand/Atlas_OpenGraph_1200x630.jpg">
-<!-- ALCEDO type: Instrument Serif (display) / Manrope (body) / JetBrains Mono
-     (labels) are self-hosted OFL woff2 under assets/fonts/ and declared with
-     @font-face in atlas-tokens.css. Preload the two most-used faces. -->
-<link rel="preload" href="assets/fonts/Manrope-Variable.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/fonts/InstrumentSerif-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<!-- ALCEDO type (redesign 2026, docs/design/Alcedo_Redesign_2026.md §3): one
+     grotesk, IBM Plex Sans (variable), for every role; IBM Plex Mono for IDs
+     and codes only. Self-hosted OFL woff2 under assets/fonts/, declared with
+     @font-face in atlas-tokens.css. Preload the Latin text face. The theme
+     colour is the stone frame (--bg-subtle). -->
+<link rel="preload" href="assets/fonts/IBMPlexSans-Latin-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <!-- atlas-tokens.css is linked first because it declares the cascade-layer
        order (atlas.tokens, atlas.base, atlas.components, atlas.modules).
        atlas-base.css, atlas-components.css and atlas-shell.css are the design
@@ -65,13 +66,13 @@
   <!-- ===================== SIGN IN (spec §7.17) ===================== -->
   <div id="login-screen" class="atlas-auth">
     <main class="atlas-auth__column" aria-labelledby="login-title">
-      <!-- ALCEDO sign-in: the static stacked lockup only. The stale Atlas motion
-           <video> was removed (its clip still rendered the old Atlas logo
-           rotation); the wrapper keeps data-atlas-signin-intro so
+      <!-- ALCEDO sign-in: the static stacked lockup in monochrome (the kit's
+           logo-black.svg; single-colour use on light). The stale Atlas motion
+           <video> was removed; the wrapper keeps data-atlas-signin-intro so
            assets/js/atlas-signin-intro.js still runs and safely no-ops when no
            <video> is present, settling straight to the static lockup. -->
       <div class="atlas-auth__brand atlas-auth__brand--intro" data-atlas-signin-intro data-intro-state="static">
-        <img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Alcedo" width="128" height="104">
+        <img class="atlas-auth__lockup" src="assets/brand/alcedo/logo-black.svg" alt="Alcedo" width="160" height="130">
       </div>
       <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
       <p class="atlas-auth__sub" id="login-sub">Sign in to continue.</p>
@@ -111,13 +112,18 @@
     <p class="atlas-auth__foot" data-atlas-venue-line hidden></p>
   </div>
 
-  <!-- ===================== APP · SHELL (spec §4; assets/js/atlas-chrome.js) ===================== -->
+  <!-- ===================== APP · SHELL (spec §4; assets/js/atlas-chrome.js) =====================
+       The framed sheet: the stone frame holds the sidebar and the top bar;
+       .atlas-content is the white work sheet (atlas-shell.css). -->
   <div id="app-screen">
     <a class="atlas-skip-link" href="#atlas-main" data-atlas-skip>Skip to content</a>
     <div class="atlas-shell">
       <aside class="atlas-sidebar" id="atlas-sidebar" aria-label="Sidebar">
         <div class="atlas-brand">
-          <a class="atlas-brand__link nav-home" href="#home" aria-label="Alcedo — Home"><img class="atlas-brand__lockup" src="assets/brand/Atlas_Primary_Horizontal_Midnight.svg" alt="Alcedo" width="100" height="32"><img class="atlas-brand__mark" src="assets/brand/Atlas_Mark_Midnight.svg" alt="Alcedo" width="24" height="24"><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
+          <!-- The product's mark and name: the monochrome kit symbol beside the
+             wordmark, shown from the stacked logo-black.svg through a crop
+             window (atlas-shell.css). Never typed. -->
+          <a class="atlas-brand__link nav-home" href="#home" aria-label="Alcedo — Home"><img class="atlas-brand__mark" src="assets/brand/alcedo/symbol-black.svg" alt="Alcedo" width="34" height="34"><span class="atlas-brand__word"><img class="atlas-brand__lockup" src="assets/brand/alcedo/logo-black.svg" alt="Alcedo" width="186" height="151"></span><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
         </div>
         <nav class="atlas-nav" aria-label="Main">
           <div class="atlas-nav__scroll">
@@ -162,7 +168,7 @@
           <button type="button" class="atlas-account" id="atlas-account-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="atlas-account-menu">
             <span class="atlas-avatar" id="user-avatar" aria-hidden="true">V</span>
             <span class="atlas-account__text"><span class="atlas-account__name" id="profile-name"></span><span class="atlas-account__role" id="profile-role"></span></span>
-            <i data-lucide="chevron-down" aria-hidden="true"></i>
+            <i data-lucide="chevrons-up-down" aria-hidden="true"></i>
           </button>
           <span class="atlas-account__email" id="user-email" hidden></span>
         </div>
@@ -172,7 +178,7 @@
         <header class="atlas-topbar" id="atlas-topbar">
           <button type="button" class="atlas-icon-btn atlas-topbar__toggle" id="atlas-sidebar-toggle" aria-controls="atlas-sidebar" aria-expanded="true" aria-label="Collapse sidebar"><i data-lucide="panel-left" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__back" id="atlas-topbar-back" aria-label="Back" hidden><i data-lucide="chevron-left" aria-hidden="true"></i></button>
-          <a class="atlas-topbar__mark" href="#home" aria-label="Alcedo — Home"><img src="assets/brand/Atlas_Mark_Midnight.svg" alt="" width="24" height="24"></a>
+          <a class="atlas-topbar__mark" href="#home" aria-label="Alcedo — Home"><img src="assets/brand/alcedo/symbol-black.svg" alt="" width="34" height="34"></a>
           <div class="atlas-topbar__title" id="atlas-page-title">Home</div>
           <button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K /"><i data-lucide="search" aria-hidden="true"></i><span class="atlas-omni__label">Search or ask Alcedo</span><kbd class="kbd atlas-omni__kbd" data-shortcut-hint>⌘K</kbd></button>
           <span class="atlas-topbar__spacer"></span>
