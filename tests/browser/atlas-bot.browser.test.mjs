@@ -6,7 +6,7 @@
 // SwiftShader) against the mocked atlas-ai.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, settle, until, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, settle, until as untilWithin, USERS } from './harness.mjs';
 import { aiFixtures, AI_FIXTURE_NOW } from './atlas-ai-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -41,6 +41,9 @@ async function openAi({ viewport, contextOptions, initScript, hash = '#ai/new', 
 // Render/animation-driven waits below use this generous budget — every check
 // must still become true; we only wait longer for the slow renderer.
 const RENDER_MS = 45000;
+// Every page here draws the robot in software, so conditions get the same
+// budget unless a test sets its own (they must still become true).
+const until = (check, options = {}) => untilWithin(check, { timeout: RENDER_MS, ...options });
 const info = (page, key = 'ai-empty') => page.evaluate((name) => window.AtlasBot?.info(name), key);
 // Share of drawn (non-transparent) pixels in the robot canvas.
 const drawn = (page) => page.evaluate(() => {
@@ -740,7 +743,9 @@ test('wake triggers: tap, hovering a robot badge, composer focus, typing, a new 
     await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
     await mountFollower(page);
-    const asleep = async () => { await page.evaluate(() => document.activeElement?.blur?.()); await page.mouse.move(1430, 890); await setRobot(page, 'sleeping'); assert.equal((await robotInfo(page)).state, 'sleeping'); };
+    // Let the previous step finish (a focus on the next frame, an input event)
+    // before putting the robot to sleep, so only the next trigger can wake it.
+    const asleep = async () => { await page.evaluate(() => document.activeElement?.blur?.()); await page.mouse.move(1430, 890); await settle(page); await setRobot(page, 'sleeping'); assert.equal((await robotInfo(page)).state, 'sleeping'); };
     const awake = async (label) => { const now = await robotInfo(page); assert.notEqual(now.state, 'sleeping', `${label} wakes the robot`); return now; };
     await asleep();
     await page.locator('#ai-view .ai-empty .atlas-bot-live__canvas').click();
