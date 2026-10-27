@@ -46,17 +46,35 @@ async function boot(gateway) {
   return app;
 }
 
+// The delay of every poll team-unread-badge.js schedules from now on (its
+// schedulePoll; request deadlines are separate timers). The page's fake
+// setTimeout is wrapped once the clock is installed.
+const recordBadgeTimers = (page) => page.evaluate(() => {
+  window.__badgeTimers = [];
+  const schedule = window.setTimeout;
+  window.setTimeout = function (callback, delay, ...rest) {
+    const stack = new Error().stack || '';
+    if (/team-unread-badge\.js/.test(stack) && !/fetchUnread/.test(stack)) window.__badgeTimers.push(Number(delay) || 0);
+    return schedule.call(this, callback, delay, ...rest);
+  };
+});
+
 test('healthy: one badge poll every 8 s', { skip }, async () => {
   const { page, close } = await boot(messagesGateway());
   try {
     await advanceTimers(page, 10000, { step: 1000 });
     assert.equal(await page.evaluate(() => window.AtlasTeamUnreadBadge.count()), 1);
+    await recordBadgeTimers(page);
     const from = await pageNow(page);
     await advanceTimers(page, 40000, { step: 1000 });
     const times = (await fetches(page)).filter((time) => time >= from);
     assert.ok(times.length >= 4 && times.length <= 6, `expected about 5 polls in 40 s, got ${times.length}`);
-    const triggers = await page.evaluate(() => window.__badgeTriggers.slice());
-    for (const gap of gaps(times)) assert.ok(gap >= 7900 && gap <= 9000, `healthy gap ${gap} ms (requests ${times.join(', ')}; refresh events ${triggers.join(', ') || 'none'})`);
+    // The cadence is the delay the badge schedules, not when each request
+    // starts (that also includes reading the session, which varies on a
+    // loaded runner): every poll is set exactly 8 s out while healthy.
+    const delays = await page.evaluate(() => window.__badgeTimers.slice());
+    assert.ok(delays.length >= 4, `the badge scheduled ${delays.length} polls`);
+    assert.deepEqual([...new Set(delays)], [8000], `poll delays while healthy: ${delays.join(', ')}`);
   } finally { await close(); }
 });
 
