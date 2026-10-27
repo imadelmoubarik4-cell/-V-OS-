@@ -1,87 +1,152 @@
 /* KANEL Pricing & Profitability (Finance › Menu Pricing) — layout only. Page
- * header, buttons, fields, segmented control, checks and empty states are the
- * shared atlas-* components. No tokens defined here (only used), no hex, no
- * !important. Tints derive from the Alcedo palette tokens via color-mix. */
+ * header, tabs, buttons, fields, tables, pills, alerts, skeletons and empty
+ * states are the shared atlas-* components. No tokens defined here (only
+ * used), no hex, no !important.
+ *
+ * Basalt & Kingfisher: flat white panels on 1px edges, money as ladders and
+ * tables (right-aligned tabular krónur, the sign in the text), colour only on
+ * status (the floor strip, one pill per row) and on a negative bottom line. */
 @layer atlas.modules {
 .fp-host { display: block; }
 .fp-page { display: block; }
-.fp-tabs { margin-top: var(--s-4); flex-wrap: wrap; }
-.fp-tab { display: inline-flex; align-items: center; gap: var(--s-2); }
-.fp-tab svg { width: 16px; height: 16px; }
-.fp-body { margin-top: var(--s-5); }
+.fp-body { margin-top: var(--s-6); }
+.fp-tab { gap: 6px; }
 
-/* ---------- cards + grid ---------- */
-.fp-grid { display: grid; gap: var(--s-5); }
-.fp-grid--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: start; }
-.fp-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-5); box-shadow: var(--shadow-1); }
-.fp-card__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
-.fp-card__sub { margin: var(--s-2) 0 0; font: var(--type-meta); color: var(--text-2); }
-.fp-card__headrow { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
-.fp-subhead { margin: var(--s-5) 0 var(--s-2); font: var(--type-label); color: var(--text-2); }
+/* ---------- sections and panels ---------- */
+.fp-section__head { align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-4); }
+.fp-section__meta { display: flex; align-items: center; gap: var(--s-3); margin-left: auto; font: var(--type-meta); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.fp-panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.fp-panel__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
+.fp-panel__sub { margin: var(--s-1) 0 0; font: var(--type-meta); color: var(--text-2); max-width: 60ch; }
+.fp-intro { margin: 0 0 var(--s-5); max-width: 76ch; font: var(--type-body); color: var(--text-2); }
+.fp-intro strong { font-weight: 600; color: var(--text); }
+.fp-subhead { margin: var(--s-6) 0 var(--s-3); font: var(--type-heading); color: var(--text); }
+.fp-note { display: flex; align-items: flex-start; gap: var(--s-2); margin: var(--s-3) 0 0; font: var(--type-meta); color: var(--text-2); max-width: 76ch; }
+.fp-note > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-top: 1px; color: var(--text-3); }
+.fp-lock { display: inline-flex; align-items: center; gap: 6px; }
+.fp-lock > svg { width: 14px; height: 14px; color: var(--text-3); }
+.fp-muted { color: var(--text-3); }
 
-/* ---------- quick form ---------- */
-.fp-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
-.fp-form .atlas-field { margin-top: var(--s-3); }
-.fp-check { margin-top: var(--s-4); }
-.fp-note { display: flex; align-items: flex-start; gap: var(--s-2); margin: var(--s-4) 0 0; font: var(--type-meta); color: var(--text-2); }
-.fp-note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--accent); }
-.fp-note--ok svg { color: var(--positive); }
+/* ---------- the answer figure ----------
+   The one figure a panel leads with: the shared KPI tier (28/400, 24 on a
+   phone) in ink; the semibold goes on nothing but the ladder's subtotals. A
+   negative bottom line is the one place the danger colour reaches a number. */
+.fp-figure__label { margin: 0; font: var(--type-label); color: var(--text-2); }
+.fp-figure { margin: var(--s-1) 0 0; font: var(--type-kpi); letter-spacing: var(--track-kpi); font-variant-numeric: tabular-nums; color: var(--text); }
+.fp-figure.is-negative { color: var(--danger); }
 
-/* ---------- result ladder ---------- */
-.fp-result__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; }
-.fp-reco { text-align: right; padding: var(--s-2) var(--s-3); border-radius: var(--r-xs); background: var(--accent-soft); min-width: 160px; }
-.fp-reco__label { display: block; font: var(--type-caption); color: var(--text-2); }
-.fp-reco__value { display: block; font: var(--type-num); font-weight: 600; color: var(--text); }
-.fp-reco__floor { display: block; font: var(--type-caption); color: var(--text-2); }
+/* ---------- monthly model: the lead figure beside its ladder ----------
+   The figure heads the left column and the facts sit on its floor, so both
+   columns end on the same line as the ladder's "Cash left". */
+.fp-model { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.fp-model__lead { display: flex; flex-direction: column; padding: var(--s-6) var(--s-6) var(--s-4); }
+.fp-model__note { margin: var(--s-2) 0 0; max-width: 40ch; font: var(--type-meta); color: var(--text-2); }
+.fp-model__ladder { padding: var(--s-3) var(--s-6) var(--s-4); border-left: 1px solid var(--line); }
+.fp-facts { display: grid; gap: 0; margin: auto 0 0; padding-top: var(--s-6); }
+.fp-facts > div { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); min-height: 34px; padding: 0; border-top: 1px solid var(--line-subtle); }
+/* The facts keep the ladder's row pitch (34, the last 40), so on a wide
+   screen their rules run level with the ladder's last four lines. */
+.fp-facts > div:last-child { min-height: 40px; }
+.fp-facts dt { font: var(--type-meta); color: var(--text-2); }
+.fp-facts dd { margin: 0; font: var(--type-body); color: var(--text); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.fp-facts__sub { margin-left: var(--s-2); font: var(--type-meta); color: var(--text-3); }
 
-.fp-stats { display: grid; gap: 0; margin: var(--s-4) 0 0; }
-.fp-stats--kpi { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-3); }
-.fp-stat { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) 0; border-bottom: 1px solid var(--line); }
-.fp-stats--kpi .fp-stat { flex-direction: column; align-items: flex-start; gap: 2px; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-xs); background: var(--bg-muted); }
-.fp-stat__label { font: var(--type-meta); color: var(--text-2); }
-.fp-stat__hint { display: block; font: var(--type-caption); color: var(--text-2); opacity: 0.8; }
-.fp-stat__value { font: var(--type-num); color: var(--text); white-space: nowrap; }
-.fp-stat--good .fp-stat__value { color: var(--positive); }
-.fp-stat--warn .fp-stat__value { color: var(--warning); }
-.fp-stat--bad .fp-stat__value { color: var(--danger); }
+/* ---------- ladder: a money waterfall that adds up ----------
+   Steps in grey with their minus sign; subtotals in ink on a rule; the share
+   of net sales only on subtotals, in a narrow right column. */
+.fp-ladder { width: 100%; border-collapse: collapse; font: var(--type-body); font-variant-numeric: tabular-nums; }
+.fp-ladder thead th { height: 32px; padding: 0; color: var(--text-3); font: var(--type-caption); text-align: left; vertical-align: bottom; white-space: nowrap; }
+.fp-ladder tbody th { padding: 0; font-weight: 400; text-align: left; }
+.fp-ladder td { padding: 0; white-space: nowrap; }
+.fp-ladder tr > :is(th, td) { height: 34px; }
+.fp-ladder .fp-ladder__value { text-align: right; }
+.fp-ladder .fp-ladder__share { width: 72px; padding-left: var(--s-2); text-align: right; color: var(--text-3); }
+.fp-ladder__step > :is(th, td) { color: var(--text-2); }
+.fp-ladder__sub { margin-left: var(--s-2); font: var(--type-caption); color: var(--text-3); }
+.fp-ladder__total > :is(th, td) { border-top: 1px solid var(--line); color: var(--text); font-weight: 500; }
+.fp-ladder__total > .fp-ladder__share { font-weight: 400; color: var(--text-2); }
+.fp-ladder tbody tr:first-child > :is(th, td) { border-top: 0; }
+.fp-ladder tbody tr:last-child > :is(th, td) { height: 40px; font-weight: 600; }
+.fp-ladder .is-negative { color: var(--danger); }
 
-/* ---------- warnings ---------- */
-.fp-warnings { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: var(--s-2); }
-.fp-warn { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-radius: var(--r-xs); font: var(--type-meta); }
-.fp-warn svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
-.fp-warn--warn { background: var(--warning-soft); color: var(--text); }
-.fp-warn--error { background: var(--danger-soft); color: var(--text); }
+/* ---------- the locked menu against the floor ----------
+   One mark per locked price, best cash margin first: grey clears the floor,
+   amber sits under the 5% target, red loses cash. */
+.fp-health { margin-bottom: var(--s-5); }
+.fp-strip { display: flex; gap: 2px; height: 16px; }
+.fp-strip__cell { flex: 1 1 0; min-width: 2px; border-radius: 2px; background: var(--line-strong); }
+.fp-strip__cell--under { background: var(--warning-icon); }
+.fp-strip__cell--negative { background: var(--danger); }
+.fp-legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-6); margin: var(--s-3) 0 0; padding: 0; list-style: none; font: var(--type-meta); color: var(--text-2); }
+.fp-legend__item { display: inline-flex; align-items: center; gap: 6px; }
+.fp-legend__swatch { width: 8px; height: 8px; border-radius: 2px; }
+.fp-legend__count { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
 
-/* ---------- tables ---------- */
-.fp-tablewrap { margin-top: var(--s-4); overflow-x: auto; }
-.fp-table { width: 100%; border-collapse: collapse; font: var(--type-meta); }
-.fp-table th, .fp-table td { text-align: left; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--line); vertical-align: top; }
-.fp-table thead th { font: var(--type-caption); color: var(--text-2); text-transform: uppercase; letter-spacing: var(--track-section); white-space: nowrap; }
-.fp-table td.fp-num, .fp-table th.fp-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fp-table--dense th, .fp-table--dense td { padding: 6px var(--s-3); }
-.fp-row--flag { background: color-mix(in srgb, var(--warning) 10%, transparent); }
-.fp-item { display: block; font: var(--type-label); color: var(--text); }
-.fp-item__note { display: block; font: var(--type-caption); color: var(--text-2); }
-.fp-num--good { color: var(--positive); }
-.fp-num--warn { color: var(--warning); }
-.fp-num--bad { color: var(--danger); }
+/* ---------- tables ----------
+   The shared .atlas-table: grey 12px headers, --line-subtle rules, figures
+   right-aligned. The identity column takes the room; category groups are
+   labelled rows, not bands. */
+.fp-table th.fp-item { width: 40%; min-width: 240px; font-weight: 400; white-space: normal; }
+.fp-table td { height: 52px; }
+/* Row headers are data cells that name the row: no header rule, no sticky. */
+.fp-table tbody th.fp-item { position: static; height: 52px; padding: 6px 12px; border-bottom-color: var(--line-subtle); vertical-align: middle; }
+.fp-table tbody tr:last-child > th.fp-item { border-bottom: 0; }
+.fp-item__name { display: block; font: 500 14px/20px var(--font-sans); color: var(--text); }
+.fp-item__sub { display: block; margin-top: 1px; font: var(--type-caption); color: var(--text-2); }
+.fp-code { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-3); }
+.fp-table .fp-strong { font-weight: 500; color: var(--text); }
+.fp-table td:not(.fp-strong).is-num { color: var(--text-2); }
+.fp-table .fp-group th { height: 40px; padding: var(--s-4) 12px var(--s-1); border-bottom: 1px solid var(--line); background: var(--surface); color: var(--text); font: var(--type-label); text-align: left; vertical-align: bottom; position: static; }
+.fp-table tbody:first-of-type .fp-group th { padding-top: var(--s-2); }
+.fp-group__count { margin-left: var(--s-1); color: var(--text-3); font-weight: 400; font-variant-numeric: tabular-nums; }
+@media (hover: hover) and (pointer: fine) {
+  .fp-table tbody tr.fp-group:hover > th { background: var(--surface); }
+}
+.fp-list__row p { margin: 0; }
+.fp-list__group { padding: var(--s-5) var(--page-gutter) var(--s-2); border-bottom: 1px solid var(--line); font: var(--type-label); color: var(--text); }
 
-/* ---------- pills / dots ---------- */
-.fp-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px var(--s-2); border-radius: var(--r-pill); font: var(--type-caption); white-space: nowrap; }
-.fp-tag svg { width: 13px; height: 13px; }
-.fp-tag--ok { background: var(--positive-soft); color: var(--text); }
-.fp-tag--warn { background: var(--warning-soft); color: var(--text); }
-.fp-tag--error { background: var(--danger-soft); color: var(--text); }
-.fp-tag--muted { background: var(--bg-muted); color: var(--text-2); }
-.fp-tag--lock { background: var(--accent-soft); color: var(--text); }
-.fp-tag--draft { background: color-mix(in srgb, var(--highlight) 22%, var(--surface)); color: var(--text); }
-.fp-dot { display: inline-block; width: 10px; height: 10px; border-radius: var(--r-pill); background: var(--text-2); }
-.fp-dot--ok { background: var(--positive); }
-.fp-dot--warn { background: var(--warning); }
-.fp-dot--error { background: var(--danger); }
+/* ---------- quick calculator: the form beside its answer ---------- */
+.fp-quick { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-6); align-items: start; }
+.fp-form { display: grid; gap: var(--s-4); padding: var(--s-6); }
+.fp-form .fp-panel__sub { margin-top: calc(-1 * var(--s-3)); }
+.fp-form__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-4); }
+.fp-input--num { font-variant-numeric: tabular-nums; }
+.fp-check { margin: 0; }
+.fp-form .fp-note { margin: 0; padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
+.fp-result { padding: var(--s-6); }
+.fp-result__head { padding-bottom: var(--s-5); border-bottom: 1px solid var(--line); }
+.fp-result__sub { margin: var(--s-2) 0 0; font: var(--type-meta); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.fp-result__name { color: var(--text); font-weight: 500; }
+.fp-result .fp-ladder { margin-top: var(--s-2); }
+.fp-verdict { display: flex; align-items: center; gap: var(--s-2); margin: var(--s-4) 0 0; font: var(--type-meta); color: var(--text-2); }
+.fp-verdict > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--positive); }
+.fp-warnings { display: grid; gap: var(--s-2); margin: var(--s-4) 0 0; padding: 0; list-style: none; }
 
-@media (max-width: 720px) {
-  .fp-grid--split { grid-template-columns: minmax(0, 1fr); }
-  .fp-form__row { grid-template-columns: 1fr; }
+/* ---------- loading and error inside the block ---------- */
+.fp-skeleton { display: grid; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.fp-skeleton > .atlas-skel + .atlas-skel { border-top: 1px solid var(--line); }
+
+/* ---------- tablet and phone ---------- */
+@media (max-width: 1023px) {
+  .fp-quick, .fp-model { grid-template-columns: minmax(0, 1fr); }
+  .fp-model__ladder { border-left: 0; border-top: 1px solid var(--line); }
+  .fp-model__lead { padding-bottom: var(--s-4); }
+  .fp-facts { padding-top: var(--s-5); }
+  /* Tablet: the item column gives way so the status column stays in view. */
+  .fp-table th.fp-item { width: auto; min-width: 160px; }
+}
+@media (max-width: 767px) {
+  .fp-body { margin-top: var(--s-5); }
+  .fp-model__lead, .fp-form, .fp-result { padding: var(--s-4); }
+  .fp-model__ladder { padding: var(--s-2) var(--s-4) var(--s-3); }
+  .fp-form__row { grid-template-columns: minmax(0, 1fr); }
+  .fp-ladder .fp-ladder__share { width: 68px; }
+  .fp-ladder__sub { display: block; margin: 0; }
+  .fp-strip { height: 14px; gap: 1px; }
+  .fp-facts > div { align-items: flex-start; padding: var(--s-2) 0; }
+  .fp-facts__sub { display: block; margin: 0; }
+  .fp-section__meta { margin-left: 0; flex-basis: 100%; }
+  .fp-list .atlas-table-list__meta { font-variant-numeric: tabular-nums; }
+  .fp-list .atlas-table-list__value { align-self: flex-start; }
 }
 }

@@ -48,9 +48,8 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  // 'atlas-bot' is the kingfisher glyph in the ALCEDO icon set (alcedo-icons.js).
   function icon(name) {
-    // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), the assistant's face.
-    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;
   }
 
@@ -255,19 +254,30 @@
     try { return (await client.auth.getSession())?.data?.session?.access_token || null; } catch { return null; }
   }
 
+  // A read with a deadline covering the request and its body (audit L12): a
+  // stalled socket fails the Home card, so its in-flight guard clears and the
+  // next refresh asks again instead of spinning for minutes.
+  const READ_TIMEOUT_MS = 20000;
   async function getJson(base, params) {
     const token = await accessToken();
     if (!base || !token) return null;
     const url = new URL(base);
     Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
-    const response = await fetch(url, { cache: 'no-store', headers: { authorization: `Bearer ${token}`, accept: 'application/json' } });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error('request failed');
-      error.status = response.status;
-      throw error;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), READ_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, { cache: 'no-store', signal: controller.signal, headers: { authorization: `Bearer ${token}`, accept: 'application/json' } });
+      const payload = await response.json().catch(() => ({}));
+      if (controller.signal.aborted) throw Object.assign(new Error('request timed out'), { status: 0, timeout: true });
+      if (!response.ok) {
+        const error = new Error('request failed');
+        error.status = response.status;
+        throw error;
+      }
+      return payload;
+    } finally {
+      window.clearTimeout(timer);
     }
-    return payload;
   }
 
   async function loadShifts(force = false) {
@@ -476,7 +486,8 @@
     const afterLastOrders = Boolean(next && next.type === 'closes' && next.businessDate === venue.today());
     const target = afterLastOrders ? ops.closing : ops.opening;
     if (!target || ['completed', 'skipped'].includes(target.status)) return '';
-    return `<a class="atlas-btn atlas-btn--secondary" href="#operations/${encodeURIComponent(target.id)}">${icon('list-checks')}${afterLastOrders ? 'Closing checklist' : 'Opening checklist'}</a>`;
+    // The screen's most frequent job, so its one filled primary.
+    return `<a class="atlas-btn atlas-btn--primary" href="#operations/${encodeURIComponent(target.id)}">${icon('list-checks')}${afterLastOrders ? 'Closing checklist' : 'Opening checklist'}</a>`;
   }
 
   function headMarkup() {
@@ -519,7 +530,7 @@
     return `<section class="atlas-section home-attention" aria-labelledby="home-attention-title">
       <div class="atlas-section__head">
         <h2 class="atlas-section__title" id="home-attention-title">Needs attention${count ? ` <span class="atlas-badge atlas-badge--muted">${count}</span>` : ''}</h2>
-        ${count ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm home-attention__all" data-home-view-all>View all</button>' : ''}
+        ${count ? '<button type="button" class="home-section-link home-attention__all" data-home-view-all>View all</button>' : ''}
       </div>
       <ul class="atlas-list atlas-card" data-home-rows>${body}</ul>
     </section>`;
@@ -623,9 +634,9 @@
     const text = facts.lines.length
       ? facts.lines.slice(0, 2).map((line) => `<p>${escape(line)}</p>`).join('')
       : `<p class="home-briefing__muted">${preparing ? 'Preparing today’s briefing…' : 'Today’s briefing isn’t available yet.'}</p>`;
-    // The robot thinks while the briefing is prepared, then rests (the text
-    // says the same, so the state never rests on the animation alone).
-    const bot = window.AtlasBot ? window.AtlasBot.html({ size: 18, state: preparing ? 'thinking' : 'idle' }) : icon('atlas-bot');
+    // The briefing carries Alcedo's mark, the kingfisher glyph; the text says
+    // when it is still being prepared.
+    const bot = icon('atlas-bot');
     return `<section class="atlas-card home-briefing" aria-labelledby="home-briefing-title">
       <div class="home-briefing__head">${bot}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
       <div class="home-briefing__text">${text}</div>
@@ -643,7 +654,8 @@
     let value; let unit = ''; let detail; let failed = false;
     if (health('inventory') === 'failed' && !stock.active) { value = '—'; detail = 'Stock couldn’t be loaded. Nothing was changed.'; failed = true; }
     else if (!loaded) { value = '—'; detail = 'Loading stock'; }
-    else if (!stock.active) { value = '—'; detail = 'No items yet'; }
+    // No items is a real zero (printed); the dash is only for what didn't load.
+    else if (!stock.active) { value = '0'; unit = 'items'; detail = 'No items yet'; }
     else if (stockIncomplete()) { value = 'Incomplete'; detail = `Stock figures are incomplete — ${missingStockInputs()} couldn’t load`; }
     else if (!stock.known) { value = 'Not counted'; detail = 'No verified count yet'; }
     else {
@@ -673,7 +685,7 @@
       blocks.push({ icon: 'martini', label: 'Recipes', value: '—', unit: '', detail: 'Recipes couldn’t be loaded. Nothing was changed.', failed: true });
     } else {
       if (!loaded || !recipeInfo.known) { recipeValue = '—'; recipeDetail = 'Loading recipes'; }
-      else if (!recipeInfo.active) { recipeValue = '—'; recipeDetail = 'No recipes yet'; }
+      else if (!recipeInfo.active) { recipeValue = '0'; recipeUnit = 'recipes'; recipeDetail = 'No recipes yet'; }
       else if (recipeInfo.unavailable.length) {
         // A known count; recipes that can't be checked are named as a fact.
         recipeValue = String(recipeInfo.unavailable.length);
@@ -704,20 +716,24 @@
       const shift = state.shifts.status === 'ready' && venue ? (nextShift(state.shifts.week, venue.today()) || nextShift(state.shifts.next, venue.today())) : null;
       blocks.push(shift
         ? { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: shiftDate(shift) === venue.today() ? 'Today' : venue.formatDate(shiftDate(shift)), unit: '', detail: `${shiftTime(shift.starts_local)}–${shiftTime(shift.ends_local)}${shift.role_name ? ` · ${shift.role_name}` : ''}`, link: 'View shifts', text: true }
-        : { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: '—', unit: '', detail: state.shifts.status === 'ready' ? 'No shifts published for you' : state.shifts.status === 'error' ? 'Shifts couldn’t be loaded' : 'Loading shifts', link: 'View shifts' });
+        : state.shifts.status === 'ready'
+          ? { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: 'None', unit: '', detail: 'No shifts published for you', link: 'View shifts', text: true }
+          : { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: '—', unit: '', detail: state.shifts.status === 'error' ? 'Shifts couldn’t be loaded' : 'Loading shifts', link: 'View shifts' });
     }
     // A tile whose source failed says so and offers Try again: never an
-    // empty-state claim ("No items yet") for data that didn't load.
+    // empty-state claim ("No items yet") for data that didn't load. Figures
+    // are type, not tiles: label over value, no icon; a missing value is a
+    // grey dash (never ink at full value size).
+    const valueClass = (block) => `home-glance__value${block.text ? ' home-glance__value--text' : ''}${block.value === '—' ? ' is-empty' : ''}`;
     return `<section class="home-glance" aria-label="At a glance">${blocks.map((block) => block.failed ? `<div class="home-glance__item home-glance__item--failed" data-home-glance-failed>
-      <span class="home-glance__label">${icon(block.icon)}${escape(block.label)}</span>
-      <span class="home-glance__value">${escape(block.value)}</span>
+      <span class="home-glance__top"><span class="home-glance__label">${escape(block.label)}</span></span>
+      <span class="${valueClass(block)}">${escape(block.value)}</span>
       <span class="home-glance__detail">${escape(block.detail)}</span>
       <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm home-glance__retry" data-home-reload>${icon('refresh-cw')}Try again</button>
     </div>` : `<a class="home-glance__item" href="${escape(block.href)}">
-      <span class="home-glance__label">${icon(block.icon)}${escape(block.label)}</span>
-      <span class="home-glance__value${block.text ? ' home-glance__value--text' : ''}">${escape(block.value)}${block.unit ? `<small>${escape(block.unit)}</small>` : ''}</span>
+      <span class="home-glance__top"><span class="home-glance__label">${escape(block.label)}</span><span class="home-glance__link">${escape(block.link)}${icon('arrow-right')}</span></span>
+      <span class="${valueClass(block)}">${escape(block.value)}${block.unit ? `<small>${escape(block.unit)}</small>` : ''}</span>
       <span class="home-glance__detail">${escape(block.detail)}</span>
-      <span class="home-glance__link">${escape(block.link)}${icon('arrow-right')}</span>
     </a>`).join('')}</section>`;
   }
 
@@ -734,10 +750,33 @@
         return `<li class="home-staff__row${row.mine ? ' is-mine' : ''}"><span class="atlas-avatar atlas-avatar--sm" aria-hidden="true">${escape(initials)}</span><span class="home-staff__who"><span class="home-staff__name">${escape(row.name)}${row.mine ? ' <span class="atlas-pill atlas-pill--info atlas-pill--plain">You</span>' : ''}</span>${row.role || row.note ? `<span class="home-staff__role">${escape([row.role, row.note].filter(Boolean).join(' · '))}</span>` : ''}</span><span class="home-staff__time">${escape(row.time)}</span></li>`;
       }).join('')}</ul>${!tonight.published && isManager() ? '<p class="home-muted">This week isn’t published yet.</p>' : ''}`;
     }
-    return `<section class="home-col" aria-labelledby="home-tonight-title">
-      <div class="home-col__head"><h2 id="home-tonight-title">Tonight</h2><a class="atlas-section__link" href="#shifts">Shifts</a></div>
+    const count = tonight && !tonight.error && tonight.rows.length ? `<span class="home-tonight__count">${tonight.rows.length}</span>` : '';
+    return `<section class="home-tonight__part" aria-labelledby="home-crew-title">
+      <h3 class="home-tonight__label" id="home-crew-title">On shift${count}</h3>
       ${body}
     </section>`;
+  }
+
+  // One step per required item (capped), filled for the ones done: the
+  // checklist as ticks, the same mark Operations draws.
+  function ticksMarkup(done, total) {
+    const all = Math.max(0, Math.min(24, number(total)));
+    if (!all) return '';
+    const filled = Math.max(0, Math.min(all, number(done)));
+    return `<span class="home-ticks${filled === all ? ' is-complete' : ''}" aria-hidden="true">${'<i class="is-done"></i>'.repeat(filled)}${'<i></i>'.repeat(all - filled)}</span>`;
+  }
+
+  // Tonight: the night's arc (opening hours, with the checklists hanging off
+  // opening and closing) over the crew on shift. One panel, the right column.
+  function tonightPanelMarkup() {
+    if (isViewer()) return '';
+    return `<aside class="home-tonight" aria-labelledby="home-tonight-title">
+      <div class="atlas-section__head"><h2 class="atlas-section__title" id="home-tonight-title">Tonight</h2><a class="home-section-link" href="#shifts">View shifts</a></div>
+      <div class="atlas-card home-tonight__card">
+        ${timelineMarkup()}
+        ${tonightMarkup()}
+      </div>
+    </aside>`;
   }
 
   function timelineMarkup() {
@@ -762,7 +801,8 @@
           const done = number(routine.progress?.completed);
           const total = number(routine.progress?.required);
           const text = routine.status === 'completed' ? `${label} done${routine.completed_by_label ? ` · ${routine.completed_by_label}` : ''}` : `${label} ${done} of ${total} done`;
-          return `<a class="atlas-hit home-timeline__check" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}</a>`;
+          const ticks = routine.status === 'completed' ? ticksMarkup(total, total) : ticksMarkup(done, total);
+          return `<a class="atlas-hit home-timeline__check${routine.status === 'completed' ? ' is-complete' : ''}" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}${ticks}</a>`;
         };
         const rowClass = { past: 'is-done', current: 'is-now', future: '' };
         body = `<ol class="home-timeline">${entries.map((entry) => {
@@ -771,8 +811,8 @@
         }).join('')}</ol>`;
       }
     }
-    return `<section class="home-col" aria-labelledby="home-hours-title">
-      <div class="home-col__head"><h2 id="home-hours-title">Opening and closing</h2></div>
+    return `<section class="home-tonight__part" aria-labelledby="home-hours-title">
+      <h3 class="home-tonight__label" id="home-hours-title">Opening and closing</h3>
       <div id="home-timeline">${body}</div>
     </section>`;
   }
@@ -783,12 +823,18 @@
     if (root.style.display === 'none' && shell()?.current?.() !== 'dashboard') return;
     const focused = document.activeElement && root.contains(document.activeElement) ? focusSelector(document.activeElement) : null;
     const viewer = isViewer();
+    // Needs attention is the first and biggest block. Beside it, Tonight shares
+    // its top and bottom edges; the briefing sits under the attention list and
+    // the figures close the page as one divided strip. Viewers get the
+    // attention rows only.
+    const attention = attentionMarkup();
     root.innerHTML = `<div class="home${viewer ? ' home--viewer' : ''}">
       ${headMarkup()}
-      ${attentionMarkup()}
+      ${viewer ? attention : ''}
       ${viewer ? '' : `<div class="home-grid">
-        <div class="home-grid__main">${briefingMarkup()}${glanceMarkup()}</div>
-        <div class="home-grid__side">${tonightMarkup()}${timelineMarkup()}</div>
+        <div class="home-grid__main">${attention}${briefingMarkup()}</div>
+        ${tonightPanelMarkup()}
+        ${glanceMarkup()}
       </div>`}
     </div>`;
     if (focused) root.querySelector(focused)?.focus();

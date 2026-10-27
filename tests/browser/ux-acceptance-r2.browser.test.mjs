@@ -120,9 +120,16 @@ test('N-2: the order sheet stepper never splits a word; where a full row does no
     try {
       for (const order of [INV.po1, INV.po2]) {
         await navigateTo(page, `#purchasing/order/${order}`);
-        await page.waitForSelector('.po-steps-compact');
+        // Both forms are always in the sheet; which one shows depends on the
+        // room the sheet gives the track (a container query).
+        await page.waitForSelector('.po-steps-compact', { state: 'attached' });
         await settle(page);
-        for (const step of await stepLabels(page)) assert.equal(step.lines, 1, `${label} ${order}: "${step.label}" split`);
+        const orderSteps = await page.evaluate(() => [...document.querySelectorAll('.po-steps > li .po-steps__label')].filter((node) => node.getClientRects().length).map((node) => {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return { label: node.textContent.trim(), lines: new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size };
+        }));
+        for (const step of [...orderSteps, ...await stepLabels(page)]) assert.equal(step.lines, 1, `${label} ${order}: "${step.label}" split`);
         const state = await page.evaluate(() => {
           const full = document.querySelector('.po-steps');
           const compact = document.querySelector('.po-steps-compact');

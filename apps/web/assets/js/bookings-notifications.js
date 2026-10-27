@@ -35,6 +35,7 @@
     pollTimer: null,
     pollFailures: 0,
     pollSuspended: false,
+    paused: false,               // page kept in the back-forward cache (pagehide persisted)
     disposed: false,
     cleanups: [],
     readyCleanup: null
@@ -68,7 +69,7 @@
 
   function canPoll() {
     const profile = window.atlasCurrentProfile;
-    return enabled() && refreshMilliseconds() > 0 && !state.disposed && !state.forbidden &&
+    return enabled() && refreshMilliseconds() > 0 && !state.disposed && !state.paused && !state.forbidden &&
       !state.pollSuspended && appIsSignedIn() && document.visibilityState === 'visible' &&
       navigator.onLine !== false && Boolean(state.userId) && profile?.id === state.userId &&
       profile.active !== false && MANAGER_ROLES.has(profile.role);
@@ -139,15 +140,26 @@
     return date ? `#bookings/res/${reservationId}/${date}` : `#bookings/res/${reservationId}`;
   }
 
+  // One plain glyph per inbox kind. Only a request needs a decision, so only a
+  // request carries the warning severity (the bell's one full colour).
+  const KIND_ICON = { request: 'calendar-clock', approved: 'calendar-check', changed: 'calendar-clock', declined: 'x', cancelled: 'x', no_show: 'user-x' };
+
+  // "Web Test Guest · party of 2 · Thu 27 Sep, 16:00": the visit time is what
+  // a manager needs to judge a request, so it rides with the server's text.
+  function detailFor(row) {
+    const when = row?.start_at ? window.AtlasVenueClock?.formatDateTime?.(row.start_at) : '';
+    return [row.body, when].filter(Boolean).join(' · ');
+  }
+
   function toNotifyItem(row) {
     const isRequest = row.kind === 'request';
     return {
       id: `booking:${row.id}`,
       type: 'booking',
       severity: isRequest ? 'warning' : 'info',
-      icon: isRequest ? 'calendar-clock' : 'calendar-check',
+      icon: KIND_ICON[row.kind] || 'calendar-check',
       title: row.title,
-      detail: row.body,
+      detail: detailFor(row),
       time: row.created_at || null,
       needsAction: isRequest,
       // actionId lets activation mark the row read server-side before navigating.
@@ -200,7 +212,7 @@
 
   async function refresh(options = {}) {
     if (!enabled() || state.inFlight || state.forbidden || !appIsSignedIn()) return;
-    if (state.disposed) return;
+    if (state.disposed || state.paused) return;
     if (!options.force && Date.now() - state.lastFetchAt < THROTTLE_MS) return;
     stopPoll();
     const request = { controller: new AbortController() };
@@ -242,13 +254,29 @@
     let session;
     try { session = await activeSession(); } catch { return; }
     if (!session?.access_token) return;
+    let saved = false;
     try {
-      await fetch(`${api}?action=notifications-read`, {
+      const response = await fetch(`${api}?action=notifications-read`, {
         method: 'POST', cache: 'no-store',
         headers: { authorization: `Bearer ${session.access_token}`, 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify(all ? { all: true } : { ids })
       });
-    } catch { /* read-state is best-effort; the bell already reflects it locally */ }
+      saved = Boolean(response?.ok);
+    } catch { /* offline or aborted: not saved */ }
+    // The server still has these unread: keep them unread here too (the next
+    // refresh would bring them back anyway) and say so.
+    if (!saved) {
+      // The bell marked them read locally on open; put back the ones the
+      // server still has unread, so the bell and the count agree.
+      const notify = window.AtlasShell?.notify;
+      if (notify?.markUnread) {
+        state.items.forEach((row) => {
+          if (!row.read && (all || ids.includes(row.id))) try { notify.markUnread(`booking:${row.id}`); } catch { /* shell not ready */ }
+        });
+      }
+      try { window.AtlasShell?.toast?.('Couldn’t mark booking notifications as read. Try again.', { tone: 'warning' }); } catch { /* shell not ready */ }
+      return;
+    }
     // Reflect locally so the count is right without waiting for a refresh.
     if (all) state.items.forEach((row) => { row.read = true; });
     else state.items.forEach((row) => { if (ids.includes(row.id)) row.read = true; });
@@ -347,13 +375,30 @@
     });
     if (typeof removeNotify === 'function') state.cleanups.push(removeNotify);
 
-    listen(window, 'pagehide', () => {
+    // A page kept in the back-forward cache (persisted) may come back: pause
+    // and resume on pageshow. Only a page that is really going away disposes.
+    listen(window, 'pagehide', (event) => {
+      if (event?.persisted) { pause(); return; }
       state.disposed = true;
       state.readyCleanup?.();
       state.authSubscription?.unsubscribe?.();
       state.cleanups.splice(0).forEach((cleanup) => cleanup());
       clear();
     });
+    listen(window, 'pageshow', (event) => {
+      if (!event?.persisted || !state.paused || state.disposed) return;
+      state.paused = false;
+      whenSignedIn(() => { refresh({ force: true, silent: true }); schedulePoll(); });
+    });
+  }
+
+  function pause() {
+    state.paused = true;
+    stopPoll();
+    state.readyCleanup?.();
+    state.request?.controller.abort();
+    state.request = null;
+    state.inFlight = false;
   }
 
   window.AtlasBookingsNotifications = {

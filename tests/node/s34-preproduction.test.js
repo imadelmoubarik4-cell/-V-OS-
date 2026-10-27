@@ -76,11 +76,12 @@ test('Recipes and Reports › Overview delegate to the shared calculation rule (
 });
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
-  // ALCEDO: the action colour resolves to the single, AA-contrast deep teal
-  // (--accent = --atlas-blue #08495C); every legacy name is an alias of it.
+  // 2026 redesign: the action colour is the single near-black primary
+  // (--accent #18191b, white text); kingfisher --atlas-blue is the one hue for
+  // focus and indicators. Every legacy action name is an alias of --accent.
   const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
-  assert.match(tokens, /--accent: var\(--atlas-blue\);/);
-  assert.match(tokens, /--atlas-blue: #08495C;/);
+  assert.match(tokens, /--accent: #18191b;/);
+  assert.match(tokens, /--atlas-blue: #1f6aa5;/);
   assert.match(tokens, /--atlas-accent: var\(--accent\);/);
   assert.match(tokens, /--atlas-action: var\(--accent\);/);
   // S88: the shared focus, search and reduced-motion rules moved into the
@@ -94,8 +95,8 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   assert.match(base, /@media \(prefers-reduced-motion: reduce\)/);
   // S88 Team A: the pulsing Home focus card is retired (home.css has no animation).
   assert.doesNotMatch(read('apps/web/assets/css/home.css'), /@keyframes|animation/);
-  assert.match(app, /assets\/css\/atlas-base\.css\?v=20260930-alcedo2/);
-  assert.match(app, /assets\/css\/atlas-components\.css\?v=20260930-polish1/);
+  assert.match(app, /assets\/css\/atlas-base\.css\?v=20261026-redesign/);
+  assert.match(app, /assets\/css\/atlas-components\.css\?v=20261026-redesign/);
 });
 
 test('conversation stars persist through the private gateway', () => {
@@ -114,13 +115,16 @@ test('push opt-in covers unsupported, denied, pending, and enabled states', () =
   assert.match(worker, /addEventListener\('push'/);
   assert.match(worker, /addEventListener\('notificationclick'/);
   // Routes are allow-listed; an unknown route falls back to Team (S88 route table:
-  // shifts -> #shifts, team -> #messages, bookings -> #bookings[/res/<id>]).
+  // shifts -> #shifts, team -> #messages[/<channel>], bookings -> #bookings[/res/<id>[/<date>]],
+  // marketing -> #marketing). Behaviour: tests/node/service-worker-runtime.test.js (L19).
   assert.match(worker, /routeOf\s*=\s*\(value\)\s*=>\s*\(ROUTES\.has\(value\)\s*\?\s*value\s*:\s*'team'\)/);
-  assert.match(worker, /ROUTES\s*=\s*new Set\(\['shifts', 'bookings', 'team'\]\)/);
+  assert.match(worker, /ROUTES\s*=\s*new Set\(\['shifts', 'bookings', 'team', 'marketing'\]\)/);
   assert.match(worker, /route === 'shifts'\) return '#shifts'/);
-  assert.match(worker, /return '#messages'/);
+  assert.match(worker, /route === 'marketing'\) return '#marketing'/);
+  assert.match(worker, /: '#messages'/);
   // S109: booking notifications deep-link the exact reservation when present.
-  assert.match(worker, /route === 'bookings'\) return objectId \? `#bookings\/res\/\$\{encodeURIComponent\(objectId\)\}` : '#bookings'/);
+  assert.match(worker, /if \(!objectId\) return '#bookings'/);
+  assert.match(worker, /`#bookings\/res\/\$\{encodeURIComponent\(objectId\)\}`/);
   assert.match(notificationApi, /ATLAS_PUSH_DELIVERY_ENABLED/);
   assert.match(notificationApi, /delivery: "disabled"/);
   assert.match(notificationApi, /npm:web-push@3\.6\.7/);

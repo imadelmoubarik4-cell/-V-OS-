@@ -23,18 +23,20 @@
   // Monday first in the editor; weekday numbers stay 0 = Sunday (settings_business_hours).
   const EDITOR_DAYS = [1, 2, 3, 4, 5, 6, 0];
   const ROLE_LABELS = { admin: 'Administrator', manager: 'Manager', bartender: 'Bartender', viewer: 'Viewer' };
+  // Grouped by who the setting is for. A group label is printed where an
+  // entry's group differs from the one before; entries without one continue it.
   const SECTIONS = [
-    { key: 'venue', label: 'Venue', icon: 'building-2', roles: ['admin', 'manager'] },
+    { key: 'venue', label: 'Venue', icon: 'building-2', roles: ['admin', 'manager'], group: 'The venue' },
     { key: 'hours', label: 'Opening hours', icon: 'clock', roles: ['admin', 'manager'] },
-    { key: 'team-access', label: 'Team access', icon: 'users', roles: ['admin'] },
-    { key: 'notifications', label: 'Notifications', icon: 'bell', roles: null },
     { key: 'rules', label: 'Operational rules', icon: 'list-checks', roles: ['admin', 'manager'] },
-    { key: 'ai', label: 'Alcedo AI', icon: 'sparkles', roles: ['admin', 'manager'] },
+    { key: 'ai', label: 'Alcedo AI', icon: 'alcedo', roles: ['admin', 'manager'] },
     { key: 'integrations', label: 'Integrations', icon: 'plug', roles: ['admin', 'manager'] },
+    { key: 'team-access', label: 'Team access', icon: 'users', roles: ['admin'], group: 'Access' },
     { key: 'security', label: 'Security', icon: 'shield', roles: ['admin'] },
     { key: 'system', label: 'System health', icon: 'activity', roles: ['admin'] },
-    { key: 'preferences', label: 'Preferences', icon: 'user-cog', roles: null, group: 'Personal' },
-    { key: 'activity', label: 'Activity', icon: 'history', roles: ['admin', 'manager'], group: 'Personal' }
+    { key: 'activity', label: 'Activity', icon: 'history', roles: ['admin', 'manager'] },
+    { key: 'notifications', label: 'Notifications', icon: 'bell', roles: null, group: 'You' },
+    { key: 'preferences', label: 'Preferences', icon: 'user-cog', roles: null }
   ];
   // Older links and stored tabs.
   const SECTION_ALIASES = { general: 'venue', overview: 'venue', access: 'team-access', operations: 'rules', intelligence: 'ai' };
@@ -366,11 +368,21 @@
   }
 
   function sectionHead(title, text, actions = '') {
-    return `<header class="settings-section__head"><div><h2 class="settings-section__title" id="settings-section-title" tabindex="-1">${escapeHtml(title)}</h2>${text ? `<p class="settings-section__sub">${escapeHtml(text)}</p>` : ''}</div>${actions}</header>`;
+    return `<header class="settings-section__head"><div><h2 class="settings-section__title" id="settings-section-title" tabindex="-1">${escapeHtml(title)}</h2>${text ? `<p class="settings-section__sub">${escapeHtml(text)}</p>` : ''}</div>${actions ? `<div class="settings-section__actions">${actions}</div>` : ''}</header>`;
   }
 
-  function formHead(title, text, extra = '') {
-    return `<div class="settings-form__head"><div><h3 class="settings-form__title">${escapeHtml(title)}</h3>${text ? `<p class="settings-form__sub">${escapeHtml(text)}</p>` : ''}</div>${extra}</div>`;
+  // A settings row (taste §8.2): the label column — the row's title with its
+  // status beside it, a grey description, then its facts or a preview of what
+  // the setting produces — next to the panel that holds the controls.
+  // options: { status, meta, aside, id }
+  function rowLabel(title, text, options = {}) {
+    const meta = (Array.isArray(options.meta) ? options.meta : [options.meta]).filter(Boolean).join('');
+    return `<div class="settings-row__label">
+      <div class="settings-row__heading"><h3 class="settings-form__title"${options.id ? ` id="${escapeHtml(options.id)}"` : ''}>${escapeHtml(title)}</h3>${options.status || ''}</div>
+      ${text ? `<p class="settings-form__sub">${escapeHtml(text)}</p>` : ''}
+      ${meta ? `<div class="settings-row__meta">${meta}</div>` : ''}
+      ${options.aside || ''}
+    </div>`;
   }
 
   function readOnlyNote(editable) {
@@ -383,32 +395,65 @@
 
   // ---------- sections ----------
 
+  // The venue language has no runtime yet (Alcedo is in English), so it is
+  // shown read-only, like Currency, and saved unchanged. A stored Icelandic
+  // choice stays visible rather than being silently dropped.
+  function venueLanguageFact(stored) {
+    const saved = { is: 'Íslenska' }[stored];
+    return saved ? `English, fixed for now (saved: ${saved})` : 'English, fixed for now';
+  }
+
   function venueMarkup() {
     const data = section('venue');
     const value = data?.value || {};
     const disabled = !data?.can_edit;
     return `${sectionHead('Venue', 'The business details Alcedo uses on documents, in Alcedo AI and for your team.')}
-    <form class="settings-form atlas-card" data-settings-section-form="venue" data-version="${Number(data?.version || 1)}">
-      ${formHead('Venue details', '', readOnlyNote(!disabled))}
-      <div class="settings-grid">
-        ${field('Business name', input('business_name', value.business_name, { required: true, disabled, autocomplete: 'organization' }))}
-        ${field('Legal name', input('legal_name', value.legal_name, { required: true, disabled }))}
-        ${field('Registration number', input('registration_number', value.registration_number, { disabled }), { optional: true })}
-        ${field('Location name', input('location_label', value.location_label, { disabled }), { optional: true, help: 'Shown next to the venue name, for example “Reykjavík”.' })}
-        ${field('Address', input('address_line', value.address_line, { disabled, autocomplete: 'street-address' }), { optional: true })}
-        ${field('City', input('city', value.city, { disabled, autocomplete: 'address-level2' }), { optional: true })}
-        ${field('Country code', input('country_code', value.country_code, { disabled, placeholder: 'IS' }), { optional: true })}
-        ${field('Language', select('primary_language', value.primary_language || 'en', [['en', 'English'], ['is', 'Íslenska']], { disabled }))}
-        ${field('Email', input('email', value.email, { type: 'email', disabled, autocomplete: 'email' }), { optional: true })}
-        ${field('Phone', input('phone', value.phone, { type: 'tel', disabled, autocomplete: 'tel' }), { optional: true })}
-        ${field('Website', input('website', value.website, { type: 'url', disabled }), { optional: true })}
-        ${field('Booking link', input('booking_url', value.booking_url, { type: 'url', disabled }), { optional: true })}
+    <form class="settings-form settings-row" data-settings-section-form="venue" data-version="${Number(data?.version || 1)}">
+      ${rowLabel('Business details', 'Names, address and how guests and suppliers reach the venue.', {
+        meta: [sectionVersion(data), readOnlyNote(!disabled)],
+        aside: `<figure class="settings-preview"><figcaption class="settings-preview__caption">As it appears on documents</figcaption><div class="settings-letterhead" data-settings-venue-preview>${letterheadMarkup(value)}</div></figure>`
+      })}
+      <div class="settings-row__panel">
+        <div class="settings-grid">
+          ${field('Business name', input('business_name', value.business_name, { required: true, disabled, autocomplete: 'organization' }))}
+          ${field('Legal name', input('legal_name', value.legal_name, { required: true, disabled }))}
+          ${field('Registration number', input('registration_number', value.registration_number, { disabled }), { optional: true })}
+          ${field('Location name', input('location_label', value.location_label, { disabled }), { optional: true, help: 'Shown next to the venue name, for example “Reykjavík”.' })}
+          ${field('Address', input('address_line', value.address_line, { disabled, autocomplete: 'street-address' }), { optional: true, full: true })}
+          ${field('City', input('city', value.city, { disabled, autocomplete: 'address-level2' }), { optional: true })}
+          ${field('Country code', input('country_code', value.country_code, { disabled, placeholder: 'IS' }), { optional: true })}
+          ${field('Email', input('email', value.email, { type: 'email', disabled, autocomplete: 'email' }), { optional: true })}
+          ${field('Phone', input('phone', value.phone, { type: 'tel', disabled, autocomplete: 'tel' }), { optional: true })}
+          ${field('Website', input('website', value.website, { type: 'url', disabled }), { optional: true })}
+          ${field('Booking link', input('booking_url', value.booking_url, { type: 'url', disabled }), { optional: true })}
+        </div>
+        <dl class="settings-facts"><div><dt>Currency</dt><dd>ISK, fixed</dd></div><div><dt>Language</dt><dd data-settings-venue-language>${escapeHtml(venueLanguageFact(value.primary_language))}</dd></div><div><dt>Time zone</dt><dd>${escapeHtml(value.timezone || clock()?.timeZone?.() || '')} · <a href="#settings/hours">Change in Opening hours</a></dd></div></dl>
+        ${feedback('section:venue')}
+        ${disabled ? '' : saveBar('section:venue')}
       </div>
-      <dl class="settings-facts"><div><dt>Currency</dt><dd>ISK (fixed)</dd></div><div><dt>Time zone</dt><dd>${escapeHtml(value.timezone || clock()?.timeZone?.() || '')} · <a href="#settings/hours">Change in Opening hours</a></dd></div></dl>
-      ${sectionVersion(data)}
-      ${feedback('section:venue')}
-      ${disabled ? '' : saveBar('section:venue')}
     </form>`;
+  }
+
+  // The letterhead preview: the venue block as documents print it, redrawn
+  // from the form on every keystroke (paintVenuePreview). Empty lines drop out.
+  function letterheadMarkup(value) {
+    const join = (parts, glue) => parts.map((part) => String(part || '').trim()).filter(Boolean).join(glue);
+    const name = String(value.business_name || '').trim();
+    const lines = [
+      join([value.legal_name, value.registration_number ? `Reg. no. ${String(value.registration_number).trim()}` : ''], ' · '),
+      join([value.address_line, join([value.city, String(value.country_code || '').toUpperCase()], ', ')], ', '),
+      join([value.email, value.phone], ' · '),
+      join([value.website], '')
+    ].filter(Boolean);
+    return `<p class="settings-letterhead__name${name ? '' : ' is-empty'}">${escapeHtml(name || 'Business name')}${value.location_label ? ` <span class="settings-letterhead__place">${escapeHtml(String(value.location_label).trim())}</span>` : ''}</p>${lines.length ? lines.map((line) => `<p class="settings-letterhead__line">${escapeHtml(line)}</p>`).join('') : '<p class="settings-letterhead__line is-empty">Add the legal name and address to complete it.</p>'}`;
+  }
+
+  function paintVenuePreview(form) {
+    const target = form?.querySelector('[data-settings-venue-preview]');
+    if (!target) return;
+    const value = {};
+    ['business_name', 'legal_name', 'registration_number', 'location_label', 'address_line', 'city', 'country_code', 'email', 'phone', 'website'].forEach((name) => { value[name] = fieldValue(form, name); });
+    target.innerHTML = letterheadMarkup(value);
   }
 
   function timezoneFormMarkup() {
@@ -417,11 +462,15 @@
     const disabled = !data?.can_edit;
     const error = state.fieldErrors.timezone;
     const isDefault = clock()?.timezoneIsDefault?.();
-    return `<form class="settings-form atlas-card" data-settings-timezone-form data-version="${Number(data?.version || 1)}">
-      ${formHead('Time zone', 'Opening hours, checklists and “today” everywhere in Alcedo use the venue’s time zone.', readOnlyNote(!disabled))}
-      ${field('Venue time zone', input('timezone', zone, { disabled, required: true, placeholder: exampleZone(), invalid: Boolean(error), describedby: error ? 'settings-timezone-error' : '' }), { error, errorId: 'settings-timezone-error', help: isDefault ? 'Alcedo is using the default zone because none is saved.' : `A zone name such as ${exampleZone()}.` })}
-      ${feedback('timezone')}
-      ${disabled ? '' : saveBar('timezone', 'Save time zone')}
+    const now = clock()?.formatDateTime?.(new Date()) || '';
+    return `<form class="settings-form settings-row" data-settings-timezone-form data-version="${Number(data?.version || 1)}">
+      ${rowLabel('Time zone', 'Opening hours, checklists and “today” everywhere in Alcedo use the venue’s time zone.', { meta: readOnlyNote(!disabled) })}
+      <div class="settings-row__panel">
+        ${field('Venue time zone', input('timezone', zone, { disabled, required: true, placeholder: exampleZone(), invalid: Boolean(error), describedby: error ? 'settings-timezone-error' : '' }), { error, errorId: 'settings-timezone-error', help: isDefault ? 'Alcedo is using the default zone because none is saved.' : `A zone name such as ${exampleZone()}.` })}
+        ${now ? `<p class="settings-produces">${icon('clock')}<span>At the venue it is now <strong class="num">${escapeHtml(now)}</strong></span></p>` : ''}
+        ${feedback('timezone')}
+        ${disabled ? '' : saveBar('timezone', 'Save time zone')}
+      </div>
     </form>`;
   }
 
@@ -451,18 +500,79 @@
         <td data-label="Kitchen"><input class="atlas-input" ${TIME_FIELD} name="kitchen_close_time" aria-label="${escapeHtml(day)} kitchen closes" value="${escapeHtml(hhmm(row.kitchen_close_time) || '')}"${timeOff}></td>
       </tr>`;
     }).join('');
-    const empty = !saved.size ? `<div class="atlas-alert atlas-alert--info">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">No opening hours are saved yet, so Home shows no timeline and nothing counts down. Alcedo never guesses hours.</p></div></div>` : '';
-    return `<form class="settings-form atlas-card" data-settings-hours-form>
-      ${formHead('Weekly hours', 'Home, Operations and Alcedo AI read these hours.', editable ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-settings-copy-monday>Copy Monday to all</button>' : readOnlyNote(false))}
-      ${empty}
-      <div class="atlas-table-wrap settings-hours"><table class="atlas-table atlas-table--compact">
-        <colgroup><col class="settings-hours__day"><col class="settings-hours__check"><col><col><col class="settings-hours__check"><col><col></colgroup>
-        <thead><tr><th scope="col">Day</th><th scope="col">Open</th><th scope="col">Opens</th><th scope="col">Closes</th><th scope="col" title="Closes after midnight">Next day</th><th scope="col">Last orders</th><th scope="col">Kitchen</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>
-      ${feedback('hours')}
-      ${editable ? saveBar('hours', 'Save hours') : ''}
+    const empty = !saved.size ? `<div class="atlas-alert atlas-alert--info settings-hours__empty">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">No opening hours are saved yet, so Home shows no timeline and nothing counts down. Alcedo never guesses hours.</p></div></div>` : '';
+    const zone = section('venue')?.value?.timezone || clock()?.timeZone?.() || '';
+    return `<form class="settings-form settings-row settings-row--hours" data-settings-hours-form>
+      ${rowLabel('Weekly hours', 'Home, Operations and Alcedo AI read these hours.', { meta: readOnlyNote(editable), aside: weekMarkup() })}
+      <div class="settings-row__panel settings-row__panel--flush">
+        <div class="settings-panel__bar"><p class="settings-panel__note">${zone ? `Times are the venue’s, ${escapeHtml(zone)}` : 'Times are the venue’s'}</p>${editable ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-settings-copy-monday>Copy Monday to all</button>' : ''}</div>
+        ${empty}
+        <div class="atlas-table-wrap settings-hours"><table class="atlas-table atlas-table--compact">
+          <colgroup><col class="settings-hours__day"><col class="settings-hours__check"><col><col><col class="settings-hours__check"><col><col></colgroup>
+          <thead><tr><th scope="col">Day</th><th scope="col">Open</th><th scope="col">Opens</th><th scope="col">Closes</th><th scope="col" title="Closes after midnight">Next day</th><th scope="col">Last orders</th><th scope="col">Kitchen</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+        ${feedback('hours')}
+        ${editable ? saveBar('hours', 'Save hours') : ''}
+      </div>
     </form>`;
+  }
+
+  // The week as Home reads it: one 24-hour track per day from 06:00 to 06:00,
+  // the open span as a bar and last orders as a tick. Drawn from the table
+  // (paintWeek), so it follows every edit before anything is saved.
+  const WEEK_AXIS_START = 6 * 60;
+
+  function weekMarkup() {
+    return `<figure class="settings-preview settings-week">
+      <figcaption class="settings-preview__caption">The week on Home</figcaption>
+      <ol class="settings-week__days" data-settings-week>${EDITOR_DAYS.map((weekday) => `<li class="settings-week__day" data-week-day="${weekday}"><span class="settings-week__name" aria-hidden="true">${WEEKDAYS[weekday].slice(0, 3)}</span><span class="settings-week__track" aria-hidden="true"><span class="settings-week__bar" hidden></span><span class="settings-week__tick" hidden></span><span class="settings-week__closed">Closed</span></span><span class="sr-only" data-week-text>${WEEKDAYS[weekday]}: closed</span></li>`).join('')}</ol>
+      <div class="settings-week__axis" aria-hidden="true"><span>06</span><span>12</span><span>18</span><span>00</span><span>06</span></div>
+    </figure>`;
+  }
+
+  function paintWeek(form) {
+    const list = form?.querySelector('[data-settings-week]');
+    if (!list) return;
+    const minutes = (value) => {
+      const match = /^(\d{1,2}):(\d{2})/.exec(String(value || ''));
+      return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+    const along = (value) => (value - WEEK_AXIS_START + 1440) % 1440;
+    let today = null;
+    try { today = clock()?.weekday?.(clock()?.today?.()) ?? null; } catch { today = null; }
+    list.querySelectorAll('[data-week-day]').forEach((item) => {
+      const weekday = Number(item.dataset.weekDay);
+      const row = form.querySelector(`.settings-hours-row[data-weekday="${weekday}"]`);
+      const open = Boolean(row?.querySelector('[name="is_open"]')?.checked);
+      const from = minutes(row?.querySelector('[name="open_time"]')?.value);
+      const to = minutes(row?.querySelector('[name="close_time"]')?.value);
+      const last = minutes(row?.querySelector('[name="last_order_time"]')?.value);
+      const bar = item.querySelector('.settings-week__bar');
+      const tick = item.querySelector('.settings-week__tick');
+      const closed = item.querySelector('.settings-week__closed');
+      const text = item.querySelector('[data-week-text]');
+      item.classList.toggle('is-today', weekday === today);
+      const drawn = open && from !== null && to !== null;
+      bar.hidden = !drawn;
+      closed.hidden = drawn;
+      closed.textContent = open ? 'No times' : 'Closed';
+      tick.hidden = true;
+      if (!drawn) { text.textContent = `${WEEKDAYS[weekday]}: ${open ? 'open, no times yet' : 'closed'}`; return; }
+      const start = along(from);
+      let end = along(to);
+      if (end <= start) end += 1440;
+      end = Math.min(end, 1440);
+      bar.style.setProperty('--from', String(start / 1440));
+      bar.style.setProperty('--to', String(end / 1440));
+      if (last !== null) {
+        let mark = along(last);
+        if (mark < start) mark += 1440;
+        if (mark > start && mark < end) { tick.hidden = false; tick.style.setProperty('--at', String(mark / 1440)); }
+      }
+      const clockText = (value) => `${String(Math.floor(value / 60) % 24).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+      text.textContent = `${WEEKDAYS[weekday]}: ${clockText(from)} to ${clockText(to)}${last !== null ? `, last orders ${clockText(last)}` : ''}`;
+    });
   }
 
   function offerFormMarkup(offer, isNew = false) {
@@ -472,8 +582,16 @@
     const key = `offer:${id || 'new'}`;
     const days = Array.isArray(offer?.days) ? offer.days.map(Number) : [0, 1, 2, 3, 4, 5, 6];
     const pricing = offer?.pricing && Object.keys(offer.pricing).length ? JSON.stringify(offer.pricing) : '';
-    return `<form class="settings-form atlas-card" data-settings-offer-form data-offer-id="${escapeHtml(id)}" data-version="${Number(offer?.version || 1)}">
-      ${formHead(isNew ? 'New offer' : (offer?.name || 'Offer'), isNew ? 'Offers appear on the Home timeline on their days.' : '', offer?.active === false ? pill('neutral', 'Paused') : pill('positive', 'Active'))}
+    // An offer reads as one line (name, days, hours, state) and opens to edit;
+    // it stays open while it is new, has changes, is saving or has a message.
+    const open = isNew || state.dirtyForms.has(key) || state.savingForms.has(key) || Boolean(state.formFeedback[key]);
+    const when = !isNew && hhmm(offer?.start_time) && hhmm(offer?.end_time)
+      ? `${days.length === 7 ? 'Every day' : EDITOR_DAYS.filter((weekday) => days.includes(weekday)).map((weekday) => WEEKDAYS[weekday].slice(0, 3)).join(', ') || 'No days'} · ${hhmm(offer.start_time)}–${hhmm(offer.end_time)}`
+      : (isNew ? 'Offers appear on the Home timeline on their days.' : '');
+    return `<form class="settings-form settings-row__panel settings-offer${isNew ? ' is-new' : ''}" data-settings-offer-form data-offer-id="${escapeHtml(id)}" data-version="${Number(offer?.version || 1)}">
+      <details class="settings-offer__details"${open ? ' open' : ''}>
+      <summary class="settings-offer__head"><div><h4 class="settings-offer__title">${escapeHtml(isNew ? 'New offer' : (offer?.name || 'Offer'))}</h4>${when ? `<p class="settings-offer__when num">${escapeHtml(when)}</p>` : ''}</div><span class="settings-offer__end">${isNew ? '' : (offer?.active === false ? pill('neutral', 'Paused') : pill('positive', 'Active'))}${isNew ? '' : `<span class="settings-offer__chevron" aria-hidden="true">${icon('chevron-down')}</span>`}</span></summary>
+      <div class="settings-offer__body">
       <div class="settings-grid">
         ${field('Name', input('name', offer?.name || '', { required: true, disabled }))}
         ${field('Short key', input('offer_key', offer?.offer_key || '', { required: true, disabled, placeholder: 'happy-hour' }), { help: 'Lowercase letters, numbers and hyphens.' })}
@@ -492,17 +610,29 @@
       ${editable ? (isNew
         ? `<div class="settings-savebar"><button type="button" class="atlas-btn atlas-btn--ghost" data-settings-cancel-offer>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary${state.savingForms.has(key) ? ' is-loading' : ''}"${state.savingForms.has(key) ? ' disabled aria-busy="true"' : ''}>${state.savingForms.has(key) ? 'Saving…' : 'Create offer'}</button></div>`
         : saveBar(key, 'Save offer')) : ''}
+      </div>
+      </details>
     </form>`;
   }
 
   function hoursMarkup() {
     const offers = state.workspace?.offers || [];
+    const active = offers.filter((offer) => offer?.active !== false).length;
+    const add = canManage() && !state.offerDraft ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-add-offer>${icon('plus')}Add offer</button>` : '';
     return `${sectionHead('Opening hours', 'When the venue is open, and its offers. Nothing here is invented: without saved hours, Alcedo says so.')}
-      ${timezoneFormMarkup()}
       ${hoursFormMarkup()}
-      <div class="settings-subhead"><h3>Offers</h3>${canManage() && !state.offerDraft ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-add-offer>' + icon('plus') + 'Add offer</button>' : ''}</div>
-      ${state.offerDraft ? offerFormMarkup(state.offerDraft, true) : ''}
-      ${offers.length ? offers.map((offer) => offerFormMarkup(offer)).join('') : (state.offerDraft ? '' : '<p class="settings-muted">No offers yet.</p>')}`;
+      <section class="settings-row" aria-labelledby="settings-offers-title">
+        ${rowLabel('Offers', 'Happy hours and set menus. They appear on the Home timeline on their days.', {
+          id: 'settings-offers-title',
+          meta: offers.length ? `<p class="settings-form__meta num">${escapeHtml(`${active} active · ${offers.length - active} paused`)}</p>` : '',
+          aside: add ? `<div class="settings-row__actions">${add}</div>` : ''
+        })}
+        <div class="settings-row__panels">
+          ${state.offerDraft ? offerFormMarkup(state.offerDraft, true) : ''}
+          ${offers.length ? offers.map((offer) => offerFormMarkup(offer)).join('') : (state.offerDraft ? '' : '<p class="settings-empty">No offers yet. An offer needs a name, its days and its hours.</p>')}
+        </div>
+      </section>
+      ${timezoneFormMarkup()}`;
   }
 
   function permissionKeys() {
@@ -519,17 +649,24 @@
       ? '<button type="button" class="atlas-btn atlas-btn--secondary" data-settings-invite>' + icon('user-plus') + 'Invite someone</button>' : '';
     const counts = Object.entries(profiles.roles || {}).map(([key, count]) => `${count} ${(ROLE_LABELS[key] || humanize(key)).toLowerCase()}${count === 1 ? '' : 's'}`).join(', ');
     return `${sectionHead('Team access', `${plural(Number(profiles.active || 0), 'active profile', 'active profiles')}${counts ? ` · ${counts}` : ''}${Number(profiles.inactive || 0) ? ` · ${profiles.inactive} deactivated` : ''}`, invite)}
-      <p class="settings-muted">What each role may do. A person’s role and deactivation are changed on their profile in <a href="#team">Team</a>.</p>
+      <p class="settings-lede">What each role may do. A person’s role and deactivation are changed on their profile in <a href="#team">Team</a>.</p>
       ${roles.length ? roles.map((entry) => {
         const key = `role:${entry.role_key}`;
         const editable = Boolean(entry.can_edit);
-        return `<form class="settings-form atlas-card" data-settings-role-form="${escapeHtml(entry.role_key)}" data-version="${Number(entry.version || 1)}">
-          ${formHead(entry.label || ROLE_LABELS[entry.role_key] || humanize(entry.role_key), entry.description || '', editable ? '' : pill('neutral', 'Protected'))}
-          <ul class="settings-permissions">${permissions.map((permission) => `<li><label class="settings-inline-check"><input type="checkbox" class="atlas-check" name="permission_${escapeHtml(permission)}"${entry.permissions?.[permission] ? ' checked' : ''}${editable ? '' : ' disabled'}> ${escapeHtml(humanize(permission))}</label></li>`).join('')}</ul>
-          ${feedback(key)}
-          ${editable ? saveBar(key, 'Save permissions') : ''}
+        const people = Number(profiles.roles?.[entry.role_key] || 0);
+        const allowed = permissions.filter((permission) => entry.permissions?.[permission]).length;
+        return `<form class="settings-form settings-row" data-settings-role-form="${escapeHtml(entry.role_key)}" data-version="${Number(entry.version || 1)}">
+          ${rowLabel(entry.label || ROLE_LABELS[entry.role_key] || humanize(entry.role_key), entry.description || '', {
+            status: editable ? '' : pill('neutral', 'Protected'),
+            meta: `<p class="settings-form__meta num">${escapeHtml(`${plural(people, 'person', 'people')} · ${allowed} of ${permissions.length} allowed`)}</p>`
+          })}
+          <div class="settings-row__panel">
+            <ul class="settings-permissions">${permissions.map((permission) => `<li><label class="settings-inline-check"><input type="checkbox" class="atlas-check" name="permission_${escapeHtml(permission)}"${entry.permissions?.[permission] ? ' checked' : ''}${editable ? '' : ' disabled'}> ${escapeHtml(humanize(permission))}</label></li>`).join('')}</ul>
+            ${feedback(key)}
+            ${editable ? saveBar(key, 'Save permissions') : ''}
+          </div>
         </form>`;
-      }).join('') : '<div class="atlas-empty atlas-empty--inline"><h3>No roles to show</h3><p>Roles appear once Settings has loaded them.</p></div>'}`;
+      }).join('') : `<div class="settings-row settings-row--empty"><div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('users')}</div><h3>No roles to show</h3><p>Roles appear once Settings has loaded them.</p></div></div>`}`;
   }
 
   function notificationsMarkup() {
@@ -542,21 +679,30 @@
     else if (on) action = '<button type="button" class="atlas-btn atlas-btn--secondary" data-settings-push-disable>Turn notifications off</button>';
     else if (device.status === 'pending') action = '<button type="button" class="atlas-btn atlas-btn--primary" data-settings-push-enable>Turn notifications on</button>';
     else if (device.status === 'unsynced') action = '<button type="button" class="atlas-btn atlas-btn--primary" data-settings-push-enable>Reconnect this device</button>';
-    const blocked = device.status === 'denied' ? '<p class="settings-muted">To unblock: open this site’s settings in your browser (the icon next to the address), allow notifications, then reload Alcedo.</p>' : '';
+    const blocked = device.status === 'denied' ? '<p class="settings-steps-note">To unblock: open this site’s settings in your browser (the icon next to the address), allow notifications, then reload Alcedo.</p>' : '';
     const policies = isManager() ? (state.workspace?.notification_policies || []) : [];
+    // What a device receives today, drawn as the notifications themselves.
+    const arrives = [['messages-square', 'New message', 'From Messages, as soon as it is posted'], ['calendar-days', 'Shifts published', 'From Shifts, when a manager publishes the week']];
     return `${sectionHead('Notifications', 'Alerts on this device, and who gets which alert.')}
-      <section class="settings-form atlas-card settings-device-notifications is-${escapeHtml(device.status)}" aria-labelledby="settings-device-title">
-        <div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-device-title">This device</h3><p class="settings-form__sub">${escapeHtml(device.detail || '')}</p></div>${pill(tone, text)}</div>
-        ${blocked}
-        <p class="settings-muted">Alcedo asks the browser for permission only when you turn notifications on. Turning them off unsubscribes this device.</p>
-        ${action ? `<div class="settings-actions">${action}</div>` : ''}
-        ${feedback('push')}
+      <section class="settings-row settings-device-notifications is-${escapeHtml(device.status)}" aria-labelledby="settings-device-title">
+        ${rowLabel('This device', 'Alcedo asks the browser for permission only when you turn notifications on. Turning them off unsubscribes this device.', { id: 'settings-device-title', status: pill(tone, text) })}
+        <div class="settings-row__panel">
+          <p class="settings-state">${icon(on ? 'bell-ring' : device.status === 'denied' ? 'bell-off' : 'bell')}<span>${escapeHtml(device.detail || '')}</span></p>
+          ${blocked}
+          ${action ? `<div class="settings-actions">${action}</div>` : ''}
+          ${feedback('push')}
+        </div>
       </section>
-      <section class="settings-form atlas-card" aria-labelledby="settings-alerts-title">
-        <div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-alerts-title">Alerts sent today</h3><p class="settings-form__sub">Only these alerts can reach a device at the moment.</p></div></div>
-        <ul class="settings-list"><li>${icon('messages-square')}New messages in Messages</li><li>${icon('calendar-days')}Published shift changes</li></ul>
-        ${policies.length ? `<div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact"><caption class="settings-caption">Saved alert rules, used once more alerts are delivered</caption><thead><tr><th scope="col">Alert</th><th scope="col">Goes to</th><th scope="col">Status</th></tr></thead><tbody>${policies.map((policy) => `<tr><td>${escapeHtml(policy.label || humanize(policy.event_key))}</td><td>${escapeHtml((policy.target_roles || []).map((key) => ROLE_LABELS[key] || humanize(key)).join(', ') || 'Nobody yet')}</td><td>${policy.enabled ? pill('positive', 'On') : pill('neutral', 'Off')}</td></tr>`).join('')}</tbody></table></div>` : ''}
-      </section>`;
+      <section class="settings-row" aria-labelledby="settings-alerts-title">
+        ${rowLabel('Alerts sent today', 'Only these alerts can reach a device at the moment.', { id: 'settings-alerts-title' })}
+        <div class="settings-row__panel settings-row__panel--flush">
+          <ul class="settings-notices">${arrives.map(([glyph, title, from]) => `<li class="settings-notice"><span class="settings-notice__mark" aria-hidden="true">${icon(glyph)}</span><span class="settings-notice__text"><span class="settings-notice__app">Alcedo</span><span class="settings-notice__title">${escapeHtml(title)}</span><span class="settings-notice__from">${escapeHtml(from)}</span></span></li>`).join('')}</ul>
+        </div>
+      </section>
+      ${policies.length ? `<section class="settings-row" aria-labelledby="settings-policies-title">
+        ${rowLabel('Alert rules', 'Saved for when more alerts are delivered. They don’t send anything yet.', { id: 'settings-policies-title' })}
+        <div class="settings-row__panel settings-row__panel--flush"><div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact"><caption class="settings-caption sr-only">Saved alert rules, used once more alerts are delivered</caption><thead><tr><th scope="col">Alert</th><th scope="col">Goes to</th><th scope="col">Status</th></tr></thead><tbody>${policies.map((policy) => `<tr><td>${escapeHtml(policy.label || humanize(policy.event_key))}</td><td>${escapeHtml((policy.target_roles || []).map((key) => ROLE_LABELS[key] || humanize(key)).join(', ') || 'Nobody yet')}</td><td>${policy.enabled ? pill('positive', 'On') : pill('neutral', 'Off')}</td></tr>`).join('')}</tbody></table></div></div>
+      </section>` : ''}`;
   }
 
   // Rules that change Alcedo today say so; the rest are saved for upcoming features.
@@ -570,12 +716,14 @@
     if (!data) return '';
     const disabled = !data.can_edit;
     const used = Object.keys(SETTING_USAGE[key] || {}).length;
-    return `<form class="settings-form atlas-card" data-settings-section-form="${escapeHtml(key)}" data-version="${Number(data.version || 1)}">
-      ${formHead(title, description || (used ? 'Settings marked “in use” change Alcedo today; the rest are saved for upcoming features.' : 'Saved for upcoming features — these don’t change Alcedo yet.'), readOnlyNote(!disabled))}
-      ${fields(data.value || {}, disabled)}
-      ${sectionVersion(data)}
-      ${feedback(`section:${key}`)}
-      ${disabled ? '' : saveBar(`section:${key}`)}
+    const status = description ? '' : used ? pill('positive', 'In use') : pill('neutral', 'Saved for later');
+    return `<form class="settings-form settings-row" data-settings-section-form="${escapeHtml(key)}" data-version="${Number(data.version || 1)}">
+      ${rowLabel(title, description || (used ? 'Settings marked “in use” change Alcedo today; the rest are saved for upcoming features.' : 'Kept for upcoming features. Changing these doesn’t affect Alcedo yet.'), { status, meta: [sectionVersion(data), readOnlyNote(!disabled)] })}
+      <div class="settings-row__panel">
+        ${fields(data.value || {}, disabled)}
+        ${feedback(`section:${key}`)}
+        ${disabled ? '' : saveBar(`section:${key}`)}
+      </div>
     </form>`;
   }
 
@@ -583,8 +731,16 @@
     return SETTING_USAGE[key]?.[name] ? `In use. ${SETTING_USAGE[key][name]}` : '';
   }
 
+  // A tick row: label, then its grey help. A setting that changes Alcedo today
+  // carries a small "in use" mark (SETTING_USAGE) instead of a coloured label.
   function checkRow(name, checked, label, options = {}) {
-    return `<label class="settings-check"><input type="checkbox" class="atlas-check" name="${escapeHtml(name)}"${checked ? ' checked' : ''}${options.disabled ? ' disabled' : ''}><span><span class="settings-check__label">${escapeHtml(label)}</span>${options.help ? `<span class="settings-check__help">${escapeHtml(options.help)}</span>` : ''}</span></label>`;
+    const used = /^In use\. /.test(options.help || '');
+    return `<label class="settings-check${used ? ' is-used' : ''}"><input type="checkbox" class="atlas-check" name="${escapeHtml(name)}"${checked ? ' checked' : ''}${options.disabled ? ' disabled' : ''}><span><span class="settings-check__label">${escapeHtml(label)}${used ? ' <span class="atlas-pill atlas-pill--positive atlas-pill--plain settings-used">In use</span>' : ''}</span>${options.help ? `<span class="settings-check__help">${escapeHtml(used ? options.help.replace(/^In use\. /, '') : options.help)}</span>` : ''}</span></label>`;
+  }
+
+  // The checks of one form, as one ruled list.
+  function checkList(rows) {
+    return `<div class="settings-checks">${rows.join('')}</div>`;
   }
 
   function rulesMarkup() {
@@ -592,27 +748,31 @@
       ${field('Week starts on', select('week_starts_on', value.week_starts_on ?? 1, WEEKDAYS.map((day, index) => [index, day]), { disabled }))}
       ${field('Default break (minutes)', input('default_break_minutes', value.default_break_minutes, { type: 'number', min: 0, max: 720, disabled, inputmode: 'numeric' }))}
       ${field('Last orders before closing (minutes)', input('last_order_minutes_before_close', value.last_order_minutes_before_close, { type: 'number', min: 0, max: 240, disabled, inputmode: 'numeric' }))}
-    </div>${checkRow('shift_confirmation_required', value.shift_confirmation_required, 'Staff confirm their shifts', { disabled })}`);
+    </div>${checkList([checkRow('shift_confirmation_required', value.shift_confirmation_required, 'Staff confirm their shifts', { disabled })])}`);
     const inventory = ruleForm('inventory', 'Stock', (value, disabled) => `<div class="settings-grid">
       ${field('Critical stock level (share of par)', input('critical_stock_ratio', value.critical_stock_ratio, { type: 'number', min: 0, max: 1, step: 0.05, disabled, inputmode: 'decimal' }))}
       ${field('Count difference allowed (%)', input('variance_tolerance_percent', value.variance_tolerance_percent, { type: 'number', min: 0, max: 100, step: 0.1, disabled, inputmode: 'decimal' }))}
       ${field('Waste allowed (%)', input('waste_tolerance_percent', value.waste_tolerance_percent, { type: 'number', min: 0, max: 100, step: 0.1, disabled, inputmode: 'decimal' }))}
     </div>
-    ${checkRow('low_stock_warning_enabled', value.low_stock_warning_enabled, 'Warn when stock is low', { disabled })}
-    ${checkRow('automatic_reorder_suggestions', value.automatic_reorder_suggestions, 'Suggest what to order', { disabled, help: usedHelp('inventory', 'automatic_reorder_suggestions') })}
-    ${checkRow('barcode_gallery_enabled', value.barcode_gallery_enabled, 'Allow photos from the gallery in the scanner', { disabled })}
-    ${checkRow('allow_multiple_barcodes', value.allow_multiple_barcodes, 'Allow several barcodes per item', { disabled })}
-    ${checkRow('staff_barcode_linking', value.staff_barcode_linking, 'Staff can link barcodes to items', { disabled })}
+    ${checkList([
+      checkRow('low_stock_warning_enabled', value.low_stock_warning_enabled, 'Warn when stock is low', { disabled }),
+      checkRow('automatic_reorder_suggestions', value.automatic_reorder_suggestions, 'Suggest what to order', { disabled, help: usedHelp('inventory', 'automatic_reorder_suggestions') }),
+      checkRow('barcode_gallery_enabled', value.barcode_gallery_enabled, 'Allow photos from the gallery in the scanner', { disabled }),
+      checkRow('allow_multiple_barcodes', value.allow_multiple_barcodes, 'Allow several barcodes per item', { disabled }),
+      checkRow('staff_barcode_linking', value.staff_barcode_linking, 'Staff can link barcodes to items', { disabled })
+    ])}
     <p class="settings-muted">${icon('lock')}Placing orders and changing stock from the scanner stay manual. Alcedo never does either by itself.</p>`);
     const temperature = ruleForm('temperature', 'Temperature log', (value, disabled) => `<div class="settings-grid">
       ${field('Reminder times', input('reminder_times', (value.reminder_times || []).join(', '), { disabled, placeholder: '10:00, 16:00' }), { help: 'Separate times with commas.' })}
       ${field('Escalate after (minutes)', input('escalation_minutes', value.escalation_minutes, { type: 'number', min: 0, max: 1440, disabled, inputmode: 'numeric' }))}
       ${field('Keep readings for (months)', input('retention_months', value.retention_months, { type: 'number', min: 1, max: 120, disabled, inputmode: 'numeric' }))}
     </div>
-    ${checkRow('daily_log_required', value.daily_log_required, 'A daily reading is required', { disabled })}
-    ${checkRow('photo_required_on_exception', value.photo_required_on_exception, 'Photo when a reading is out of range', { disabled })}
-    ${checkRow('corrective_action_required', value.corrective_action_required, 'Say what was done when a reading is out of range', { disabled })}
-    ${checkRow('manager_review_on_exception', value.manager_review_on_exception, 'A manager reviews out-of-range readings', { disabled })}`);
+    ${checkList([
+      checkRow('daily_log_required', value.daily_log_required, 'A daily reading is required', { disabled }),
+      checkRow('photo_required_on_exception', value.photo_required_on_exception, 'Photo when a reading is out of range', { disabled }),
+      checkRow('corrective_action_required', value.corrective_action_required, 'Say what was done when a reading is out of range', { disabled }),
+      checkRow('manager_review_on_exception', value.manager_review_on_exception, 'A manager reviews out-of-range readings', { disabled })
+    ])}`);
     const cleaning = ruleForm('cleaning', 'Cleaning', (value, disabled) => {
       const schedule = value.weekly_schedule || {};
       return `<div class="settings-grid">
@@ -621,15 +781,19 @@
         ${field('Tuesday routine', input('schedule_tuesday', schedule.tuesday || '', { disabled }), { optional: true })}
         ${field('Escalate overdue after (minutes)', input('overdue_escalation_minutes', value.overdue_escalation_minutes, { type: 'number', min: 0, max: 1440, disabled, inputmode: 'numeric' }))}
       </div>
-      ${checkRow('photo_required', value.photo_required, 'Photo required', { disabled })}
-      ${checkRow('comment_required_on_exception', value.comment_required_on_exception, 'Comment when something is skipped', { disabled })}
-      ${checkRow('manager_review_on_exception', value.manager_review_on_exception, 'A manager reviews skipped items', { disabled })}`;
+      ${checkList([
+        checkRow('photo_required', value.photo_required, 'Photo required', { disabled }),
+        checkRow('comment_required_on_exception', value.comment_required_on_exception, 'Comment when something is skipped', { disabled }),
+        checkRow('manager_review_on_exception', value.manager_review_on_exception, 'A manager reviews skipped items', { disabled })
+      ])}`;
     });
     const marketing = ruleForm('marketing', 'Marketing approvals', (value, disabled) => `
       ${field('Brand voice', textarea('brand_voice', value.brand_voice, { disabled, rows: 3 }), { help: 'Moves to Marketing settings with the Marketing redesign.' })}
-      ${field('Story frames by default', input('default_story_frames', value.default_story_frames, { type: 'number', min: 1, max: 10, disabled, inputmode: 'numeric' }))}
-      ${checkRow('approval_required', value.approval_required, 'Posts need approval', { disabled })}
-      ${checkRow('ai_caption_drafts_enabled', value.ai_caption_drafts_enabled, 'Alcedo drafts captions', { disabled })}
+      <div class="settings-grid">${field('Story frames by default', input('default_story_frames', value.default_story_frames, { type: 'number', min: 1, max: 10, disabled, inputmode: 'numeric' }))}</div>
+      ${checkList([
+        checkRow('approval_required', value.approval_required, 'Posts need approval', { disabled }),
+        checkRow('ai_caption_drafts_enabled', value.ai_caption_drafts_enabled, 'Alcedo drafts captions', { disabled })
+      ])}
       <p class="settings-muted">${icon('lock')}Publishing and analytics stay off until an account is connected in Integrations.</p>`);
     return `${sectionHead('Operational rules', 'Thresholds, reminders and approvals.')}
       ${operations}${inventory}${purchasingPolicyMarkup()}${temperature}${cleaning}${marketing}`;
@@ -638,8 +802,8 @@
   function purchasingPolicyMarkup() {
     const policy = state.purchasingPolicy;
     let body;
-    if (policy.status === 'loading' || policy.status === 'idle') body = '<span class="atlas-skel atlas-skel--text"></span>';
-    else if (!policy.value) body = '<p class="settings-muted">The ordering rules couldn’t be read. They are managed in Purchasing.</p>';
+    if (policy.status === 'loading' || policy.status === 'idle') body = `<div class="settings-facts" aria-busy="true">${'<div><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--text"></span></div>'.repeat(5)}<span class="sr-only">Loading the ordering rules</span></div>`;
+    else if (!policy.value) body = `<p class="settings-muted">${icon('circle-alert')}The ordering rules couldn’t be read. They are managed in Purchasing.</p>`;
     else {
       const value = policy.value;
       const money = (amount) => (amount == null ? 'Any amount' : clock()?.formatKr?.(amount) || String(amount));
@@ -651,9 +815,9 @@
         <div><dt>Staff receive deliveries</dt><dd>${value.staff_receiving_enabled ? 'Yes' : 'No — managers only'}</dd></div>
       </dl>`;
     }
-    return `<section class="settings-form atlas-card" aria-labelledby="settings-po-title">
-      <div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-po-title">Ordering</h3><p class="settings-form__sub">Read here; changed with Purchasing.</p></div></div>
-      ${body}
+    return `<section class="settings-row" aria-labelledby="settings-po-title">
+      ${rowLabel('Ordering', 'Read here; changed with Purchasing.', { id: 'settings-po-title', aside: '<div class="settings-row__actions"><a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#purchasing">Open Purchasing</a></div>' })}
+      <div class="settings-row__panel">${body}</div>
     </section>`;
   }
 
@@ -677,12 +841,18 @@
     render();
   }
 
+  // Loading: the row as it will be — a title and description bar beside a
+  // panel of field-height bars — so nothing moves when the data lands.
+  function skeletonRow(fields = 4, label = 'Loading') {
+    return `<div class="settings-row settings-row--loading" aria-busy="true"><div class="settings-row__label"><span class="atlas-skel settings-skel--title"></span><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--text settings-skel--short"></span></div><div class="settings-row__panel"><div class="settings-grid">${'<div class="settings-skel-field"><span class="atlas-skel atlas-skel--text settings-skel--short"></span><span class="atlas-skel settings-skel--control"></span></div>'.repeat(fields)}</div></div><span class="sr-only">${escapeHtml(label)}</span></div>`;
+  }
+
   function aiSettingsForm() {
     const ai = state.ai;
-    if (ai.status !== 'ready') return '<section class="settings-form atlas-card" aria-busy="true"><span class="atlas-skel atlas-skel--row"></span><span class="atlas-skel atlas-skel--row"></span></section>';
+    if (ai.status !== 'ready') return skeletonRow(6, 'Loading the Alcedo AI settings');
     if (!ai.settings) {
       const text = ai.error?.code === 'not_configured' ? 'Alcedo AI isn’t available in this environment yet.' : 'The Alcedo AI settings couldn’t be loaded. Nothing was changed.';
-      return `<div class="atlas-alert atlas-alert--${ai.error?.code === 'not_configured' ? 'info' : 'danger'}" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">${escapeHtml(text)}</p></div>${ai.error?.code === 'not_configured' ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-ai-retry>Try again</button></div>'}</div>`;
+      return `<div class="settings-row">${rowLabel('Alcedo AI for the venue', 'Whether it is on, and how much each person can use it per day.')}<div class="settings-row__panel"><div class="atlas-alert atlas-alert--${ai.error?.code === 'not_configured' ? 'info' : 'danger'}" role="status">${icon(ai.error?.code === 'not_configured' ? 'info' : 'circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${escapeHtml(text)}</p></div>${ai.error?.code === 'not_configured' ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-ai-retry>Try again</button></div>'}</div></div></div>`;
     }
     const value = ai.settings;
     const editable = Boolean(value.can_edit);
@@ -698,14 +868,19 @@
       if (entry.type === 'megabytes') return field(entry.label, input(entry.key, current == null ? '' : Math.round(Number(current) / 1048576), { type: 'number', min: entry.min, max: entry.max, disabled, inputmode: 'numeric' }));
       return field(entry.label, input(entry.key, current, { type: 'number', min: entry.min, max: entry.max, disabled, inputmode: 'numeric' }));
     });
-    const [first, ...rest] = controls;
-    return `<form class="settings-form atlas-card" data-settings-ai-form>
-      ${formHead('Alcedo AI for the venue', value.enabled && value.configured === false ? 'It is switched on here, but the service connection isn’t set up yet, so answers use saved records only.' : 'Limits apply to each person, per day.', `${status}${readOnlyNote(editable)}`)}
-      ${first || ''}
-      <div class="settings-grid">${rest.join('')}</div>
-      ${value.updated_at ? `<p class="settings-form__meta">Last changed ${escapeHtml(formatDateTime(value.updated_at))}</p>` : ''}
-      ${feedback('ai')}
-      ${editable ? saveBar('ai') : ''}
+    const switches = controls.filter((_, index) => fields[index].type === 'toggle');
+    const rest = controls.filter((_, index) => fields[index].type !== 'toggle');
+    return `<form class="settings-form settings-row" data-settings-ai-form>
+      ${rowLabel('Alcedo AI for the venue', value.enabled && value.configured === false ? 'It is switched on here, but the service connection isn’t set up yet, so answers use saved records only.' : 'Limits apply to each person, per day.', {
+        status,
+        meta: [value.updated_at ? `<p class="settings-form__meta">Last changed ${escapeHtml(formatDateTime(value.updated_at))}</p>` : '', readOnlyNote(editable)]
+      })}
+      <div class="settings-row__panel">
+        ${switches.length ? `<div class="settings-switches">${switches.join('')}</div>` : ''}
+        ${rest.length ? `<div class="settings-grid">${rest.join('')}</div>` : ''}
+        ${feedback('ai')}
+        ${editable ? saveBar('ai') : ''}
+      </div>
     </form>`;
   }
 
@@ -714,22 +889,31 @@
     if (ai.status !== 'ready' || !ai.preferences) return '';
     const value = ai.preferences;
     const has = (key) => Object.prototype.hasOwnProperty.call(value, key);
-    return `<form class="settings-form atlas-card" data-settings-ai-preferences-form>
-      ${formHead('Your replies', 'How Alcedo AI answers you. Only you see these.')}
-      ${has('reply_length') ? field('Reply length', select('reply_length', value.reply_length, [['short', 'Short'], ['normal', 'Normal'], ['detailed', 'Detailed']])) : ''}
-      ${has('speak_answers') ? toggle('speak_answers', Boolean(value.speak_answers), 'Read answers aloud in voice conversations') : ''}
-      ${has('voice_enabled') ? toggle('voice_enabled', Boolean(value.voice_enabled), 'Offer voice in Alcedo AI') : ''}
-      ${has('language') ? field('Language', select('language', value.language, [['auto', 'Same as my question'], ['en', 'English'], ['is', 'Íslenska']])) : ''}
-      ${feedback('ai-preferences')}
-      ${saveBar('ai-preferences')}
+    const switches = [
+      has('speak_answers') ? toggle('speak_answers', Boolean(value.speak_answers), 'Read answers aloud in voice conversations') : '',
+      has('voice_enabled') ? toggle('voice_enabled', Boolean(value.voice_enabled), 'Offer voice in Alcedo AI') : ''
+    ].filter(Boolean);
+    return `<form class="settings-form settings-row" data-settings-ai-preferences-form>
+      ${rowLabel('Your replies', 'How Alcedo AI answers you. Only you see these.')}
+      <div class="settings-row__panel">
+        <div class="settings-grid">
+          ${has('reply_length') ? field('Reply length', select('reply_length', value.reply_length, [['short', 'Short'], ['normal', 'Normal'], ['detailed', 'Detailed']])) : ''}
+          ${has('language') ? field('Language', select('language', value.language, [['auto', 'Same as my question'], ['en', 'English'], ['is', 'Íslenska']])) : ''}
+        </div>
+        ${switches.length ? `<div class="settings-switches">${switches.join('')}</div>` : ''}
+        ${feedback('ai-preferences')}
+        ${saveBar('ai-preferences')}
+      </div>
     </form>`;
   }
 
   function decisionsForm() {
     return ruleForm('brain', 'Suggestions and learning', (value, disabled) => `
-    ${checkRow('purchase_learning_enabled', value.purchase_learning_enabled, 'Learn from orders', { disabled, help: usedHelp('brain', 'purchase_learning_enabled') })}
-    ${checkRow('menu_learning_enabled', value.menu_learning_enabled, 'Learn from recipes', { disabled, help: usedHelp('brain', 'menu_learning_enabled') })}
-    ${checkRow('waste_learning_enabled', value.waste_learning_enabled, 'Learn from waste', { disabled, help: usedHelp('brain', 'waste_learning_enabled') })}
+    ${checkList([
+      checkRow('purchase_learning_enabled', value.purchase_learning_enabled, 'Learn from orders', { disabled, help: usedHelp('brain', 'purchase_learning_enabled') }),
+      checkRow('menu_learning_enabled', value.menu_learning_enabled, 'Learn from recipes', { disabled, help: usedHelp('brain', 'menu_learning_enabled') }),
+      checkRow('waste_learning_enabled', value.waste_learning_enabled, 'Learn from waste', { disabled, help: usedHelp('brain', 'waste_learning_enabled') })
+    ])}
     <p class="settings-muted">${icon('lock')}Alcedo never acts on a suggestion by itself; a person approves every change.</p>`, 'What Alcedo AI learns from when it suggests things. Each setting changes Alcedo today.');
   }
 
@@ -906,7 +1090,19 @@
     return `<details class="settings-provider__events"><summary>Recent activity</summary><ul>${events.map((event) => `<li>${escapeHtml(INTEGRATION_EVENTS[event.event_type])}${event.actor_label ? ` · ${escapeHtml(event.actor_label)}` : ''} · ${escapeHtml(formatDateTime(event.created_at))}</li>`).join('')}</ul></details>`;
   }
 
-  function providerMarkup(provider) {
+  // The provider's required next step (Allow publishing, Choose a page,
+  // Connect, Reconnect), or '' when it needs nothing.
+  function providerNextStep(provider) {
+    const view = integrationView(provider);
+    if (view.primary === 'allow-publishing' || view.primary === 'choose-resource') return view.primary;
+    if (!provider.can_connect) return '';
+    const connectionState = provider.connection_state;
+    return connectionState === 'ready' || connectionState === 'needs_reauthorization' || view.primary === 'start' ? 'start' : '';
+  }
+
+  // One primary per screen: only the first provider that needs a step shows
+  // it filled; the others show the same step as a secondary button.
+  function providerMarkup(provider, filled = true) {
     const key = provider.provider_key;
     const view = integrationView(provider);
     const busy = state.integrations.busy[key];
@@ -917,14 +1113,15 @@
     if (provider.account_label) facts.push(`Account: ${provider.account_label}`);
     if (provider.connected_by_label && provider.connected_at) facts.push(`Connected by ${provider.connected_by_label} · ${formatDateTime(provider.connected_at)}`);
     if (provider.last_verified_at) facts.push(`Last checked ${formatDateTime(provider.last_verified_at)}`);
+    const strong = filled ? 'primary' : 'secondary';
     const button = (action, label, variant = 'secondary') => `<button type="button" class="atlas-btn atlas-btn--${variant} atlas-btn--sm${busy === action ? ' is-loading' : ''}" data-integration-action="${action}" data-provider="${escapeHtml(key)}"${busy ? ' disabled' : ''}${busy === action ? ' aria-busy="true"' : ''}>${escapeHtml(label)}</button>`;
     const actions = [];
-    if (view.primary === 'allow-publishing') actions.push(button('allow-publishing', 'Allow publishing', 'primary'));
-    if (view.primary === 'choose-resource') actions.push(button('choose-resource', words.choose, 'primary'));
+    if (view.primary === 'allow-publishing') actions.push(button('allow-publishing', 'Allow publishing', strong));
+    if (view.primary === 'choose-resource') actions.push(button('choose-resource', words.choose, strong));
     if (provider.can_connect) {
       const connectionState = provider.connection_state;
-      if (connectionState === 'ready') actions.push(button('start', 'Connect', 'primary'));
-      else if (connectionState === 'needs_reauthorization' || view.primary === 'start') actions.push(button('start', 'Reconnect', 'primary'));
+      if (connectionState === 'ready') actions.push(button('start', 'Connect', strong));
+      else if (connectionState === 'needs_reauthorization' || view.primary === 'start') actions.push(button('start', 'Reconnect', strong));
       else if (connectionState === 'verification_failed' || (connectionState === 'connected' && !publishing)) actions.push(button('start', 'Reconnect'));
       else if (connectionState === 'verifying') actions.push(button('start', 'Connect'));
     }
@@ -1112,17 +1309,32 @@
   function integrationsMarkup() {
     const integrations = state.integrations;
     let body;
-    if (integrations.status === 'idle' || integrations.status === 'loading') body = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(4)}<span class="sr-only">Loading integrations</span></div>`;
+    let summary = '';
+    if (integrations.status === 'idle' || integrations.status === 'loading') body = `<div class="settings-providers" aria-busy="true">${'<div class="settings-provider settings-provider--loading"><span class="atlas-skel settings-skel--title"></span><span class="atlas-skel atlas-skel--text"></span></div>'.repeat(4)}<span class="sr-only">Loading integrations</span></div>`;
     else if (integrations.status === 'error') {
       body = integrations.error?.code === 'not_configured'
-        ? `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not set up yet</h3><p>Integrations connect Alcedo to your Google, Meta, TikTok and Tripadvisor accounts. An administrator can set them up.</p></div>`
-        : `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Integrations couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(integrations.error?.status === 403 ? 'Only managers and administrators can see integrations.' : 'Nothing was changed. Try again.')}</p></div>${integrations.error?.status === 403 ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-integrations-retry>Try again</button></div>'}</div>`;
-    } else if (!integrations.providers.length) body = '<p class="settings-muted">No integrations are available.</p>';
-    else body = `<ul class="settings-providers">${integrations.providers.map(providerMarkup).join('')}</ul>`;
+        ? `<div class="atlas-empty atlas-empty--inline settings-panel__empty"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not set up yet</h3><p>Integrations connect Alcedo to your Google, Meta, TikTok and Tripadvisor accounts. An administrator can set them up.</p></div>`
+        : `<div class="settings-panel__inset"><div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Integrations couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(integrations.error?.status === 403 ? 'Only managers and administrators can see integrations.' : 'Nothing was changed. Try again.')}</p></div>${integrations.error?.status === 403 ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-integrations-retry>Try again</button></div>'}</div></div>`;
+    } else if (!integrations.providers.length) body = '<p class="settings-empty">No integrations are available.</p>';
+    else {
+      const first = integrations.providers.find((provider) => providerNextStep(provider));
+      body = `<ul class="settings-providers">${integrations.providers.map((provider) => providerMarkup(provider, provider === first)).join('')}</ul>`;
+      // Counts follow the rows on screen: connected, and the ones a person must act on.
+      const views = integrations.providers.map((provider) => ({ provider, view: integrationView(provider) }));
+      const connected = views.filter(({ provider }) => provider.connection_state === 'connected').length;
+      const attention = views.filter(({ view }) => view.tone === 'warning').length;
+      summary = `<p class="settings-form__meta num">${escapeHtml(`${connected} of ${views.length} connected${attention ? ` · ${attention} need${attention === 1 ? 's' : ''} attention` : ''}`)}</p>`;
+    }
     return `${sectionHead('Integrations', 'Outside accounts Alcedo can use. Connecting happens on the provider’s own page; Alcedo never sees passwords.')}
       ${integrationNoticeMarkup()}
-      ${body}
-      <p class="settings-muted">${icon('lock')}Alcedo only publishes posts someone approved. Planning in Marketing works without any connection.</p>`;
+      <section class="settings-row" aria-labelledby="settings-providers-title">
+        ${rowLabel('Connections', 'Each account is connected on its own. Posting needs the platform’s permission and a chosen Page, account or location.', {
+          id: 'settings-providers-title',
+          meta: summary,
+          aside: `<p class="settings-muted settings-row__note">${icon('lock')}Alcedo only publishes posts someone approved. Planning in Marketing works without any connection.</p>`
+        })}
+        <div class="settings-row__panel settings-row__panel--flush">${body}</div>
+      </section>`;
   }
 
   // One-time notice after the provider redirect: /?integration=…&result=…&reason=…#settings/…
@@ -1155,14 +1367,19 @@
       ['Trusted devices', 'Not available yet.'],
       ['Emergency lockdown', 'Not available yet — deactivate a profile in Team to remove access.']
     ];
+    const list = (rows, glyph) => `<ul class="settings-capabilities">${rows.map(([title, detail]) => `<li>${icon(glyph)}<span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></span></li>`).join('')}</ul>`;
     return `${sectionHead('Security', 'What Alcedo enforces today, and what isn’t available yet.')}
-      <section class="settings-security">
+      <div class="settings-security">
         ${mfaMarkup()}
-        <section class="settings-form atlas-card" aria-labelledby="settings-security-on"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-on">Enforced now</h3></div>${pill('positive', 'On')}</div>
-          <ul class="settings-capabilities">${enforced.map(([title, detail]) => `<li>${icon('shield-check')}<span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></span></li>`).join('')}</ul></section>
-        <section class="settings-form atlas-card" aria-labelledby="settings-security-off"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-off">Not available yet</h3></div>${pill('neutral', 'Off')}</div>
-          <ul class="settings-capabilities">${unavailable.map(([title, detail]) => `<li>${icon('circle-dashed')}<span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></span></li>`).join('')}</ul></section>
-      </section>`;
+        <section class="settings-row" aria-labelledby="settings-security-on">
+          ${rowLabel('Enforced now', 'Protections every account has, whatever its role.', { id: 'settings-security-on', status: pill('positive', 'On'), meta: `<p class="settings-form__meta num">${enforced.length} protections</p>` })}
+          <div class="settings-row__panel">${list(enforced, 'shield-check')}</div>
+        </section>
+        <section class="settings-row" aria-labelledby="settings-security-off">
+          ${rowLabel('Not available yet', 'Listed so nobody assumes they are on.', { id: 'settings-security-off', status: pill('neutral', 'Off') })}
+          <div class="settings-row__panel">${list(unavailable, 'circle-dashed')}</div>
+        </section>
+      </div>`;
   }
 
   // S99: the current user's own authenticator (two-factor). Every account needs
@@ -1173,20 +1390,26 @@
     const mfa = state.mfa;
     let body;
     if (mfa.status === 'idle' || mfa.status === 'loading') {
-      body = `<div aria-busy="true"><span class="atlas-skel atlas-skel--row"></span><span class="sr-only">Checking your authenticator</span></div>`;
+      body = `<div aria-busy="true"><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel settings-skel--control settings-skel--button"></span><span class="sr-only">Checking your authenticator</span></div>`;
     } else if (mfa.status === 'error') {
-      body = `<p class="settings-muted">${icon('circle-alert')}Your authenticator status couldn’t be checked. <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-settings-mfa-refresh>Try again</button></p>`;
+      body = `<p class="settings-state is-error">${icon('circle-alert')}<span>Your authenticator status couldn’t be checked.</span></p>
+        <div class="settings-actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-mfa-refresh>Try again</button></div>`;
     } else if (mfa.hasFactor) {
-      body = `<p class="settings-muted">${icon('shield-check')}An authenticator app is set up for your account.</p>
-        <div class="settings-savebar" style="position:static">
+      // Replace first; the destructive Remove goes last, named in words, and
+      // asks before it does anything (confirmRemoveMfa).
+      body = `<p class="settings-state is-on">${icon('shield-check')}<span>An authenticator app is set up for your account. Alcedo asks for its 6-digit code when you sign in.</span></p>
+        <div class="settings-actions">
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm${mfa.busy ? ' is-loading' : ''}"${mfa.busy ? ' disabled aria-busy="true"' : ''} data-settings-mfa-setup>Replace authenticator</button>
-          <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm"${mfa.busy ? ' disabled' : ''} data-settings-mfa-remove>Remove</button>
+          <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm settings-actions__destructive"${mfa.busy ? ' disabled' : ''} data-settings-mfa-remove>Remove authenticator</button>
         </div>`;
     } else {
-      body = `<p class="settings-muted">${icon('shield-alert')}No authenticator app is set up yet. You’ll be asked to add one the next time you sign in.</p>
-        <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm${mfa.busy ? ' is-loading' : ''}"${mfa.busy ? ' disabled aria-busy="true"' : ''} data-settings-mfa-setup>Set up authenticator</button>`;
+      body = `<p class="settings-state is-off">${icon('shield-alert')}<span>No authenticator app is set up yet. You’ll be asked to add one the next time you sign in.</span></p>
+        <div class="settings-actions"><button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm${mfa.busy ? ' is-loading' : ''}"${mfa.busy ? ' disabled aria-busy="true"' : ''} data-settings-mfa-setup>Set up authenticator</button></div>`;
     }
-    return `<section class="settings-form atlas-card" aria-labelledby="settings-security-mfa"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-mfa">Two-factor authentication</h3><p class="settings-form__sub">An authenticator app is required to sign in to Alcedo.</p></div>${mfa.status === 'ready' ? pill(mfa.hasFactor ? 'positive' : 'neutral', mfa.hasFactor ? 'On' : 'Off') : ''}</div>${body}</section>`;
+    return `<section class="settings-row settings-row--mfa" aria-labelledby="settings-security-mfa">
+      ${rowLabel('Two-factor authentication', 'An authenticator app is required to sign in to Alcedo. It applies to your own account.', { id: 'settings-security-mfa', status: mfa.status === 'ready' ? pill(mfa.hasFactor ? 'positive' : 'neutral', mfa.hasFactor ? 'On' : 'Off') : '' })}
+      <div class="settings-row__panel">${body}</div>
+    </section>`;
   }
 
   function mfaClient() {
@@ -1218,10 +1441,11 @@
     root.className = 'atlas-modal';
     root.dataset.atlasModal = '';
     root.hidden = true;
-    root.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="settings-mfa-title">
+    root.innerHTML = `<section class="atlas-dialog atlas-dialog--form settings-mfa-dialog" data-modal-panel aria-labelledby="settings-mfa-title" aria-describedby="settings-mfa-desc">
       <h2 class="atlas-dialog__title" id="settings-mfa-title">Set up your authenticator</h2>
+      <p class="settings-mfa-dialog__desc" id="settings-mfa-desc">Three steps, about a minute. Keep your phone at hand.</p>
       <div class="atlas-dialog__body"><div data-settings-mfa-host></div></div>
-      <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Close</button></div>
+      <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button></div>
     </section>`;
     document.body.appendChild(root);
     const modal = window.AtlasModal;
@@ -1266,7 +1490,7 @@
       root.className = 'atlas-modal';
       root.dataset.atlasModal = '';
       root.hidden = true;
-      root.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="settings-mfa-remove-title"><h2 class="atlas-dialog__title" id="settings-mfa-remove-title">Remove your authenticator?</h2><div class="atlas-dialog__body"><p>You’ll need to set up an authenticator again the next time you sign in.</p></div><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Keep it</button><button type="button" class="atlas-btn atlas-btn--danger-solid" data-settings-mfa-remove-confirm>Remove</button></div></section>`;
+      root.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="settings-mfa-remove-title"><h2 class="atlas-dialog__title" id="settings-mfa-remove-title">Remove your authenticator?</h2><div class="atlas-dialog__body"><p>Alcedo stops asking for its code. You’ll need to set up an authenticator again the next time you sign in.</p></div><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Keep it</button><button type="button" class="atlas-btn atlas-btn--danger-solid" data-settings-mfa-remove-confirm>Remove authenticator</button></div></section>`;
       document.body.appendChild(root);
       let answer = false;
       window.AtlasModal.register(root, { onClose: () => { root.remove(); resolve(answer); } });
@@ -1286,25 +1510,36 @@
     const startView = START_VIEWS.some(([key]) => key === stored) ? stored : 'dashboard';
     const allowed = START_VIEWS.filter(([key]) => key === startView || window.AtlasShell?.nav?.allowed?.(START_VIEW_TARGETS[key] || key) !== false);
     return `${sectionHead('Preferences', 'How Alcedo opens and behaves for you. Saved to your profile.')}
-      <form class="settings-form atlas-card" data-settings-preferences-form>
-        ${field('Start page', select('start_view', startView, allowed), { help: 'The page Alcedo opens after you sign in.' })}
-        ${checkRow('reduce_motion', preference.reduce_motion, 'Reduce motion', { help: 'Turns off animations across Alcedo.' })}
-        <dl class="settings-facts">
-          <div><dt>Notifications on this device</dt><dd>${escapeHtml(device.status === 'enabled' ? 'On' : 'Off')} · <a href="#settings/notifications">Manage</a></dd></div>
-          <div><dt>Theme</dt><dd>Light (the only theme for now)</dd></div>
-          <div><dt>Language</dt><dd>English</dd></div>
-          <div><dt>Time zone</dt><dd>The venue’s time, ${escapeHtml(clock()?.timeZone?.() || '')}</dd></div>
-        </dl>
-        ${feedback('preferences')}
-        ${saveBar('preferences', 'Save preferences')}
-      </form>`;
+      <form class="settings-form settings-row" data-settings-preferences-form>
+        ${rowLabel('Opening and motion', 'Applied every time you sign in, on any device.')}
+        <div class="settings-row__panel">
+          <div class="settings-grid">${field('Start page', select('start_view', startView, allowed), { help: 'The page Alcedo opens after you sign in.' })}</div>
+          ${checkList([checkRow('reduce_motion', preference.reduce_motion, 'Reduce motion', { help: 'Turns off animations across Alcedo.' })])}
+          ${feedback('preferences')}
+          ${saveBar('preferences', 'Save preferences')}
+        </div>
+      </form>
+      <section class="settings-row" aria-labelledby="settings-fixed-title">
+        ${rowLabel('Fixed for now', 'These follow the venue or have one option today.', { id: 'settings-fixed-title' })}
+        <div class="settings-row__panel">
+          <dl class="settings-facts">
+            <div><dt>Notifications on this device</dt><dd>${escapeHtml(device.status === 'enabled' ? 'On' : 'Off')} · <a href="#settings/notifications">Manage</a></dd></div>
+            <div><dt>Theme</dt><dd>Light, the only theme for now</dd></div>
+            <div><dt>Language</dt><dd>English</dd></div>
+            <div><dt>Time zone</dt><dd>The venue’s time, ${escapeHtml(clock()?.timeZone?.() || '')}</dd></div>
+          </dl>
+        </div>
+      </section>`;
   }
 
   function activityMarkup() {
     const events = state.workspace?.events || [];
+    const list = `<ul class="settings-activity">${events.map((event) => `<li class="settings-activity__row"><div class="settings-activity__body"><p class="settings-activity__title">${escapeHtml(humanize(event.section_key || 'settings'))} · ${escapeHtml(humanize(String(event.event_type || '').replace(/^settings_/, '')))}</p><p class="settings-activity__who">${escapeHtml(event.actor_label || 'Alcedo')}</p></div><time class="settings-activity__when num"${event.created_at ? ` datetime="${escapeHtml(event.created_at)}"` : ''}>${escapeHtml(formatDateTime(event.created_at))}</time></li>`).join('')}</ul>`;
     return `${sectionHead('Activity', 'Changes to settings, newest first. This history can’t be edited.')}
-      ${events.length ? `<ul class="atlas-list atlas-card">${events.map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(event.section_key || 'settings'))} · ${escapeHtml(humanize(String(event.event_type || '').replace(/^settings_/, '')))}</p><p class="atlas-row__meta">${escapeHtml(`${event.actor_label || 'Alcedo'} · ${formatDateTime(event.created_at)}`)}</p></div></li>`).join('')}</ul>`
-        : '<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">' + icon('history') + '</div><h3>No changes yet</h3><p>Every saved setting appears here with who changed it.</p></div>'}`;
+      <section class="settings-row" aria-labelledby="settings-activity-title">
+        ${rowLabel('Settings changes', 'Every saved setting, with who changed it and when.', { id: 'settings-activity-title', meta: events.length ? `<p class="settings-form__meta num">${escapeHtml(plural(events.length, 'change', 'changes'))}</p>` : '' })}
+        <div class="settings-row__panel settings-row__panel--flush">${events.length ? list : `<div class="atlas-empty atlas-empty--inline settings-panel__empty"><div class="atlas-empty__icon">${icon('history')}</div><h3>No changes yet</h3><p>Every saved setting appears here with who changed it.</p></div>`}</div>
+      </section>`;
   }
 
   // ---------- page ----------
@@ -1325,11 +1560,19 @@
     }
   }
 
+  // An entry's group is the nearest one at or above it in SECTIONS, so a role
+  // that cannot see a group's first entry still gets the right label.
+  function groupOf(entry) {
+    for (let index = SECTIONS.indexOf(entry); index >= 0; index -= 1) if (SECTIONS[index].group) return SECTIONS[index].group;
+    return '';
+  }
+
   function navMarkup(sections, current) {
     let lastGroup = null;
     return `<nav class="settings-nav" aria-label="Settings sections"><ul>${sections.map((entry) => {
-      const group = entry.group && entry.group !== lastGroup ? `<li class="settings-nav__group">${escapeHtml(entry.group)}</li>` : '';
-      lastGroup = entry.group || lastGroup;
+      const name = groupOf(entry);
+      const group = name && name !== lastGroup ? `<li class="settings-nav__group">${escapeHtml(name)}</li>` : '';
+      lastGroup = name || lastGroup;
       return `${group}<li><a class="settings-nav__link" href="#settings/${entry.key}"${entry.key === current ? ' aria-current="page"' : ''}>${icon(entry.icon)}<span>${escapeHtml(entry.label)}</span>${icon('chevron-right')}</a></li>`;
     }).join('')}</ul></nav>`;
   }
@@ -1345,15 +1588,21 @@
     const sections = visibleSections();
     const current = sections.some((entry) => entry.key === state.section) ? state.section : null;
     const showNav = sections.length > 2;
-    const subtitle = showNav ? 'Venue, access, integrations and your preferences' : 'Your preferences and notifications';
+    // The settings belong to one venue: its name leads the line under the title.
+    const venueName = String(section('venue')?.value?.business_name || '').trim();
+    const subtitle = showNav ? `${venueName ? `${venueName} · ` : ''}Venue, access, integrations and your preferences` : 'Your preferences and notifications';
     const head = window.AtlasShell?.pageHead?.({ title: 'Settings', sub: subtitle }) || '<header class="page-head"><h1 class="page-head__title">Settings</h1></header>';
     let content;
-    if (state.status === 'idle' || (state.status === 'loading' && !state.workspace)) content = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}<span class="sr-only">Loading settings</span></div>`;
+    if (state.status === 'idle' || (state.status === 'loading' && !state.workspace)) content = `<header class="settings-section__head" aria-hidden="true"><div><span class="atlas-skel settings-skel--heading"></span><span class="atlas-skel atlas-skel--text settings-skel--wide"></span></div></header>${skeletonRow(6, 'Loading settings')}${skeletonRow(2, '')}`;
     else if (state.status === 'error' && !state.workspace) {
       content = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Settings couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(state.error?.status === 403 ? 'Your profile can’t open Settings. Ask an administrator.' : state.error?.status === 401 ? 'Alcedo couldn’t confirm your sign-in for this. Nothing has changed. Try again in a moment.' : 'Nothing was changed. Check the connection and try again.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-refresh>Try again</button></div></div>`;
     } else content = sectionMarkup(current || defaultSection());
     const listOnly = showNav && phone() && !current;
     const drafts = captureDrafts(element);
+    // Re-renders keep what the person opened, and the page head that has
+    // already played its entry (a new node would play it on every save).
+    const openOffers = new Set([...element.querySelectorAll('[data-settings-offer-form] > details[open]')].map((node) => node.parentElement.dataset.offerId));
+    const oldHead = element.querySelector('.settings > .page-head');
     element.innerHTML = `<div class="settings${showNav ? '' : ' settings--single'}${listOnly ? ' is-list' : ''}${current ? ' has-section' : ''}">
       ${head}
       <div class="settings-layout">
@@ -1362,6 +1611,11 @@
       </div>
     </div>`;
     restoreDrafts(element, drafts);
+    const newHead = element.querySelector('.settings > .page-head');
+    if (oldHead && newHead && oldHead.outerHTML === newHead.outerHTML) newHead.replaceWith(oldHead);
+    element.querySelectorAll('[data-settings-offer-form] > details').forEach((node) => { if (openOffers.has(node.parentElement.dataset.offerId)) node.open = true; });
+    element.querySelectorAll('[data-settings-hours-form]').forEach(paintWeek);
+    element.querySelectorAll('[data-settings-section-form="venue"]').forEach(paintVenuePreview);
     if ((current || defaultSection()) === 'system' && !listOnly) window.AtlasSystem?.mount?.(element.querySelector('[data-settings-system-host]'));
     if ((current || defaultSection()) === 'security' && !listOnly && (state.mfa.status === 'idle')) loadMfaStatus();
     window.lucide?.createIcons?.();
@@ -1496,7 +1750,8 @@
         country_code: fieldValue(form, 'country_code').trim().toUpperCase(),
         location_label: fieldValue(form, 'location_label').trim(),
         currency: 'ISK',
-        primary_language: fieldValue(form, 'primary_language') || current.primary_language || 'en',
+        // Read-only until it has an effect: the stored value goes back unchanged.
+        primary_language: current.primary_language || 'en',
         supported_languages: current.supported_languages || ['en', 'is'],
         email: fieldValue(form, 'email').trim(),
         phone: fieldValue(form, 'phone').trim(),
@@ -1823,6 +2078,9 @@
     }
     const bar = form.querySelector('[data-settings-savebar]');
     if (bar) bar.hidden = false;
+    // The previews beside the form follow the edit before it is saved.
+    if (key === 'hours') paintWeek(form);
+    if (key === 'section:venue') paintVenuePreview(form);
   }
 
   function handleClick(event) {

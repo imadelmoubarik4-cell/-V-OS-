@@ -72,11 +72,17 @@ test('P2: every page header starts at the shell gutter (no module page padding)'
     try {
       for (const route of routes) {
         await navigateTo(page, route);
+        // The header's entry (a 4 px rise when a page opens) has finished: the
+        // resting position is what is measured.
+        await page.evaluate(() => Promise.all([...document.querySelectorAll('.page-head')].flatMap((node) => node.getAnimations()).map((animation) => animation.finished.catch(() => {}))));
         const gap = await page.evaluate(() => {
-          const content = document.querySelector('.atlas-content').getBoundingClientRect();
+          // Measured from the sheet's padding edge: the sheet's 1 px edge is a
+          // border (clientLeft/clientTop), then the gutter padding.
+          const sheet = document.querySelector('.atlas-content');
+          const content = sheet.getBoundingClientRect();
           const head = [...document.querySelectorAll('.page-head')].find((node) => node.getClientRects().length).getBoundingClientRect();
-          const gutter = parseFloat(getComputedStyle(document.querySelector('.atlas-content')).paddingLeft);
-          return { left: Math.round(head.left - content.left - gutter), top: Math.round(head.top - content.top - parseFloat(getComputedStyle(document.querySelector('.atlas-content')).paddingTop)) };
+          const gutter = parseFloat(getComputedStyle(sheet).paddingLeft);
+          return { left: Math.round(head.left - content.left - sheet.clientLeft - gutter), top: Math.round(head.top - content.top - sheet.clientTop - parseFloat(getComputedStyle(sheet).paddingTop)) };
         });
         assert.deepEqual(gap, { left: 0, top: 0 }, `${route} at ${width}`);
       }

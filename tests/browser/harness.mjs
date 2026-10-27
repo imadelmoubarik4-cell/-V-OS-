@@ -39,9 +39,10 @@ function resolveLibraries() {
   const roots = [process.env.ATLAS_BROWSER_LIBS, path.join(ROOT, 'node_modules'), path.join(here, 'node_modules')]
     .filter(Boolean);
   for (const base of roots) {
+    // Icons are self-hosted (apps/web/assets/js/alcedo-icons.js), so only the
+    // Supabase client comes from outside the repository.
     const supabase = path.join(base, '@supabase/supabase-js/dist/umd/supabase.js');
-    const lucide = path.join(base, 'lucide/dist/umd/lucide.min.js');
-    if (existsSync(supabase) && existsSync(lucide)) return { supabase, lucide };
+    if (existsSync(supabase)) return { supabase };
   }
   return null;
 }
@@ -130,7 +131,6 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
   });
   await context.route('https://unpkg.com/**', (route) => {
     const url = route.request().url();
-    if (url.includes('lucide')) return route.fulfill({ contentType: MIME['.js'], body: readFileSync(libs.lucide) });
     if (url.includes('supabase-js')) return route.fulfill({ contentType: MIME['.js'], body: readFileSync(libs.supabase) });
     return route.fulfill({ status: 404, body: '' });
   });

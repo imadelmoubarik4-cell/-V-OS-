@@ -15,7 +15,8 @@ const read = (file) => readFileSync(file, 'utf8');
 // is WebGL in software (a context only without failIfMajorPerformanceCaveat).
 // clock: a fake time and timers (performance.now, setTimeout), advanced by
 // bot.advance(ms); followers: elements the controller paints.
-function loadBot({ webgl = true, gpu = true, followers = [] } = {}) {
+// renderer: the name the WebGL context reports (WEBGL_debug_renderer_info).
+function loadBot({ webgl = true, gpu = true, renderer = '', followers = [] } = {}) {
   const listeners = [];
   const canvases = [];
   const clock = { t: 1000, timers: new Map(), next: 1 };
@@ -35,7 +36,11 @@ function loadBot({ webgl = true, gpu = true, followers = [] } = {}) {
         this.contexts.push(type);
         if (!webgl || !String(type).startsWith('webgl')) return null;
         if (!gpu && options?.failIfMajorPerformanceCaveat) return null;
-        return { getExtension: (name) => (name === 'WEBGL_lose_context' ? { loseContext: () => { canvas.lost += 1; } } : null) };
+        const debugInfo = { UNMASKED_RENDERER_WEBGL: 0x9246 };
+        return {
+          getExtension: (name) => (name === 'WEBGL_lose_context' ? { loseContext: () => { canvas.lost += 1; } } : name === 'WEBGL_debug_renderer_info' && renderer ? debugInfo : null),
+          getParameter: (param) => (renderer && param === debugInfo.UNMASKED_RENDERER_WEBGL ? renderer : null)
+        };
       },
       setAttribute(name, value) { this.attributes[name] = value; },
       addEventListener(type, handler) { this.handlers[type] = handler; },
@@ -186,6 +191,20 @@ test('WebGL in software (no GPU): probed once, and the poster stays (no scene, n
   bot.upgrade({ querySelectorAll: () => [host('soft')] });
   assert.notEqual(bot.info('soft'), null);
   assert.equal(loadBot().software(), false);
+});
+
+test('WebGL in software without the caveat (recent Chromium, SwiftShader): the renderer name keeps the poster', () => {
+  const bot = loadBot({ renderer: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)' });
+  const node = host('soft');
+  bot.upgrade({ querySelectorAll: () => [node] });
+  assert.equal(bot.software(), true);
+  assert.equal(bot.canvases.length, 1, 'one probe, nothing else');
+  assert.equal(bot.canvases[0].lost, 1, 'the probe context is released');
+  assert.ok(node.classes.has('is-static'));
+  assert.equal(bot.info('soft'), null);
+  assert.equal(loadBot({ renderer: 'Mesa llvmpipe (LLVM 15.0.7, 256 bits)' }).software(), true);
+  assert.equal(loadBot({ renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)' }).software(), false, 'a real GPU still goes live');
+  assert.equal(loadBot({ renderer: 'ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)' }).software(), false);
 });
 
 // ---------------------------------------------------------------------------

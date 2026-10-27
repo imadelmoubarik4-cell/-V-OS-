@@ -20,7 +20,7 @@
 //   data      onDataLoaded(fn) · dataLoaded(detail) · profileReady(profile) · profile()
 //   actions   actions.register(def) · actions.run(id, ctx) · actions.list(ctx) · actions.get(id)
 //   notify    notify.push(item) · notify.contribute(key, fn) · notify.items({ filter })
-//             notify.unreadCount() · notify.markRead(id) · notify.markAllRead()
+//             notify.unreadCount() · notify.markRead(id) · notify.markUnread(id) · notify.markAllRead()
 //             notify.open() / close() / toggle() / isOpen() · notify.setPanel(panel)
 //   links     links.register(type, handler) · links.open(type, key)   (registerLink / openLink)
 //   modules   modules.ensure({ js, global }) · load(src, options)       (deduplicated loader)
@@ -28,6 +28,7 @@
 //             (spec §3.1/§3.3 destinations and role visibility; atlas-chrome.js renders them)
 //   markup    pageHead({ title, sub, actions }) · skeleton({ title, sub, rows }) · escape(text)
 //   ui        toast(message, { tone: 'success'|'info'|'warning', action: { label, onClick }, duration }) · menu(trigger, menuEl, { onSelect })
+//             sheetGesture(container, { panel, handle, dismiss, scrim }) · sheetGesture.slideOut(panel, done, scrim)
 //
 // Loaded as a classic script before config.js and every module. It installs one
 // capture-phase and one bubbling document click listener (navigation) and the
@@ -76,6 +77,7 @@
   let notifyPanel = null;
   let notifyIsOpen = false;
   let readIds = null;
+  let readOwner = '';
 
   // A failing module must not stop the rest of the lifecycle. The error is
   // reported as uncaught (visible in the console and to page-error monitors)
@@ -673,7 +675,9 @@
 
   function profileReady(profile) {
     lastProfile = profile ?? null;
+    const readOwnerChanged = setReadOwner(lastProfile);
     emit('profile:ready', lastProfile);
+    if (readOwnerChanged) emit('notify:changed', { source: 'profile' });
   }
 
   // ---------- navigation destinations (spec §3.1, §3.3) ----------
@@ -768,8 +772,8 @@
   function pageHead({ title = '', sub = '', actions = [], id = '' } = {}) {
     const buttons = (Array.isArray(actions) ? actions : []).map((action) => {
       const attrs = Object.entries(action.attrs || {}).map(([name, value]) => ` ${escapeHtml(name)}="${escapeHtml(value)}"`).join('');
-      const icon = action.icon === 'atlas-bot' && root.AtlasBot ? root.AtlasBot.html({ size: 20 })
-        : action.icon ? `<i data-lucide="${escapeHtml(action.icon)}" aria-hidden="true"></i>` : '';
+      // 'atlas-bot' renders as the kingfisher glyph (alcedo-icons.js), like every small Ask Alcedo control.
+      const icon = action.icon ? `<i data-lucide="${escapeHtml(action.icon)}" aria-hidden="true"></i>` : '';
       return `<button type="button" class="atlas-btn atlas-btn--${escapeHtml(action.variant || 'secondary')}"${attrs}>${icon}${escapeHtml(action.label)}</button>`;
     }).join('');
     const heading = `<h1 class="page-head__title"${id ? ` id="${escapeHtml(id)}"` : ''}>${escapeHtml(title)}</h1>`;
@@ -848,18 +852,33 @@
   // needsAction? }. Sources: pushed items, contributor functions and Home
   // attention rows. The panel UI registers itself with notify.setPanel().
 
+  // Read state belongs to the signed-in person, not the device (audit L22):
+  // the key carries the profile id, and a different profile starts from its
+  // own set. A profile without an id keeps the original device key.
+  function readStorageKey() {
+    return readOwner ? `${READ_STORAGE_KEY}:${readOwner}` : READ_STORAGE_KEY;
+  }
+
+  function setReadOwner(profile) {
+    const owner = profile?.id ? String(profile.id) : '';
+    if (owner === readOwner) return false;
+    readOwner = owner;
+    readIds = null;
+    return true;
+  }
+
   function loadReadIds() {
     if (readIds) return readIds;
     readIds = new Set();
     try {
-      const stored = JSON.parse(root.localStorage?.getItem(READ_STORAGE_KEY) || '[]');
+      const stored = JSON.parse(root.localStorage?.getItem(readStorageKey()) || '[]');
       if (Array.isArray(stored)) stored.slice(-300).forEach((id) => readIds.add(String(id)));
     } catch { /* storage unavailable: read state lasts for this page only */ }
     return readIds;
   }
 
   function saveReadIds() {
-    try { root.localStorage?.setItem(READ_STORAGE_KEY, JSON.stringify([...loadReadIds()].slice(-300))); } catch { /* storage unavailable */ }
+    try { root.localStorage?.setItem(readStorageKey(), JSON.stringify([...loadReadIds()].slice(-300))); } catch { /* storage unavailable */ }
   }
 
   function normalizeNotification(item, source) {
@@ -937,6 +956,15 @@
     const ids = loadReadIds();
     if (ids.has(String(id))) return;
     ids.add(String(id));
+    saveReadIds();
+    emit('notify:changed', { id: String(id) });
+  }
+
+  // Undo a local markRead the server did not keep (bookings-notifications.js
+  // after a rejected mark-as-read, audit L43).
+  function markUnread(id) {
+    const ids = loadReadIds();
+    if (!ids.delete(String(id))) return;
     saveReadIds();
     emit('notify:changed', { id: String(id) });
   }
@@ -1108,11 +1136,9 @@
   // Tones (spec §6.25): success (a completed action, the default), info (a
   // permission or a neutral fact) and warning (something the person should
   // know about what just happened).
-  const TOAST_ICONS = {
-    info: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
-    warning: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>'
-  };
-  const TOAST_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>';
+  // Tone glyphs from the self-hosted ALCEDO icon set (assets/js/alcedo-icons.js).
+  const TOAST_ICONS = { success: 'circle-check', info: 'info', warning: 'triangle-alert' };
+  const toastIcon = (tone) => (root.AlcedoIcons ? root.AlcedoIcons.svg(TOAST_ICONS[tone], { size: 16 }) : '');
   let toastRegion = null;
   let activeToast = null;
 
@@ -1152,7 +1178,7 @@
     const node = document.createElement('div');
     const tone = TOAST_ICONS[options.tone] ? options.tone : 'success';
     node.className = `atlas-toast atlas-toast--${tone}`;
-    if (options.icon !== false) node.insertAdjacentHTML('beforeend', TOAST_ICONS[tone] || TOAST_ICON);
+    if (options.icon !== false) node.insertAdjacentHTML('beforeend', toastIcon(tone));
     const label = document.createElement('span');
     label.className = 'atlas-toast__text';
     label.textContent = text;
@@ -1246,6 +1272,10 @@
       const width = menu.offsetWidth || 200;
       const left = options.align === 'start' ? rect.left : rect.right - width;
       menu.style.left = `${Math.round(Math.max(8, Math.min(left, window.innerWidth - width - 8)))}px`;
+      // The menu grows out of its trigger (spec §6.19): from the corner on
+      // the trigger's side, so a right-aligned "…" menu scales from its top
+      // right, not from the far edge.
+      menu.style.setProperty('--atlas-origin', options.align === 'start' ? 'top left' : 'top right');
     };
     const focusItem = (index) => {
       const list = items();
@@ -1323,6 +1353,120 @@
     return binding.handle;
   }
 
+  // Bottom-sheet gestures (spec §6.18; a grabber does what it shows). On a
+  // phone a bottom sheet follows the finger from its handle (the grabber or
+  // the head, never a control in it), damped above its resting place. On
+  // release a flick (faster than 0.11 px/ms) or a drag past 30 % of its
+  // height dismisses it: it slides out by the edge it came in from, then
+  // dismiss() closes it. Anything less springs back on the drawer curve.
+  // slideOut() plays the same exit for a scrim tap. Reduced motion and wider
+  // screens close at once. Presentation only: the owner's dismiss() does the
+  // closing, so focus, inert and events stay where they were.
+  const SHEET_PHONE = '(max-width: 767px)';
+  const SHEET_EXIT_MS = 200;
+  const SHEET_EASE_OUT = 'cubic-bezier(.23, 1, .32, 1)';
+  const SHEET_EASE_DRAWER = 'cubic-bezier(.32, .72, 0, 1)';
+  const sheetsLeaving = typeof WeakSet === 'function' ? new WeakSet() : null;
+  const sheetMatches = (query) => Boolean(root.matchMedia && root.matchMedia(query).matches);
+  function sheetMotionAllowed() {
+    if (typeof document === 'undefined') return false;
+    if (document.documentElement.classList.contains('atlas-reduce-motion')) return false;
+    return sheetMatches(SHEET_PHONE) && !sheetMatches('(prefers-reduced-motion: reduce)');
+  }
+  function sheetOffset(panel) {
+    const match = /translateY\((-?[\d.]+)px\)/.exec(panel.style.transform || '');
+    return match ? Number(match[1]) : 0;
+  }
+  function slideOutSheet(panel, done, scrim) {
+    const finishNow = () => safe(done);
+    if (!panel || !sheetMotionAllowed() || typeof panel.animate !== 'function') { finishNow(); return; }
+    if (sheetsLeaving?.has(panel)) return;
+    sheetsLeaving?.add(panel);
+    const from = sheetOffset(panel);
+    const to = Math.ceil(panel.getBoundingClientRect().height) + 16;
+    panel.style.animation = 'none';
+    panel.style.transition = 'none';
+    const animations = [panel.animate([{ transform: `translateY(${from}px)` }, { transform: `translateY(${to}px)` }], { duration: SHEET_EXIT_MS, easing: SHEET_EASE_OUT, fill: 'forwards' })];
+    if (scrim && scrim !== panel) {
+      const fade = scrim.contains(panel)
+        ? [{ backgroundColor: getComputedStyle(scrim).backgroundColor }, { backgroundColor: 'transparent' }]
+        : [{ opacity: getComputedStyle(scrim).opacity }, { opacity: 0 }];
+      animations.push(scrim.animate(fade, { duration: SHEET_EXIT_MS, easing: SHEET_EASE_OUT, fill: 'forwards' }));
+    }
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      finishNow();
+      animations.forEach((animation) => animation.cancel());
+      panel.style.transform = '';
+      panel.style.transition = '';
+      sheetsLeaving?.delete(panel);
+    };
+    animations[0].onfinish = settle;
+    setTimeout(settle, SHEET_EXIT_MS + 80);
+  }
+  function sheetGesture(container, options = {}) {
+    if (!container || typeof container.addEventListener !== 'function' || container.__atlasSheetGesture) return;
+    container.__atlasSheetGesture = true;
+    const panelSelector = options.panel || '.atlas-sheet';
+    const handleSelector = options.handle || '.atlas-sheet__grabber, .atlas-sheet__head';
+    container.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0 || event.isPrimary === false || !sheetMotionAllowed()) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const handle = target?.closest(handleSelector);
+      if (!handle || !container.contains(handle)) return;
+      if (target.closest('button, a[href], input, select, textarea, [role="button"], [contenteditable="true"]')) return;
+      const panel = handle.closest(panelSelector);
+      if (!panel || sheetsLeaving?.has(panel)) return;
+      const startY = event.clientY;
+      const startTime = performance.now();
+      let offset = 0;
+      let dragging = false;
+      try { handle.setPointerCapture(event.pointerId); } catch { /* capture is best effort */ }
+      const move = (moveEvent) => {
+        if (moveEvent.pointerId !== event.pointerId) return;
+        const raw = moveEvent.clientY - startY;
+        if (!dragging && Math.abs(raw) < 4) return;
+        if (!dragging) {
+          dragging = true;
+          panel.style.animation = 'none';
+          panel.style.transition = 'none';
+        }
+        // Below the rest position the sheet follows the finger; above it,
+        // it resists (a damped few pixels), as a real sheet does.
+        offset = raw >= 0 ? raw : -Math.min(24, Math.sqrt(-raw) * 2);
+        panel.style.transform = `translateY(${offset}px)`;
+      };
+      const end = (endEvent) => {
+        if (endEvent.pointerId !== event.pointerId) return;
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', end);
+        handle.removeEventListener('pointercancel', end);
+        if (!dragging) return;
+        const elapsed = Math.max(1, performance.now() - startTime);
+        const height = panel.getBoundingClientRect().height || 1;
+        const flick = offset / elapsed > 0.11;
+        if (endEvent.type === 'pointerup' && offset > 0 && (flick || offset > height * 0.3)) {
+          slideOutSheet(panel, options.dismiss, options.scrim || null);
+          return;
+        }
+        const from = offset;
+        panel.style.transform = '';
+        const settle = () => { panel.style.transition = ''; };
+        if (typeof panel.animate === 'function' && from !== 0) {
+          const back = panel.animate([{ transform: `translateY(${from}px)` }, { transform: 'translateY(0)' }], { duration: 240, easing: SHEET_EASE_DRAWER });
+          back.onfinish = settle;
+          back.oncancel = settle;
+        } else settle();
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+    });
+  }
+  sheetGesture.slideOut = slideOutSheet;
+
   root.AtlasShell = {
     version: VERSION,
     // views and lifecycle
@@ -1378,6 +1522,7 @@
       items: notificationItems,
       unreadCount,
       markRead,
+      markUnread,
       markAllRead,
       activate: activateNotification,
       open: openNotifications,
@@ -1409,6 +1554,7 @@
     // design-system helpers (toast §6.25, menu §6.19)
     toast: showToast,
     menu: bindMenu,
+    sheetGesture,
     debug: () => JSON.parse(JSON.stringify(metrics))
   };
 })(typeof window === 'undefined' ? globalThis : window);

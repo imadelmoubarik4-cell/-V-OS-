@@ -79,7 +79,9 @@
     return clock?.formatRelative?.(value) || fallback;
   }
 
+  // A missing count is a dash; a real zero is printed.
   function count(value) {
+    if (value === null || value === undefined || value === '') return '—';
     const parsed = Number(value);
     return Number.isFinite(parsed) ? String(Math.round(parsed)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '—';
   }
@@ -90,6 +92,13 @@
 
   function list(name) {
     return Array.isArray(state.workspace?.[name]) ? state.workspace[name] : [];
+  }
+
+  // What needs attention first: failing, then warning, then the rest, each
+  // group in the order the server sent it.
+  function bySeverity(rows) {
+    const rank = (row) => (BAD.includes(row.status) ? 0 : WARN.includes(row.status) ? 1 : 2);
+    return rows.map((row, index) => [row, index]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([row]) => row);
   }
 
   // ---------- server ----------
@@ -158,23 +167,29 @@
     return reported === 'healthy' && !complete ? 'unverified' : reported;
   }
 
+  // One divided strip, label above a tabular figure (shared .atlas-stat).
+  function stat(text, value) {
+    const shown = count(value);
+    return `<div class="atlas-stat"><p class="atlas-stat__label">${escapeHtml(text)}</p><p class="atlas-stat__value${shown === '—' ? ' is-empty' : ''}">${shown}</p></div>`;
+  }
+
   function summaryMarkup() {
     const summary = state.workspace?.summary || {};
     const overall = overallStatus();
     return `<div class="sys-summary">
       <div class="sys-summary__state">${pill(overall, overall === 'healthy' ? 'Everything checked is healthy' : overall === 'unverified' || overall === 'unknown' ? 'Not fully checked yet' : `Overall: ${label(overall)}`)}
         <span class="sys-summary__checked">${state.checkedAt ? `Checked ${escapeHtml(ago(state.checkedAt, ''))}` : ''}</span></div>
-      <dl class="sys-facts">
-        <div><dt>Healthy services</dt><dd>${count(summary.healthy_services)}</dd></div>
-        <div><dt>Degraded or down</dt><dd>${count(summary.degraded_services ?? 0)}</dd></div>
-        <div><dt>Open incidents</dt><dd>${count(summary.open_incidents ?? 0)}</dd></div>
-        <div><dt>Blocked data sources</dt><dd>${count(summary.blocked_sources ?? 0)}</dd></div>
-      </dl>
+      <div class="atlas-stats sys-stats" role="group" aria-label="Summary">
+        ${stat('Healthy services', summary.healthy_services)}
+        ${stat('Degraded or down', summary.degraded_services ?? 0)}
+        ${stat('Open incidents', summary.open_incidents ?? 0)}
+        ${stat('Blocked data sources', summary.blocked_sources ?? 0)}
+      </div>
     </div>`;
   }
 
   function servicesMarkup() {
-    const services = list('services');
+    const services = bySeverity(list('services'));
     if (!services.length) return emptyMarkup('server', 'No service checks recorded yet', 'Alcedo shows a service here once a check has run. It never reports a service as healthy without one.');
     return `<ul class="atlas-list atlas-card">${services.map((service) => `<li class="atlas-row">
       <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(service.label)}</p>
@@ -228,14 +243,14 @@
         <div class="atlas-row__end">${pill(release.status)}</div>
       </li>`;
     }).join('')}</ul>` : emptyMarkup('git-compare', 'No releases recorded yet', 'Each release Alcedo records appears here.');
-    return `${body}<dl class="sys-facts sys-facts--list">
-      <div><dt>Automatic copy of test data to the live app</dt><dd>${recovery.production_sync_enabled ? 'On' : 'Off'}</dd></div>
-      <div><dt>Automatic retries</dt><dd>${recovery.automatic_retries_enabled ? 'On' : 'Off'}</dd></div>
-    </dl>`;
+    return `${body}${facts([
+      ['Automatic copy of test data to the live app', recovery.production_sync_enabled ? 'On' : 'Off'],
+      ['Automatic retries', recovery.automatic_retries_enabled ? 'On' : 'Off']
+    ])}`;
   }
 
   function jobsMarkup() {
-    const jobs = list('jobs');
+    const jobs = bySeverity(list('jobs'));
     const body = jobs.length ? `<ul class="atlas-list atlas-card">${jobs.map((job) => `<li class="atlas-row">
       <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(job.label)}</p>
         <p class="atlas-row__meta">${escapeHtml([job.schedule_description || (job.is_automatic ? 'Runs automatically' : 'Started by a manager'), `last success ${ago(job.last_succeeded_at, 'never')}`].join(' · '))}</p>
@@ -255,21 +270,21 @@
     const grants = Number(security.unexpected_table_grants || 0) + Number(security.unexpected_atlas_function_grants || 0);
     return `<section class="sys-block" aria-labelledby="sys-recovery-title">
         <h3 class="sys-block__title" id="sys-recovery-title">Recovery</h3>
-        <dl class="sys-facts sys-facts--list">
-          <div><dt>Last known healthy release</dt><dd>${escapeHtml(recovery.last_known_healthy_reference || 'Not recorded')}</dd></div>
-          <div><dt>Rollback point</dt><dd>${escapeHtml(recovery.rollback_reference || 'Not recorded')}</dd></div>
-          <div><dt>Verified backup</dt><dd>${escapeHtml(label(recovery.backup_status))}</dd></div>
-        </dl>
+        ${facts([
+          ['Last known healthy release', escapeHtml(recovery.last_known_healthy_reference || 'Not recorded')],
+          ['Rollback point', escapeHtml(recovery.rollback_reference || 'Not recorded')],
+          ['Verified backup', escapeHtml(label(recovery.backup_status))]
+        ])}
         <p class="sys-note">${icon('lock')}Rollback unavailable: Alcedo shows the recovery points but can’t roll back from here.</p>
       </section>
       <section class="sys-block" aria-labelledby="sys-protection-title">
         <h3 class="sys-block__title" id="sys-protection-title">Protection checks</h3>
-        <dl class="sys-facts sys-facts--list">
-          <div><dt>Private tables protected</dt><dd>${schema.tables != null ? `${count(schema.rls_enabled)} of ${count(schema.tables)}` : 'Not checked yet'}</dd></div>
-          <div><dt>Unexpected access rules</dt><dd>${security.unexpected_table_grants != null ? count(grants) : 'Not checked yet'}</dd></div>
-          <div><dt>Profile photos kept private</dt><dd>${security.profile_photo_bucket_private == null ? 'Not checked yet' : security.profile_photo_bucket_private ? 'Yes' : 'No'}</dd></div>
-          <div><dt>Access changes in the last 30 days</dt><dd>${count(security.recent_access_changes ?? 0)}</dd></div>
-        </dl>
+        ${facts([
+          ['Private tables protected', schema.tables != null ? `${count(schema.rls_enabled)} of ${count(schema.tables)}` : 'Not checked yet'],
+          ['Unexpected access rules', security.unexpected_table_grants != null ? count(grants) : 'Not checked yet'],
+          ['Profile photos kept private', security.profile_photo_bucket_private == null ? 'Not checked yet' : security.profile_photo_bucket_private ? 'Yes' : 'No'],
+          ['Access changes in the last 30 days', count(security.recent_access_changes ?? 0)]
+        ])}
         <p class="sys-note">${icon('eye-off')}Passwords, keys and sign-in secrets are never shown here.</p>
       </section>
       <section class="sys-block" aria-labelledby="sys-audit-title">
@@ -277,6 +292,13 @@
         ${domains.length > 1 ? `<div class="atlas-chips sys-filters" role="group" aria-label="Filter activity">${domains.map((domain) => `<button type="button" class="atlas-chip" aria-pressed="${state.auditFilter === domain}" data-system-audit-filter="${escapeHtml(domain)}">${escapeHtml(domain === 'all' ? 'All' : humanize(domain))}</button>`).join('')}</div>` : ''}
         ${visible.length ? `<ul class="atlas-list atlas-card">${visible.slice(0, 60).map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(event.event_type))}</p><p class="atlas-row__meta">${escapeHtml([humanize(event.domain), event.actor_label ? `by ${event.actor_label}` : 'by Alcedo', when(event.created_at)].join(' · '))}</p></div></li>`).join('')}</ul>` : '<p class="sys-muted">No activity recorded for this filter.</p>'}
       </section>`;
+  }
+
+  // Key-value facts as compact list rows (label left, value right, one rule
+  // between rows), built from the shared .atlas-list so they read the same at
+  // every width.
+  function facts(rows) {
+    return `<ul class="atlas-list atlas-card sys-list">${rows.map(([text, value]) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(text)}</p></div><div class="atlas-row__end"><span class="atlas-row__value">${value}</span></div></li>`).join('')}</ul>`;
   }
 
   function emptyMarkup(name, title, text) {

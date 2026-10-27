@@ -28,6 +28,9 @@ test('admin directory: table with role, today’s shift, training and contact st
     assert.match(await page.textContent('#team-profiles-view .page-head__sub'), /^4 people · 1 with training due$/);
     const headers = await page.$$eval('.team-table th:not(.col-actions)', (nodes) => nodes.map((node) => node.textContent.trim()).filter(Boolean));
     assert.deepEqual(headers, ['Person', 'Role', 'On shift today', 'Training', 'Emergency contact']);
+    // innerText follows layout: read the row once it is rendered (a hidden
+    // view returns its raw text with no separators between the cells).
+    await page.waitForSelector(`tr[data-team-profile-select="${USERS.bartender.id}"]`, { state: 'visible' });
     const sara = await page.$eval(`tr[data-team-profile-select="${USERS.bartender.id}"]`, (row) => row.innerText.replace(/\s+/g, ' ').trim());
     assert.match(sara, /Sara Jónsdóttir Bartender · sara\.bartender@example\.test Bartender 16:00–00:00 2 of 3 Due Missing/);
     assert.match(await page.textContent('tr[data-team-profile-select="p-jon"]'), /Schedule only/);

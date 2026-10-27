@@ -10,8 +10,18 @@
 //     cases;
 //   - a 401 (or no session) reads "sign in again" and fires
 //     `atlas:auth-required` so the shell can offer sign-in;
-//   - network failures and timeouts have their own copy.
-// Errors are AtlasApiError { kind, status, code, message }.
+//   - network failures and timeouts have their own copy;
+//   - a write (any method but GET/HEAD) that timed out after it was sent, or
+//     got a 502/503/504, may still have been saved: it reads "couldn't confirm
+//     whether this was saved" (or the module's `outcome_unknown` copy) and the
+//     error carries `outcomeUnknown: true`, never "Nothing was changed";
+//   - the deadline covers the session lookup, the request and the body.
+// Errors are AtlasApiError { kind, status, code, message[, outcomeUnknown] }.
+//
+// AtlasApi.restReadFetch(supabaseUrl) is the Supabase client's fetch: it gives
+// PostgREST reads (GET/HEAD under /rest/v1/) a deadline, so a stalled socket
+// fails the read instead of leaving a page loading for minutes. Writes, RPCs,
+// Auth and Storage are passed through untouched.
 //
 // AtlasIdentity.label(profile) is a person's display name, otherwise
 // "Team member" — never an email address (S87 identity rule; mirrors
@@ -31,10 +41,13 @@
     unavailable: 'This part of Alcedo isn’t available right now. Nothing was changed. Try again shortly.',
     timeout: 'The connection timed out. Nothing was changed. Try again.',
     network: 'Alcedo couldn’t reach the server. Check the connection, then try again.',
-    failed: 'Something went wrong. Nothing was changed. Try again.'
+    failed: 'Something went wrong. Nothing was changed. Try again.',
+    outcome_unknown: 'Alcedo couldn’t confirm whether this was saved. Check before trying again.'
   });
 
   const DEFAULT_TIMEOUT_MS = 20000;
+  const REST_READ_TIMEOUT_MS = 25000;
+  const SESSION_TIMED_OUT = Symbol('session-timed-out');
 
   class AtlasApiError extends Error {
     constructor(kind, message, status = 0, code = null) {
@@ -74,6 +87,26 @@
     return new AtlasApiError(kind, friendlyMessage(kind, code, messages), status, code);
   }
 
+  // A write that reached the server but whose answer was lost (timeout after
+  // sending, or a 502/503/504 from a gateway in front of a function that may
+  // have committed). Its result is unknown, so the copy never says "Nothing
+  // was changed"; a module words it with messages.outcome_unknown, or with
+  // messages[code] for a code of its own. A code that only names a generic
+  // kind ('unavailable', 'timeout', 'failed', …, as atlas-bookings,
+  // atlas-accounting and atlas-ai send on a lost RPC answer) never picks the
+  // module's copy for that kind: that copy is written for a refusal and says
+  // "Nothing was changed".
+  function failUnknownOutcome(kind, status, code, messages) {
+    const error = fail(kind, status, code, messages);
+    const own = (key) => Object.prototype.hasOwnProperty.call(messages, key);
+    const genericCode = code && Object.prototype.hasOwnProperty.call(MESSAGES, String(code).toLowerCase());
+    const byOutcome = own('outcome_unknown') ? messages.outcome_unknown : null;
+    const byCode = code && !genericCode && own(code) ? messages[code] : null;
+    error.message = String(byOutcome || byCode || MESSAGES.outcome_unknown);
+    error.outcomeUnknown = true;
+    return error;
+  }
+
   async function accessToken() {
     const client = window.atlasSupabase;
     if (!client?.auth?.getSession) return null;
@@ -88,9 +121,29 @@
   async function request(url, options = {}) {
     const messages = options.messages || {};
     if (!url) throw fail('not_configured', 0, null, messages);
-    const token = await accessToken();
-    if (!token) throw fail('auth', 401, null, messages);
+    const method = String(options.method || (options.body !== undefined ? 'POST' : 'GET')).toUpperCase();
+    const isWrite = method !== 'GET' && method !== 'HEAD';
 
+    const controller = new AbortController();
+    const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : DEFAULT_TIMEOUT_MS;
+    let timedOut = false;
+    let expire = null;
+    const expired = new Promise((resolve) => { expire = resolve; });
+    const timer = window.setTimeout(() => { timedOut = true; controller.abort(); expire(SESSION_TIMED_OUT); }, timeoutMs);
+    try {
+      // getSession() can wait on the auth lock with no deadline of its own, so
+      // it shares this request's deadline. Nothing has been sent yet: a
+      // timeout here changed nothing.
+      const token = await Promise.race([accessToken(), expired]);
+      if (token === SESSION_TIMED_OUT) throw fail('timeout', 0, null, messages);
+      if (!token) throw fail('auth', 401, null, messages);
+      return await send(url, options, { messages, method, isWrite, token, controller, didTimeOut: () => timedOut });
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
+  async function send(url, options, { messages, method, isWrite, token, controller, didTimeOut }) {
     const target = new URL(String(url), window.location.href);
     Object.entries(options.params || {}).forEach(([key, value]) => {
       if (value !== null && value !== undefined && value !== '') target.searchParams.set(key, String(value));
@@ -99,10 +152,6 @@
     const headers = { authorization: `Bearer ${token}`, accept: 'application/json' };
     if (options.body !== undefined && !isForm) headers['content-type'] = 'application/json';
 
-    const controller = new AbortController();
-    const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : DEFAULT_TIMEOUT_MS;
-    let timedOut = false;
-    const timer = window.setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
     if (options.signal) {
       if (options.signal.aborted) controller.abort();
       else options.signal.addEventListener('abort', () => controller.abort(), { once: true });
@@ -111,7 +160,7 @@
     let response;
     try {
       response = await window.fetch(target.toString(), {
-        method: options.method || (options.body !== undefined ? 'POST' : 'GET'),
+        method,
         cache: 'no-store',
         keepalive: Boolean(options.keepalive),
         signal: controller.signal,
@@ -119,20 +168,53 @@
         body: isForm ? options.body : options.body !== undefined ? JSON.stringify(options.body) : undefined
       });
     } catch (error) {
-      if (error?.name === 'AbortError' && !timedOut && options.signal?.aborted) throw error;
-      throw fail(timedOut ? 'timeout' : 'network', 0, null, messages);
-    } finally {
-      window.clearTimeout(timer);
+      if (error?.name === 'AbortError' && !didTimeOut() && options.signal?.aborted) throw error;
+      if (didTimeOut()) throw isWrite ? failUnknownOutcome('timeout', 0, null, messages) : fail('timeout', 0, null, messages);
+      throw fail('network', 0, null, messages);
     }
 
+    // The body is read under the same deadline: a body that stalls after the
+    // headers fails as a timeout instead of hanging (or reading as {}).
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const code = payload && typeof payload === 'object'
         ? (typeof payload.error_code === 'string' ? payload.error_code : typeof payload.code === 'string' ? payload.code : null)
         : null;
-      throw fail(kindFor(response.status, code), response.status, code, messages);
+      const kind = kindFor(response.status, code);
+      if (isWrite && kind === 'unavailable' && [502, 503, 504].includes(response.status)) throw failUnknownOutcome(kind, response.status, code, messages);
+      throw fail(kind, response.status, code, messages);
     }
+    if (didTimeOut()) throw isWrite ? failUnknownOutcome('timeout', 0, null, messages) : fail('timeout', 0, null, messages);
     return payload && typeof payload === 'object' ? payload : {};
+  }
+
+  // The Supabase client's fetch (atlas-app.js createClient global.fetch).
+  // supabase-js sets no deadline, so a half-open socket (Wi-Fi/4G handover)
+  // left reads spinning until the browser gave up (1–5 min). PostgREST reads
+  // (GET/HEAD under <project>/rest/v1/) get a deadline; a stalled read then
+  // returns supabase-js's usual { error } and the page shows its retry. Writes
+  // and RPCs (POST), Auth and Storage are never cut short: their outcome would
+  // be unknown. window.fetch is looked up per call, so the shell's 401 watcher
+  // still sees every request.
+  function restReadFetch(supabaseUrl, { timeoutMs = REST_READ_TIMEOUT_MS } = {}) {
+    const base = String(supabaseUrl || '').replace(/\/+$/, '');
+    const restPrefix = `${base}/rest/v1/`;
+    return function atlasRestFetch(input, init) {
+      const options = init || {};
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : '';
+      const method = String(options.method || 'GET').toUpperCase();
+      if (!base || !url.startsWith(restPrefix) || (method !== 'GET' && method !== 'HEAD')) return window.fetch(input, init);
+      const controller = new AbortController();
+      const caller = options.signal;
+      if (caller) {
+        if (caller.aborted) controller.abort(caller.reason);
+        else caller.addEventListener('abort', () => controller.abort(caller.reason), { once: true });
+      }
+      // Kept until it fires (aborting a finished read is a no-op), so a body
+      // that stalls after the headers is cut short too.
+      window.setTimeout(() => controller.abort(), timeoutMs);
+      return window.fetch(input, { ...options, signal: controller.signal });
+    };
   }
 
   // The message to show for any error (an AtlasApiError, or anything else).
@@ -178,6 +260,6 @@
     return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'A';
   }
 
-  window.AtlasApi = Object.freeze({ request, message, fixed, kindFor, friendlyMessage, MESSAGES, AtlasApiError });
+  window.AtlasApi = Object.freeze({ request, restReadFetch, message, fixed, kindFor, friendlyMessage, MESSAGES, AtlasApiError });
   window.AtlasIdentity = Object.freeze({ label, safeName, firstName, initials });
 })();

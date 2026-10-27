@@ -27,6 +27,10 @@ test('every former quick-action entry is a canonical action', () => {
 });
 
 test('palette rows show a visible keyboard focus and an active row', () => {
-  assert.match(css, /\.atlas-palette__item\.is-active \{ background: var\(--bg-muted, #f1f5f9\); \}/);
-  assert.match(css, /:focus-visible \{ outline: 2px solid var\(--focus-color, #3b82f6\); outline-offset: 2px; \}/);
+  // 2026 redesign: the active row is the neutral --bg-muted pill; keyboard focus
+  // comes from the one global :focus-visible rule in atlas-base.css (kingfisher
+  // 2px outline), which the shell no longer overrides.
+  assert.match(css, /\.atlas-palette__item\.is-active \{ background: var\(--bg-muted\); \}/);
+  const base = readFileSync('apps/web/assets/css/atlas-base.css', 'utf8');
+  assert.match(base, /\[role="menuitem"\], \[tabindex\]\):focus-visible \{\s*outline: var\(--focus-outline\);\s*outline-offset: var\(--focus-offset\);/);
 });

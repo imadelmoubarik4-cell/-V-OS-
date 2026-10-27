@@ -40,6 +40,7 @@
     allFilter: 'pending',
     finishing: false,
     focusIds: null,
+    progressFrom: null,
     mount: null,
     active: false
   };
@@ -72,9 +73,25 @@
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
+  // Quantities are shown without a thousands separator (AtlasFormat), so
+  // 'Last verified 1250' never reads back as 1.25 when typed (audit L30).
+  const format = () => root.AtlasFormat || null;
   function qty(value) {
     const parsed = num(value);
-    return parsed === null ? '—' : parsed.toLocaleString('en-GB', { maximumFractionDigits: 3 });
+    if (parsed === null) return '—';
+    return format()?.formatQuantity ? format().formatQuantity(parsed) : parsed.toLocaleString('en-GB', { maximumFractionDigits: 3, useGrouping: false });
+  }
+  // '1,250' typed could be 1250 or 1.25: ask instead of guessing (audit L30).
+  // A prefilled figure the person didn't change, or one the stepper wrote, is
+  // never questioned.
+  function typedAmbiguity(input) {
+    if (!input || !format()?.quantityIsAmbiguous) return '';
+    const value = String(input.value).trim();
+    if (value === String(input.defaultValue ?? '').trim() || value === input.dataset?.qtyWritten) return '';
+    return format().quantityIsAmbiguous(value) ? format().ambiguousQuantityText(value) : '';
+  }
+  function fold(value) {
+    return format()?.fold ? format().fold(value) : String(value ?? '').toLowerCase();
   }
   function round3(value) { return Math.round(value * 1000) / 1000; }
   function dateText(value, options) { return value && clock()?.formatDate ? clock().formatDate(value, options || {}) : ''; }
@@ -186,6 +203,18 @@
       if (serial === state.loadSerial) state.loading = false;
     }
     return state.snapshot;
+  }
+
+  // The snapshot the shell read in its last data load (AtlasData.countPayload:
+  // the same edge response), adopted only while this page has none and isn't
+  // loading its own, so it never replaces a newer read or a command's result.
+  function adoptShellSnapshot() {
+    if (state.snapshot || state.loading || !['admin', 'manager', 'bartender'].includes(role())) return false;
+    const payload = root.AtlasData?.countPayload?.();
+    if (!payload || typeof payload !== 'object' || !payload.counts || typeof payload.counts !== 'object') return false;
+    state.error = null;
+    applyPayload(payload);
+    return true;
   }
 
   async function loadDetail(id) {
@@ -400,9 +429,8 @@
     const canStart = state.snapshot?.permissions?.can_start ?? ['admin', 'manager', 'bartender'].includes(role());
     const toolbar = `<div class="atlas-toolbar">
       <div class="atlas-segmented" role="group" aria-label="Show counts">${[['active', 'In progress'], ['verified', 'Verified'], ['all', 'All']].map(([value, label]) => `<button type="button" aria-pressed="${state.listFilter === value}" data-count-filter="${value}">${label}</button>`).join('')}</div>
-      <div class="atlas-toolbar__end"></div>
-    </div>
-    <p class="sc-caption">Counts update stock only after a manager verifies them.</p>`;
+      <div class="atlas-toolbar__end"><p class="sc-caption">Counts update stock only after a manager verifies them.</p></div>
+    </div>`;
     if (!state.snapshot && state.loading) {
       listHost.innerHTML = `${toolbar}<div class="atlas-table-wrap" aria-busy="true"><div class="sc-skeleton">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}</div></div>`;
       lucide();
@@ -425,8 +453,8 @@
     const empty = `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3 class="atlas-empty__title">${state.listFilter === 'active' ? 'No count in progress' : 'No counts here yet'}</h3><p class="atlas-empty__text">Start a count for one area or the whole bar. Staff count; a manager verifies.</p>${canStart ? '<button type="button" class="atlas-btn atlas-btn--secondary" data-count-start>Start stock count</button>' : ''}</div>`;
     listHost.innerHTML = `${toolbar}
       <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Count</th><th data-priority="2">Area</th><th>Status</th><th data-priority="2">Counted by</th><th class="is-num">Items</th><th class="is-num" data-priority="3">Differences</th><th data-priority="3">Date</th></tr></thead>
-      <tbody>${rows.map(({ entry, total, counted, when, variances }) => `<tr data-count-open="${esc(entry.id)}"><td><a class="cell-primary" href="#inventory/counts/${encodeURIComponent(entry.id)}">${esc(entry.title || 'Stock count')}</a></td><td data-priority="2">${esc(scopeLabel(entry))}</td><td>${statusPill(entry.status)}</td><td data-priority="2">${esc(entry.started_by_label || '—')}</td><td class="is-num">${counted} of ${total}</td><td class="is-num" data-priority="3">${entry.status === 'draft' ? '—' : variances}</td><td data-priority="3">${esc(dateText(when))}</td></tr>`).join('')}</tbody></table>${rows.length ? '' : empty}</div>
-      <ul class="atlas-table-list">${rows.map(({ entry, total, counted }) => `<li><a class="atlas-table-list__row" href="#inventory/counts/${encodeURIComponent(entry.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.title || 'Stock count')}</div><div class="atlas-table-list__meta">${esc([scopeLabel(entry), entry.started_by_label, dateText(entry.started_at)].filter(Boolean).join(' · '))}</div></div><div class="atlas-table-list__value">${counted} / ${total}<br>${statusPill(entry.status)}</div></a></li>`).join('')}</ul>
+      <tbody>${rows.map(({ entry, total, counted, when, variances }) => `<tr data-count-open="${esc(entry.id)}"><td><a class="cell-primary" href="#inventory/counts/${encodeURIComponent(entry.id)}">${esc(entry.title || 'Stock count')}</a></td><td data-priority="2">${esc(scopeLabel(entry))}</td><td>${statusPill(entry.status)}</td><td data-priority="2">${esc(entry.started_by_label || '—')}</td><td class="is-num">${counted}<span class="sc-of"> of ${total}</span></td><td class="is-num" data-priority="3">${entry.status === 'draft' ? '<span class="sc-of">—</span>' : variances}</td><td data-priority="3">${esc(dateText(when))}</td></tr>`).join('')}</tbody></table>${rows.length ? '' : empty}</div>
+      <ul class="atlas-table-list">${rows.map(({ entry, total, counted }) => `<li><a class="atlas-table-list__row" href="#inventory/counts/${encodeURIComponent(entry.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.title || 'Stock count')}</div><div class="atlas-table-list__meta">${esc([scopeLabel(entry), entry.started_by_label, dateText(entry.started_at)].filter(Boolean).join(' · '))}</div></div><div class="atlas-table-list__value">${counted}<span class="sc-of"> / ${total}</span><br>${statusPill(entry.status)}</div></a></li>`).join('')}</ul>
       ${rows.length ? '' : `<div class="sc-list-empty">${empty}</div>`}`;
     lucide();
   }
@@ -462,6 +490,7 @@
       .map((loc) => [String(loc.id), loc.name, primaryCounts.get(String(loc.id))]);
     const categories = groups('category');
     const option = (type, value, label, count) => `<label class="sc-area"><input type="radio" class="atlas-radio" name="scope" value="${esc(type)}::${esc(value)}"${type === 'all' ? ' checked' : ''}><span class="sc-area__body"><span class="sc-area__title">${esc(label)}</span><span class="sc-area__meta">${count} ${count === 1 ? 'item' : 'items'}</span></span></label>`;
+    const group = (label, html) => `${label ? `<p class="sc-areas__label">${label}</p>` : ''}<div class="sc-area-group">${html}</div>`;
     const host = document.createElement('div');
     host.className = 'atlas-modal';
     host.dataset.atlasModal = '';
@@ -470,9 +499,9 @@
       <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="sc-start-title">Start stock count</h2><p class="atlas-sheet__desc">Choose what to count. You can pause and continue on any device.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
       <form class="atlas-sheet__body" id="sc-start-form">
         <fieldset class="sc-areas"><legend class="atlas-form-group__title">What are you counting?</legend>
-        ${option('all', '', itemIds?.length ? `${itemIds.length} selected items (full count list)` : 'Full count', catalog.length)}
-        ${locations.length ? `<p class="sc-areas__label">Areas</p>${locations.map(([value, label, count]) => option('ploc', value, label, count)).join('')}` : ''}
-        ${categories.length ? `<p class="sc-areas__label">Categories</p>${categories.map(([value, count]) => option('category', value, value, count)).join('')}` : ''}
+        ${group('', option('all', '', itemIds?.length ? `${itemIds.length} selected items (full count list)` : 'Full count', catalog.length))}
+        ${locations.length ? group('Areas', locations.map(([value, label, count]) => option('ploc', value, label, count)).join('')) : ''}
+        ${categories.length ? group('Categories', categories.map(([value, count]) => option('category', value, value, count)).join('')) : ''}
         </fieldset>
         <div class="atlas-field"><label for="sc-start-title-input">Name <span class="optional">(optional)</span></label><input class="atlas-input" id="sc-start-title-input" name="title" maxlength="200" placeholder="e.g. Back bar count"></div>
         <div data-sc-start-alert></div>
@@ -483,6 +512,11 @@
     root.AtlasModal.open(host);
     lucide();
     const form = host.querySelector('#sc-start-form');
+    // One request id per sheet and request (L15): a retry after an answer was
+    // lost (the count may have started) replays the same start on the server
+    // instead of opening a second count. The server replays by id alone, so
+    // changing what is sent makes it a new request with a new id.
+    let startRequest = null;
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const [type, value] = String(new FormData(form).get('scope') || 'all::').split('::');
@@ -496,8 +530,11 @@
       const serverType = isPrimaryLocation ? 'all' : type;
       const areaLabel = isPrimaryLocation ? locationName(value) : value;
       const title = form.elements.title.value.trim() || (serverType === 'all' && !isPrimaryLocation ? 'Full count' : `${areaLabel} count`);
+      const body = { title, scope_type: serverType, scope_value: serverType === 'all' ? null : value, notes: null };
+      const fingerprint = JSON.stringify(body);
+      if (!startRequest || startRequest.fingerprint !== fingerprint) startRequest = { fingerprint, id: uuid() };
       try {
-        const payload = await mutate('start', { title, scope_type: serverType, scope_value: serverType === 'all' ? null : value, notes: null, client_request_id: uuid() });
+        const payload = await mutate('start', { ...body, client_request_id: startRequest.id });
         root.AtlasModal.close(host);
         const id = payload.detail?.session?.id || payload.result?.session?.id;
         if (isPrimaryLocation) {
@@ -560,6 +597,7 @@
       state.lineIndex = 0;
       state.finishing = false;
       state.showAll = false;
+      state.progressFrom = null;
       if (state.sessionId && String(state.sessionId) !== String(id)) state.focusIds = null;
     }
     state.sessionId = id;
@@ -592,7 +630,22 @@
     if (s.status !== 'draft' || !perm.can_edit) { host.innerHTML = reviewHtml(); lucide(); bindFlow(host); return; }
     host.innerHTML = state.finishing ? finishHtml() : state.showAll ? allItemsHtml() : (state.mode === 'list' && root.matchMedia?.('(min-width: 768px)').matches ? listModeHtml() : cardHtml());
     lucide();
+    applyProgress(host);
     bindFlow(host);
+  }
+
+  // The progress fill is the true ratio, drawn with a transform (no inline
+  // style markup). A save that moves it forward eases it from where it was;
+  // the first paint, a reopen or a step back sets it at once.
+  function applyProgress(host) {
+    const fill = host.querySelector('[data-sc-ratio]');
+    if (!fill) return;
+    const next = Math.max(0, Math.min(1, Number(fill.dataset.scRatio) || 0));
+    const from = state.progressFrom;
+    state.progressFrom = next;
+    fill.style.transform = `scaleX(${from != null && from < next ? from : next})`;
+    if (from == null || from >= next) return;
+    root.requestAnimationFrame(() => root.requestAnimationFrame(() => { fill.style.transform = `scaleX(${next})`; }));
   }
 
   function flowHead(extra = '') {
@@ -600,7 +653,6 @@
     const sum = summary();
     const total = num(sum.total_lines) ?? lines().length;
     const done = (num(sum.counted_lines) || 0) + (num(sum.skipped_lines) || 0);
-    const percent = total ? Math.round((done / total) * 100) : 0;
     const started = s.started_at ? `started ${timeText(s.started_at)}${s.started_by_label ? ` by ${s.started_by_label.split(' ')[0]}` : ''}` : '';
     const menu = [
       ['rapid', state.rapid ? 'Turn off rapid scan' : 'Rapid scan'],
@@ -612,13 +664,13 @@
     return `<header class="sc-flow__head">
       <a class="atlas-btn atlas-btn--ghost atlas-btn--sm sc-back" href="#inventory/counts">${icon('chevron-left')}All counts</a>
       <h1 class="sc-flow__title">${esc(s.title || 'Stock count')}</h1>
-      <div class="sc-flow__meta-row"><p class="sc-flow__meta">${done} of ${total} counted${started ? ` · ${esc(started)}` : ''}</p>
+      <div class="sc-flow__meta-row"><p class="sc-flow__meta"><span class="sc-flow__done"><span class="num">${done}</span> of ${total} counted</span>${started ? `<span class="sc-flow__started">${esc(started)}</span>` : ''}</p>
         <div class="sc-flow__tools">${state.focusIds?.size ? `<span class="atlas-pill atlas-pill--info">${state.focusIds.size} selected items</span>` : ''}${state.rapid ? '<span class="atlas-pill atlas-pill--info">Rapid scan</span>' : ''}
         ${root.matchMedia?.('(min-width: 768px)').matches ? `<div class="atlas-segmented" role="group" aria-label="Count view"><button type="button" aria-pressed="${state.mode !== 'list'}" data-count-mode="card">One by one</button><button type="button" aria-pressed="${state.mode === 'list'}" data-count-mode="list">List</button></div>` : ''}
         <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-count-pause>Pause</button>
         <button type="button" class="atlas-icon-btn" data-count-menu-trigger aria-label="More count options">${icon('ellipsis')}</button>
         <ul class="atlas-menu" data-count-menu hidden>${menu.map(([key, label]) => `<li><button type="button" class="atlas-menu__item${key === 'cancel' ? ' atlas-menu__item--danger' : ''}" data-count-menu-action="${key}">${esc(label)}</button></li>`).join('')}</ul></div></div>
-      <div class="atlas-progress sc-flow__progress" role="progressbar" aria-label="Count progress" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><i style="width:${percent}%"></i></div>
+      <div class="atlas-progress sc-flow__progress" role="progressbar" aria-label="Count progress" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><i data-sc-ratio="${total ? done / total : 0}"></i></div>
       ${extra}
     </header>`;
   }
@@ -630,11 +682,11 @@
     const unit = units && units.includes(line.observed_input_unit) ? line.observed_input_unit : 'inventory';
     return `<div class="sc-stepper" data-stepper>
         <button type="button" class="sc-stepper__btn" data-step="-1" aria-label="One less">${icon('minus')}</button>
-        <label class="sc-stepper__value"><span class="sr-only">Quantity of ${esc(line.item_name)} in ${esc(line.inventory_unit || 'units')}</span><input class="sc-stepper__input num" id="${idPrefix}-qty" data-count-qty type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${esc(value ?? '')}" placeholder="0"></label>
+        <label class="sc-stepper__value"><span class="sr-only">Quantity of ${esc(line.item_name)} in ${esc(line.inventory_unit || 'units')}</span><input class="sc-stepper__input num" id="${idPrefix}-qty" data-count-qty type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${esc(value ?? '')}" placeholder="0">${units ? '' : `<span class="sc-stepper__unit" aria-hidden="true">${esc(line.inventory_unit || 'units')}</span>`}</label>
         <button type="button" class="sc-stepper__btn" data-step="1" aria-label="One more">${icon('plus')}</button>
       </div>
       ${bottleLike(line) ? `<div class="sc-partials" role="group" aria-label="Add part of a container">${[['0.25', '+ ¼'], ['0.5', '+ ½'], ['0.75', '+ ¾']].map(([step, label]) => `<button type="button" class="atlas-chip sc-partial" data-step="${step}">${label}</button>`).join('')}</div>` : ''}
-      <div class="sc-unit-row" data-count-line-id="${esc(line.id)}">${units ? `<label class="sc-unit"><span class="sr-only">Count unit</span><select class="atlas-select" data-count-unit>${units.map((option) => `<option value="${esc(option)}"${unit === option ? ' selected' : ''}>${esc(option === 'inventory' ? `${line.inventory_unit || 'units'}` : UNIT_LABELS[option] || option)}</option>`).join('')}</select></label>` : `<span class="sc-unit-word">${esc(line.inventory_unit || 'units')}</span>`}<span class="sc-hint" data-count-hint aria-live="polite">${esc(previewText(line, value, unit))}</span></div>`;
+      <div class="sc-unit-row" data-count-line-id="${esc(line.id)}">${units ? `<label class="sc-unit"><span class="sr-only">Count unit</span><select class="atlas-select" data-count-unit>${units.map((option) => `<option value="${esc(option)}"${unit === option ? ' selected' : ''}>${esc(option === 'inventory' ? `${line.inventory_unit || 'units'}` : UNIT_LABELS[option] || option)}</option>`).join('')}</select></label>` : ''}<span class="sc-hint" data-count-hint aria-live="polite">${esc(previewText(line, value, unit))}</span></div>`;
   }
 
   function cardHtml() {
@@ -646,7 +698,7 @@
     const upNext = [];
     for (let offset = 1; offset < list.length && upNext.length < 3; offset += 1) upNext.push(list[(state.lineIndex + offset) % list.length]);
     const position = `${lineLocationText(line) ? `${lineLocationText(line)} · ` : ''}item ${state.lineIndex + 1} of ${list.length}`;
-    return `<div class="sc-flow">${flowHead()}
+    return `<div class="sc-flow sc-flow--card">${flowHead()}
       <section class="atlas-card sc-card" aria-labelledby="sc-item-name" data-count-line="${esc(line.id)}">
         <p class="sc-card__where">${esc(position)}</p>
         <h2 class="sc-card__name" id="sc-item-name">${esc(line.item_name)}</h2>
@@ -657,7 +709,7 @@
         <div data-count-alert></div>
       </section>
       ${upNext.length ? `<section class="sc-upnext" aria-labelledby="sc-upnext-title"><div class="atlas-section__head"><h2 class="atlas-section__title" id="sc-upnext-title">Up next</h2><button type="button" class="atlas-link atlas-section__link" data-count-show-all>Show all items</button></div>
-        <ul class="atlas-card atlas-list">${upNext.map((entry) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto="${esc(entry.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(entry.item_name)}</span><span class="atlas-row__meta">${esc([lineLocationText(entry), entry.line_status === 'counted' ? `counted ${qty(entry.observed_input_quantity ?? entry.observed_quantity)}` : lastVerifiedText(entry).replace('Last verified', 'last')].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${linePill(entry)}</span></button></li>`).join('')}</ul></section>` : ''}
+        <ul class="atlas-card atlas-list">${upNext.map((entry) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto="${esc(entry.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(entry.item_name)}</span><span class="atlas-row__meta">${esc([lineLocationText(entry), entry.line_status === 'counted' ? `counted ${qty(entry.observed_input_quantity ?? entry.observed_quantity)}` : lastVerifiedText(entry).replace('Last verified', 'last')].filter(Boolean).join(' · '))}</span></span>${entry.line_status === 'pending' ? '' : `<span class="atlas-row__end">${linePill(entry)}</span>`}</button></li>`).join('')}</ul></section>` : ''}
       <p class="sc-caption">Stock changes only after a manager verifies this count.</p>
       <footer class="sc-footer" data-atlas-sticky-actions>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg sc-footer__scan" data-count-scan aria-label="Scan item">${icon('scan-line')}</button>
@@ -667,9 +719,10 @@
   }
 
   function allItemsHtml() {
-    const query = state.allQuery.trim().toLowerCase();
+    // Search ignores case, accents and þ/ð/æ (audit L31).
+    const query = fold(state.allQuery.trim()).trim();
     const list = orderedLines().map((line, index) => ({ line, index })).filter(({ line }) => (state.allFilter === 'all' || line.line_status === state.allFilter)
-      && (!query || [line.item_name, line.category, line.bin_location, lineLocationText(line), line.sku, line.barcode].some((value) => String(value || '').toLowerCase().includes(query))));
+      && (!query || [line.item_name, line.category, line.bin_location, lineLocationText(line), line.sku, line.barcode].some((value) => fold(value || '').includes(query))));
     return `<div class="sc-flow">${flowHead()}
       <div class="atlas-toolbar sc-all__toolbar"><label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" data-count-all-search placeholder="Search this count" aria-label="Search this count" value="${esc(state.allQuery)}"></label>
       <div class="atlas-segmented" role="group" aria-label="Show">${[['pending', 'Not counted'], ['counted', 'Counted'], ['all', 'All']].map(([value, label]) => `<button type="button" aria-pressed="${state.allFilter === value}" data-count-all-filter="${value}">${label}</button>`).join('')}</div></div>
@@ -728,13 +781,20 @@
       ? (isManager() ? 'Check the differences, then verify. Verified counts become the stock Alcedo shows.' : 'Waiting for a manager to verify it.')
       : s.status === 'verified' ? `Verified${s.verified_by_label ? ` by ${s.verified_by_label}` : ''}${s.verified_at ? ` on ${dateText(s.verified_at, { long: true })}` : ''}.`
         : s.status === 'draft' ? 'You can’t edit this count.' : 'This count is closed.';
+    // The review's answer first: how much was counted and how much moved,
+    // computed from the lines below (a difference needs an earlier count).
+    const countedLines = list.filter((line) => line.line_status === 'counted');
+    const changed = countedLines.filter((line) => { const change = variance(line); return change !== null && change !== 0; }).length;
+    const flagged = countedLines.filter(bigVariance).length;
+    const stats = list.length ? `<dl class="sc-finish__stats sc-review__stats"><div><dt>Counted</dt><dd class="num">${countedLines.length}<span class="sc-of"> of ${list.length}</span></dd></div><div><dt>Differences</dt><dd class="num">${changed}</dd></div><div><dt>Over ${esc(qty(tolerancePercent()))}% away</dt><dd class="num">${flagged}</dd></div></dl>` : '';
+    const diffCell = (line, change) => (line.line_status !== 'counted' ? '<span class="sc-of">—</span>' : change === null || change === 0 ? `<span class="sc-of">${esc(varianceText(change))}</span>` : esc(varianceText(change)));
     return `<div class="sc-flow sc-flow--wide">
       <header class="sc-flow__head"><div class="sc-flow__title-row"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm sc-back" href="#inventory/counts">${icon('chevron-left')}All counts</a></div>
-      <h1 class="sc-flow__title">${esc(s.title || 'Stock count')}</h1><p class="sc-flow__meta">${statusPill(s.status)} ${esc(note)}</p></header>
+      <h1 class="sc-flow__title">${esc(s.title || 'Stock count')}</h1><p class="sc-flow__meta">${statusPill(s.status)} ${esc(note)}</p>${stats}</header>
       ${publication?.status === 'blocked' ? `<div class="atlas-alert atlas-alert--warning">${icon('triangle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">The stock update is blocked.</p><p class="atlas-alert__body">${esc(publication.blocked_reason || 'Review the count first.')}</p></div></div>` : ''}
       ${s.publication_status === 'published' ? `<div class="atlas-alert atlas-alert--positive">${icon('circle-check')}<div class="atlas-alert__content"><p class="atlas-alert__body">This count updated stock. The count and the earlier quantities are kept in the history.</p></div></div>` : ''}
       <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Item</th><th class="is-num">Last verified</th><th class="is-num">Counted</th><th class="is-num">Difference</th><th>Status</th></tr></thead>
-      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); const change = variance(line); return `<tr${bigVariance(line) ? ' class="sc-row--flag"' : ''}><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc([lineLocationText(line), line.counted_by_label].filter(Boolean).join(' · '))}</span></td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? esc(varianceText(change)) : '—'}</td><td>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
+      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); const change = variance(line); return `<tr${bigVariance(line) ? ' class="sc-row--flag"' : ''}><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc([lineLocationText(line), line.counted_by_label].filter(Boolean).join(' · '))}</span></td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}</td><td class="is-num sc-diff">${diffCell(line, change)}</td><td>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
       <ul class="atlas-table-list">${list.map((line) => { const change = variance(line); return `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(line.item_name)}</div><div class="atlas-table-list__meta">${esc(lineLocationText(line) || '')}${line.line_status === 'counted' ? ` · ${esc(varianceText(change))}` : ''}</div></div><div class="atlas-table-list__value">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}<br>${linePill(line)}</div></div></li>`; }).join('')}</ul>
       <div data-count-alert></div>
       ${actions.length ? `<footer class="sc-footer sc-footer--plain">${actions.join('')}</footer>` : ''}
@@ -808,7 +868,8 @@
     const input = host?.querySelector('[data-count-qty]');
     if (!line || !input || state.saving) return;
     const parsed = parseQuantity(input.value);
-    if (parsed.error) { input.setAttribute('aria-invalid', 'true'); showCardError(parsed.error); input.focus(); return; }
+    const unclear = parsed.error ? '' : typedAmbiguity(input);
+    if (parsed.error || unclear) { input.setAttribute('aria-invalid', 'true'); showCardError(parsed.error || unclear); input.focus(); return; }
     state.saving = true;
     button?.classList.add('is-loading');
     if (button) button.disabled = true;
@@ -1015,7 +1076,7 @@
     }
     const ref = root.AtlasInventory?.recognitionRef?.(result, detection) || null;
     ctl.showSheet(`<div class="atlas-capture-result sc-scan-card" data-capture-result="count">
-      <div class="atlas-capture-result__head">${item.image_url ? `<img class="atlas-capture-result__img" src="${esc(item.image_url)}" alt="">` : `<span class="atlas-capture-result__img" aria-hidden="true">${icon('package')}</span>`}
+      <div class="atlas-capture-result__head">${item.image_url ? `<img class="atlas-capture-result__img" src="${esc(item.image_url)}" alt="">` : ''}
         <div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">${esc(line.item_name)}</h3><p class="atlas-capture-muted">${esc([item.brand, item.category, item.package_size || null].filter(Boolean).join(' · '))}</p><p class="atlas-capture-muted">Counted in ${esc(line.inventory_unit || 'units')} · ${esc(lastVerifiedText(line))}</p></div>
         ${detection ? R.band(detection, candidate) : '<span class="atlas-pill atlas-pill--info">Chosen</span>'}</div>
       ${detection ? `<details class="atlas-capture-more"><summary>How sure Alcedo is</summary>${R.fields(detection, { item, keys: ['identity', 'brand', 'variant', 'unit_size', 'barcode', 'inventory_match'] })}</details>` : ''}
@@ -1036,7 +1097,8 @@
         const button = event.currentTarget;
         const parsed = parseQuantity(input.value);
         const alert = sheet.querySelector('[data-sheet-alert]');
-        if (parsed.error) { input.setAttribute('aria-invalid', 'true'); alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(parsed.error)}</p></div></div>`; lucide(); input.focus(); return; }
+        const problem = parsed.error || typedAmbiguity(input);
+        if (problem) { input.setAttribute('aria-invalid', 'true'); alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(problem)}</p></div></div>`; lucide(); input.focus(); return; }
         button.disabled = true;
         button.classList.add('is-loading');
         try {
@@ -1076,6 +1138,7 @@
     scope.querySelectorAll('[data-step]').forEach((button) => button.addEventListener('click', () => {
       const current = parseQuantity(input.value).value || 0;
       input.value = String(round3(Math.max(0, current + Number(button.dataset.step))));
+      input.dataset.qtyWritten = input.value;
       input.removeAttribute('aria-invalid');
     }));
     input?.addEventListener('input', () => input.removeAttribute('aria-invalid'));
@@ -1293,7 +1356,12 @@
       const params = context.params || {};
       if (context.view !== 'inventory' || params.section !== 'stock-count' || !params.session) leave();
     });
-    shell?.on?.('profile:ready', () => { state.snapshot = null; state.detail = null; if (['admin', 'manager', 'bartender'].includes(role())) loadSnapshot(); });
+    // A new profile drops what the previous one loaded (and any read still in
+    // flight for it). The shell reads the same snapshot while it loads its data,
+    // so the workspace adopts that read (L24) instead of fetching it again; a
+    // page that needs it sooner loads it, and refreshes are always forced.
+    shell?.on?.('profile:ready', () => { state.snapshot = null; state.detail = null; state.error = null; state.loadSerial += 1; state.loading = false; });
+    shell?.onDataLoaded?.(() => adoptShellSnapshot());
     root.addEventListener('pagehide', () => leave(), { once: true });
   }
 

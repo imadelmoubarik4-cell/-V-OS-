@@ -16,11 +16,6 @@ const GALLERY = `${ORIGIN}/tests/browser/tools/component-gallery.html`;
 const SHOTS = process.env.ATLAS_SCREENSHOT_DIR || path.join(os.tmpdir(), 'atlas-component-gallery');
 const skip = harnessAvailable() ? false : 'browser harness dependencies are unavailable';
 
-function lucidePath() {
-  const bases = [process.env.ATLAS_BROWSER_LIBS, path.join(ROOT, 'node_modules')].filter(Boolean);
-  return bases.map((base) => path.join(base, 'lucide/dist/umd/lucide.min.js')).find((file) => existsSync(file));
-}
-
 async function openGallery({ width, height, mobile }) {
   const playwright = loadPlaywright();
   const browser = await playwright.chromium.launch({ executablePath: process.env.ATLAS_CHROMIUM || undefined });
@@ -28,16 +23,12 @@ async function openGallery({ width, height, mobile }) {
   const errors = [];
   await context.route('https://fonts.googleapis.com/**', (route) => route.fulfill({ contentType: 'text/css', body: '' }));
   await context.route('https://fonts.gstatic.com/**', (route) => route.fulfill({ status: 404, body: '' }));
-  await context.route('https://unpkg.com/**', (route) => {
-    const lucide = lucidePath();
-    return lucide ? route.fulfill({ contentType: 'text/javascript', body: readFileSync(lucide) }) : route.fulfill({ status: 404, body: '' });
-  });
   await context.route(`${ORIGIN}/**`, (route) => {
     const rel = decodeURIComponent(new URL(route.request().url()).pathname).replace(/^\/+/, '');
     const file = path.join(ROOT, rel);
     const allowed = [path.join(ROOT, 'apps/web/assets/'), path.join(ROOT, 'tests/browser/tools/')].some((dir) => file.startsWith(dir));
     if (!allowed || !existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    const type = file.endsWith('.css') ? 'text/css' : file.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream';
+    const type = file.endsWith('.css') ? 'text/css' : file.endsWith('.html') ? 'text/html; charset=utf-8' : file.endsWith('.js') ? 'text/javascript' : 'application/octet-stream';
     return route.fulfill({ contentType: type, body: readFileSync(file) });
   });
   const page = await context.newPage();
@@ -166,7 +157,7 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
     await page.screenshot({ path: path.join(SHOTS, 'components-1440.png'), fullPage: true });
     assert.deepEqual(errors, []);
     assert.equal(result.coarse, false);
-    assert.equal(result.tokens.accent, '#08495C');
+    assert.equal(result.tokens.accent, '#18191b');
     assert.equal(result.sizes.btnSm.h, 32);
     assert.equal(result.sizes.btnMd.h, 36);
     assert.equal(result.sizes.btnPrimary.h, 36);
@@ -174,10 +165,11 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
     assert.equal(result.sizes.iconBtn.h, 36);
     assert.equal(result.sizes.input.h, 36);
     assert.equal(result.sizes.select.h, 36);
-    assert.equal(result.sizes.chip.h, 30);
+    assert.equal(result.sizes.chip.h, 36);
     assert.equal(result.sizes.segment.h, 28);
     assert.equal(result.sizes.tab.h, 40);
-    assert.equal(result.sizes.pill.h, 22);
+    // A status pill is a dot and a 13/500 word, no fill (2026 redesign).
+    assert.equal(result.sizes.pill.h, 20);
     assert.equal(result.sizes.badge.h, 18);
     assert.equal(result.sizes.toggle.h, 20);
     assert.equal(result.sizes.toggle.w, 36);
@@ -186,15 +178,15 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
     assert.equal(result.sizes.td.h, 48);
     assert.ok(result.sizes.row.h >= 60);
     assert.equal(result.sizes.menuItem.h, 36);
-    assert.equal(result.sizes.card.radius, '16px');
-    assert.equal(result.sizes.btnMd.radius, '999px');
-    assert.equal(result.sizes.input.radius, '12px');
-    assert.equal(result.sizes.title.fontSize, 24);
+    assert.equal(result.sizes.card.radius, '8px');
+    assert.equal(result.sizes.btnMd.radius, '6px');
+    assert.equal(result.sizes.input.radius, '6px');
+    assert.equal(result.sizes.title.fontSize, 22);
     assertContrast(result.pairs);
     assert.ok(result.smallest.size >= 12, `text below 12 px: ${JSON.stringify(result.smallest)}`);
     assert.ok(result.scrollWidth <= result.innerWidth, 'no horizontal page scroll');
 
-    // Keyboard focus: 2 px accent outline with a 3 px offset.
+    // Keyboard focus: 2 px kingfisher outline with a 2 px offset (--focus-offset).
     await page.focus('[data-test="btn-secondary"]');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Shift+Tab');
@@ -202,16 +194,16 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
       const style = getComputedStyle(document.activeElement);
       return { width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor, offset: style.outlineOffset, test: document.activeElement.dataset.test };
     });
-    assert.deepEqual(ring, { width: '2px', style: 'solid', color: 'rgb(8, 73, 92)', offset: '3px', test: 'btn-secondary' });
-    // Inputs show the accent border and a 3 px ring instead of an outline.
+    assert.deepEqual(ring, { width: '2px', style: 'solid', color: 'rgb(31, 106, 165)', offset: '2px', test: 'btn-secondary' });
+    // Inputs show the kingfisher border and a 3 px ring instead of an outline.
     await page.focus('[data-test="input"]');
     await settle(page);
     const inputFocus = await page.evaluate(() => {
       const style = getComputedStyle(document.activeElement);
       return { border: style.borderTopColor, shadow: style.boxShadow };
     });
-    assert.equal(inputFocus.border, 'rgb(8, 73, 92)');
-    assert.match(inputFocus.shadow, /rgba\(8, 73, 92, 0\.22\) 0px 0px 0px 3px/);
+    assert.equal(inputFocus.border, 'rgb(31, 106, 165)');
+    assert.match(inputFocus.shadow, /rgba\(31, 106, 165, 0\.24\) 0px 0px 0px 3px/);
   } finally {
     await browser.close();
   }
@@ -239,14 +231,18 @@ test('component gallery at 390 (coarse pointer): 44 px touch targets, phone layo
     assertContrast(Object.fromEntries(Object.entries(result.pairs).filter(([name]) => !['th', 'cellSub', 'selectedRow'].includes(name))));
     assert.ok(result.smallest.size >= 12, `text below 12 px: ${JSON.stringify(result.smallest)}`);
     assert.ok(result.scrollWidth <= result.innerWidth, `no horizontal page scroll (${result.scrollWidth} > ${result.innerWidth})`);
-    // The table becomes a row list on phones; the page title moves to the top bar.
+    // The table becomes a row list on phones; the page title stays a visible
+    // large title (20 px) and the top bar shows the name once it scrolls under.
     const phone = await page.evaluate(() => ({
       table: getComputedStyle(document.querySelector('.atlas-table-wrap--responsive')).display,
       list: getComputedStyle(document.querySelector('.atlas-table-list')).display,
       titleWidth: document.querySelector('.page-head__title').getBoundingClientRect().width,
+      titleSize: getComputedStyle(document.querySelector('.page-head__title')).fontSize,
       sheetRadius: getComputedStyle(document.querySelector('.atlas-sheet')).borderBottomLeftRadius
     }));
-    assert.deepEqual(phone, { table: 'none', list: 'block', titleWidth: 1, sheetRadius: '0px' });
+    assert.ok(phone.titleWidth > 1, `the large title is visible (${phone.titleWidth})`);
+    delete phone.titleWidth;
+    assert.deepEqual(phone, { table: 'none', list: 'block', titleSize: '20px', sheetRadius: '0px' });
   } finally {
     await browser.close();
   }

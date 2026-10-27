@@ -132,12 +132,16 @@
       }
 
       const library = await ensureSupabaseLibrary();
+      // PostgREST reads get a deadline (AtlasApi.restReadFetch); writes, RPCs,
+      // Auth and Storage keep supabase-js's own fetch behaviour.
+      const restFetch = window.AtlasApi?.restReadFetch?.(cfg.SUPABASE_URL) || null;
       const client = library.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false
-        }
+        },
+        ...(restFetch ? { global: { fetch: restFetch } } : {})
       });
 
       if (!client?.auth) {
@@ -217,6 +221,9 @@
   let locations = [];
   let itemLocations = [];
   let countSnapshot = null;
+  // The last shell read of the stock-count snapshot ({ counts, staff, policy }),
+  // or null when the latest read failed.
+  let countPayload = null;
   let itemsStatus = 'loading';
   // Health of each shell data input: 'loading' | 'ok' | 'failed', plus the
   // derived stock state: 'ok' | 'partial' (items loaded but verified balances
@@ -235,6 +242,7 @@
     locations: () => locations,
     itemLocations: () => itemLocations,
     countSnapshot: () => countSnapshot,
+    countPayload: () => countPayload,
     status: () => ({ items: itemsStatus, stock: dataHealth.stock }),
     health: () => ({ ...dataHealth, stockMissing: [...dataHealth.stockMissing] })
   });
@@ -820,11 +828,14 @@
       const client = await initializeSupabase();
       const { data, error } = await client.auth.getSession();
       if (error) throw error;
-      loginBtn.disabled = false;
-      loginBtn.textContent = 'Sign in';
       if (data.session) {
+        // A stored session: the button stays "Connecting…" through the MFA
+        // and profile round trips (audit M15). Every path that returns to the
+        // form re-enables it (setLoginBusy, the catch below).
         await onSignedIn(data.session);
       } else {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign in';
         // No session: the sign-in form is what this visitor sees (logo intro).
         document.documentElement.dataset.atlasSignin = 'shown';
         window.AtlasSignInIntro?.start();
@@ -862,7 +873,18 @@
   })();
 
   // ---------- DATA ----------
+  // Stock inputs (L17): the movements, the item rows and the stock-count
+  // snapshot (verified balances) are read at the same time, and stock is
+  // projected once all three have settled. Nothing is committed until then,
+  // so the projection always uses this load's own movements (L13).
   async function loadItems() {
+    const [movementRead, itemRead, snapshotRead] = await Promise.all([readMovements(), readItemRows(), readCountSnapshot()]);
+    applyMovements(movementRead);
+    countPayload = snapshotRead.ok ? snapshotRead.payload : null;
+    applyItems(itemRead, snapshotRead);
+  }
+
+  async function readItemRows() {
     const relation = canManageCommercial() ? 'inventory_items' : 'inventory_catalog';
     const { data, error } = await sb
       .from(relation)
@@ -871,14 +893,15 @@
       .order('name', { ascending: true });
     if (error) {
       console.error(`${relation} could not be loaded`, error);
-      itemsStatus = 'error';
-      dataHealth.inventory = 'failed';
-      dataHealth.stock = 'failed';
-      showDataBoundaryError('Inventory');
-      return;
+      return { ok: false };
     }
-    dataHealth.inventory = 'ok';
-    let balances = [];
+    return { ok: true, rows: data || [] };
+  }
+
+  // The stock-count snapshot (verified balances). The stock-count workspace
+  // adopts this read at sign-in (AtlasData.countPayload) instead of fetching
+  // the same snapshot again (L24).
+  async function readCountSnapshot() {
     try {
       const session = (await sb.auth.getSession()).data?.session;
       const endpoint = window.VABAR_CONFIG?.STOCK_COUNTS_API;
@@ -886,11 +909,30 @@
       const url = new URL(endpoint); url.searchParams.set('action', 'snapshot');
       const response = await fetch(url, {headers: {authorization: `Bearer ${session.access_token}`}, signal: AbortSignal.timeout(12000)});
       if (!response.ok) throw new Error('Verified stock unavailable');
-      countSnapshot = (await response.json()).counts || null;
-      balances = countSnapshot?.verified_balances || [];
-      dataHealth.balances = 'ok';
+      const payload = await response.json();
+      return { ok: true, payload: payload && typeof payload === 'object' ? payload : {} };
     } catch (error) {
       console.warn('Stock remains unknown until verified balances can be read.');
+      return { ok: false };
+    }
+  }
+
+  function applyItems(itemRead, snapshotRead) {
+    if (!itemRead.ok) {
+      itemsStatus = 'error';
+      dataHealth.inventory = 'failed';
+      dataHealth.stock = 'failed';
+      showDataBoundaryError('Inventory');
+      return;
+    }
+    const data = itemRead.rows;
+    dataHealth.inventory = 'ok';
+    let balances = [];
+    if (snapshotRead.ok) {
+      countSnapshot = snapshotRead.payload.counts || null;
+      balances = countSnapshot?.verified_balances || [];
+      dataHealth.balances = 'ok';
+    } else {
       dataHealth.balances = 'failed';
     }
     // Every workspace, including this table, reads the single reconciled quantity.
@@ -914,8 +956,9 @@
 
   // The newest AtlasStockTruth.MOVEMENT_ROW_LIMIT movements (5 000, the same
   // cap as Reports and Alcedo AI), read in pages so the PostgREST max-rows
-  // default (1 000) cannot silently cut the stock projection short.
-  async function loadRestockLog() {
+  // default (1 000) cannot silently cut the stock projection short. Pages are
+  // read one after another.
+  async function readMovements() {
     const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
     const limit = window.AtlasStockTruth?.MOVEMENT_ROW_LIMIT || 5000;
     const pageSize = window.AtlasStockTruth?.MOVEMENT_PAGE_SIZE || 1000;
@@ -931,13 +974,20 @@
         .range(from, Math.min(from + pageSize, limit) - 1);
       if (error) {
         console.error(`${relation} could not be loaded`, error);
-        inventoryMovements = [];
-        restockLog = [];
-        dataHealth.movements = 'failed';
-        return;
+        return { ok: false };
       }
       rows.push(...(data || []));
       if (!data || data.length < pageSize) break;
+    }
+    return { ok: true, rows };
+  }
+
+  function applyMovements({ ok, rows }) {
+    if (!ok) {
+      inventoryMovements = [];
+      restockLog = [];
+      dataHealth.movements = 'failed';
+      return;
     }
     dataHealth.movements = 'ok';
     inventoryMovements = rows;
@@ -1045,13 +1095,32 @@
     await loadAtlasData();
     window.AtlasShell.dataLoaded({ online: navigator.onLine, health: window.AtlasData.health() });
   }
-  async function loadAtlasData() {
+  // Single flight (L13): one shell load runs at a time. A reload asked for
+  // while one is running (for example after a write) shares one trailing
+  // load that starts when the running one ends, so it reads data written
+  // before it was asked for; it never overlaps a load that could commit older
+  // movements after it.
+  let shellLoad = null;
+  let shellLoadTrailing = null;
+  function loadAtlasData() {
     // Keep the last loaded, role-filtered in-memory snapshot during an outage.
     // No offline login, persistent commercial cache, or automatic write replay.
-    if (!navigator.onLine) return;
-    // Movement history must load before inventory projection so current verified
-    // balances can be adjusted by audited restocks, waste, sales and transfers.
-    await loadRestockLog();
+    if (!navigator.onLine) return Promise.resolve();
+    if (!shellLoad) {
+      shellLoad = runShellLoad().finally(() => { shellLoad = null; });
+      return shellLoad;
+    }
+    if (!shellLoadTrailing) {
+      shellLoadTrailing = shellLoad.catch(() => null).then(() => {
+        shellLoadTrailing = null;
+        return loadAtlasData();
+      });
+    }
+    return shellLoadTrailing;
+  }
+  async function runShellLoad() {
+    // Movements, items and verified balances load together; stock is projected
+    // once all three are in (loadItems), alongside recipes, suppliers and locations.
     await Promise.all([loadItems(), loadRecipes(), loadSuppliersData(), loadLocations()]);
     renderRecipes();
   }
@@ -1108,6 +1177,7 @@
   }
   // The base shell chrome for every destination. AtlasShell.show() runs it once
   // per navigation, before the view's render and onShow hooks.
+  // No page-entry animation: navigation is the most frequent action.
   function layoutAtlasView(view, entry, context) {
     activeView = view;
     document.body.dataset.atlasView = view;

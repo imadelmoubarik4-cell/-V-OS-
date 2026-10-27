@@ -57,3 +57,16 @@ test('HSTS in netlify.toml does not blindly bind subdomains', () => {
   assert.match(hsts, /max-age=\d{8,}/);
   assert.doesNotMatch(hsts, /includeSubDomains|preload/);
 });
+
+// Audit L2: docs/SECURITY.md lists the script-src sources; a stale list (it
+// once named blob: and Lucide) invites someone to re-add a source "because the
+// doc says so". The documented list and the header must match exactly.
+test('docs/SECURITY.md documents exactly the script-src sources netlify.toml sends', () => {
+  const doc = readFileSync('docs/SECURITY.md', 'utf8');
+  const line = doc.split('\n').find((text) => text.startsWith('`netlify.toml` limits `script-src` to exactly these sources:'));
+  assert.ok(line, 'SECURITY.md has the script-src source list');
+  const listed = line.slice(0, line.indexOf('. Both CDN files')).split(':').slice(1).join(':');
+  const documented = [...listed.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+  assert.deepEqual([...documented].sort(), [...directive('script-src')].sort());
+  assert.doesNotMatch(line, /`script-src` to `'self'`, `blob:`/);
+});

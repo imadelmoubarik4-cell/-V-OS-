@@ -24,7 +24,7 @@ test('Shifts loads from the isolated Shifts API as one module', () => {
     assert.ok(!existsSync(`apps/web/${retired}`), `${retired} is deleted`);
     assert.doesNotMatch(config + index, new RegExp(retired.split('/').pop().replace('.', '\\.')));
   }
-  assert.match(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20261002-s103"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20261026-redesign"><\/script>/);
 });
 
 test('routes: week, month, availability, time off, confirmations, activity', () => {
@@ -144,10 +144,13 @@ test('colour by person: stable per-teammate colour, a remembered toggle, tokens 
   assert.match(shifts, /class="shifts-grid__person\$\{personColorClassOn\(person\)\}"/);
   assert.match(shifts, /class="atlas-row shifts-row[\s\S]*?\$\{shiftColorClass\(shift, ws\)\}"/);
   assert.match(shifts, /class="shifts-now__person\$\{personColorClassOn\(/);
-  // Palette hex lives in the component layer; the module stylesheet references the token only.
+  // Six muted identity hues are tokens (--person-1..6); the component layer maps the
+  // twelve slots onto them; the module stylesheet references --person-color only.
+  const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
+  for (let n = 1; n <= 6; n += 1) assert.match(tokens, new RegExp(`--person-${n}: #[0-9a-f]{6};`, 'i'));
   const components = readFileSync('apps/web/assets/css/atlas-components.css', 'utf8');
-  assert.match(components, /\.atlas-person--0 \{ --person-color: #[0-9a-f]{6}; \}/i);
-  assert.match(components, /\.atlas-person--11 \{ --person-color: #[0-9a-f]{6}; \}/i);
+  assert.match(components, /:is\(\.atlas-person--0, \.atlas-person--6\) \{ --person-color: var\(--person-1\); \}/);
+  assert.match(components, /:is\(\.atlas-person--5, \.atlas-person--11\) \{ --person-color: var\(--person-6\); \}/);
   assert.match(css, /\.shift-chip\[class\*="atlas-person--"\]::before \{ width: 3px; background: var\(--person-color\); \}/);
   assert.match(css, /\.shifts-color-toggle\[aria-checked="true"\]/);
 });

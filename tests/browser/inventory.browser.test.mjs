@@ -229,7 +229,9 @@ test('count scan: a Sure match is pre-selected, saved with recognition evidence,
     assert.equal(identify.body.client_barcodes[0].raw, '8000070099999', 'codes alone use the JSON fast path');
     // "How sure Atlas is" is a 44 px touch target through the shared
     // disclosure-summary hit area (coarse pointer), not a page-local size:
-    // every point of the 44 px band around it opens the disclosure.
+    // every point of the 44 px band around it opens the disclosure. The sheet
+    // and its result arrive with motion; probe once they have come to rest.
+    await settle(page);
     const disclosure = await page.$eval('[data-capture-result="count"] .atlas-capture-more > summary', (summary) => {
       const box = summary.getBoundingClientRect();
       const hit = getComputedStyle(summary, '::after');

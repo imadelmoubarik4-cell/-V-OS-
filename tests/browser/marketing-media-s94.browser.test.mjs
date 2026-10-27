@@ -495,8 +495,12 @@ test('Media: the collection builder creates a collection from the picker and reo
 
     await page.click('#mm-test-host .mk-collection-tile');
     await page.waitForFunction(() => document.querySelectorAll('#mm-collection-sheet [data-mm-col-item]').length === 3);
+    // Each move re-renders the list: wait for it before the next click, so a
+    // click never lands on the row being replaced (flaked under load).
     await page.click('#mm-collection-sheet [aria-label="Move third.jpg up"]');
+    await until(async () => JSON.stringify(await order()) === JSON.stringify(['first.jpg', 'third.jpg', 'second.jpg']), { message: 'third.jpg moved to position 2' });
     await page.click('#mm-collection-sheet [aria-label="Move third.jpg up"]');
+    await until(async () => JSON.stringify(await order()) === JSON.stringify(['third.jpg', 'first.jpg', 'second.jpg']), { message: 'third.jpg moved to position 1' });
     await page.click('#mm-collection-sheet [data-mm-col-save]');
     await until(() => requestsTo(record, 'atlas-marketing-media', 'collection-reorder').length === 1, { message: 'reorder' });
     assert.deepEqual(requestsTo(record, 'atlas-marketing-media', 'collection-reorder')[0].body.asset_ids, [readyAsset(3).id, readyAsset(1).id, readyAsset(2).id]);

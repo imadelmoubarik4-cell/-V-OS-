@@ -23,8 +23,23 @@
     return text ? text[0].toUpperCase() + text.slice(1) : '';
   }
 
+  // Prices are '3.900 ISK' on every phone: '.' groups thousands, as in the
+  // app's formatKr, whatever the guest's device language (audit L33).
+  function price(value) {
+    const amount = Math.round(Number(value));
+    if (value === null || value === undefined || value === '' || !Number.isFinite(amount)) return '';
+    return `${amount < 0 ? '-' : ''}${String(Math.abs(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} ISK`;
+  }
+
+  // The view has no order, so the menu sorts itself: Icelandic alphabetical
+  // order on every device, then id, so the list never reshuffles (audit L33).
+  const collator = new Intl.Collator('is', { sensitivity: 'base', numeric: true });
+  function byName(a, b) {
+    return collator.compare(String(a.name ?? ''), String(b.name ?? '')) || String(a.id ?? '').localeCompare(String(b.id ?? ''), 'en');
+  }
+
   function render() {
-    const types = ['all', ...new Set(allItems.map(i => i.type))];
+    const types = ['all', ...[...new Set(allItems.map(i => i.type))].sort((a, b) => collator.compare(String(a ?? ''), String(b ?? '')))];
     document.getElementById('menu-tabs').innerHTML = types.map(t =>
       `<button class="tab ${t === activeType ? 'active' : ''}" data-type="${escapeHtml(t)}">${escapeHtml(t === 'all' ? 'All' : typeLabel(t))}</button>`
     ).join('');
@@ -41,7 +56,7 @@
     list.innerHTML = visible.map(i => `
       <div class="menu-item">
         <span class="name">${escapeHtml(i.name)}</span>
-        <span class="price">${i.menu_price != null ? Math.round(i.menu_price).toLocaleString() + ' ISK' : ''}</span>
+        <span class="price">${price(i.menu_price)}</span>
       </div>
     `).join('');
   }
@@ -55,6 +70,6 @@
       console.error(error);
       return;
     }
-    allItems = data || [];
+    allItems = (data || []).slice().sort(byName);
     render();
   })();

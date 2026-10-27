@@ -1,8 +1,12 @@
 /* Atlas base — reset, typography, focus, motion, role gating and layout
  * primitives.
  *
- * Spec: docs/design/Atlas_Experience_Redesign.md §5; reference:
- * docs/design/Atlas_Design_System.md. Values come only from atlas-tokens.css.
+ * Direction: docs/design/Alcedo_Redesign_2026.md ("Basalt & Kingfisher"):
+ * one grotesk (IBM Plex Sans) for every role, sentence case, tabular figures,
+ * a 2 px kingfisher focus ring and, for reduced-motion users, fades without
+ * movement.
+ * Structure: docs/design/Atlas_Design_System.md §0. Values come only from
+ * atlas-tokens.css.
  * Component classes live in atlas-components.css; element rules here are the
  * defaults every page starts from.
  *
@@ -17,9 +21,16 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scrollbar-color: var(--line-strong) transparent;
+  /* Phones: no grey flash on tap; every control gives its own press feedback. */
+  -webkit-tap-highlight-color: transparent;
+  /* Pulling down at the top of a list (a stock count in progress) must not
+     reload the app, and the page never rubber-bands past its edges; inner
+     scrollers (sheets, the palette) contain their own overscroll. */
+  overscroll-behavior: none;
 }
 
-/* Body type: 14/20 (15/22 on phones), IBM Plex Sans, warm near-black on white.
+/* Body type: 14/20, IBM Plex Sans, basalt ink on white (16 px on phones, so
+   inputs inherit a size iOS does not zoom).
    The line height is unitless so legacy text with its own size keeps a
    proportional leading instead of inheriting a fixed 20 px. */
 body {
@@ -44,6 +55,12 @@ body {
 /* Form controls use the page type instead of the 13.33 px browser default. */
 button, input, select, textarea { font-family: inherit; font-size: 100%; color: inherit; }
 button { cursor: pointer; }
+/* Controls answer a tap at once (no double-tap-to-zoom delay). */
+:where(button, a[href], input, select, textarea, label, summary, [role="button"], [role="tab"], [role="switch"], [role="menuitem"]) { touch-action: manipulation; }
+/* Holding a control is a press, not a text selection, and a long-press on a
+   tab-bar tab or a nav row (links) opens no link preview or callout, as on a
+   native control. Text fields and content stay selectable. */
+:where(button, [role="button"], [role="tab"], [role="menuitem"], [role="switch"], .atlas-btn, .atlas-icon-btn, .atlas-tabbar__item, .atlas-more__row, .nav-item, .atlas-chip, .atlas-segmented > *, .atlas-tabs > *) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 /* Native controls without a component class read as unavailable when disabled
    (components set their own disabled look). */
@@ -51,39 +68,46 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 /* Fieldsets group fields without a box; the legend is plain text. */
 fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 legend { padding: 0; }
+/* IBM Plex Mono has one job: IDs, keys and code. */
 code, kbd, samp, pre { font-family: var(--font-mono); }
 
-/* Headings and numbers. ALCEDO: the top display headings (h1–h3) are set in
-   Instrument Serif at 400 like the website's titles; the tighter sub-headings
-   (h4–h6) stay in Manrope semibold so dense UI headers keep their weight. */
-h1, h2, h3 { font-family: var(--font-display); font-weight: 400; color: var(--text); letter-spacing: -0.01em; }
-h4, h5, h6 { font-family: var(--font-sans); font-weight: 600; color: var(--text); }
+/* Headings: IBM Plex Sans semibold in ink at every level; no serif anywhere.
+   Size comes from the component (page title 22, section 16, card 14); only
+   the large levels tighten their tracking. Sentence case, never tracked
+   uppercase. */
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-sans); font-weight: 600; color: var(--text); letter-spacing: 0; text-transform: none; }
+h1 { letter-spacing: var(--track-title); }
 strong, b { font-weight: 600; }
+/* Tabular figures on every number that sits in a column, a KPI, a count or
+   anything that updates. */
 .num, time, [data-num] { font-variant-numeric: tabular-nums; }
 
-/* Links: accent text, underline on hover. */
+/* Links: accent text, underline on hover (a real hover only: on touch a
+   tapped link would keep its underline until the next tap elsewhere). */
 a { color: var(--accent-text); text-decoration: none; }
-a:hover { text-decoration: underline; text-underline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  a:hover { text-decoration: underline; text-underline-offset: 2px; }
+}
 
-/* Icons: lucide (pinned 0.454.0) is the only icon set. Stroke 1.75 everywhere;
-   size classes for new markup (legacy rules size their own icons). */
-svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
+/* Icons: the ALCEDO set (assets/js/alcedo-icons.js) is the only icon set:
+   Phosphor Regular geometry on a 256 grid, drawn as filled paths in
+   currentColor. Size an icon with width/height from the --icon-* tokens and
+   colour it with color; there is no stroke to set. A placeholder renders at
+   24 px (its width/height attributes) until a rule sizes it. Inline icons sit
+   on the text's optical centre; in flex rows align-items does the work. */
+svg.alcedo-icon, svg.lucide { flex: none; fill: currentColor; vertical-align: -.1875em; }
 .icon, .atlas-icon {
   width: var(--icon-sm);
   height: var(--icon-sm);
   flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: var(--icon-stroke);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vertical-align: middle;
+  fill: currentColor;
+  vertical-align: -.1875em;
 }
 .icon--md, .atlas-icon--md { width: var(--icon-md); height: var(--icon-md); }
 .icon--lg, .atlas-icon--lg { width: var(--icon-lg); height: var(--icon-lg); }
-.icon--xl, .atlas-icon--xl { width: var(--icon-xl); height: var(--icon-xl); stroke-width: var(--icon-stroke-xl); }
+.icon--xl, .atlas-icon--xl { width: var(--icon-xl); height: var(--icon-xl); }
 
-/* Focus: always visible for keyboard users — 2 px accent outline, 2 px offset. */
+/* Focus: always visible for keyboard users — 2 px kingfisher outline, 2 px offset. */
 :where(button, a[href], input, select, textarea, summary, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [tabindex]):focus-visible {
   outline: var(--focus-outline);
   outline-offset: var(--focus-offset);
@@ -95,7 +119,8 @@ svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
 :is(h1, h2, h3, h4, [tabindex="-1"]):focus:not(:focus-visible),
 :is(h1, h2, h3, h4)[tabindex="-1"]:focus { outline: none; }
 
-::selection { background: rgba(232, 115, 42, .26); color: var(--text); }
+/* Selection: the pale kingfisher tint, ink text. */
+::selection { background: var(--highlight-soft); color: var(--text); }
 
 /* The hidden attribute always hides (spec §9.1 allows !important here). */
 [hidden] { display: none !important; }
@@ -146,13 +171,18 @@ body:not(.atlas-commercial-manager) :is([data-commercial-only], [data-view="supp
 
 /* ---------- Reduced motion ----------
    prefers-reduced-motion and the personal Reduce motion preference
-   (html.atlas-reduce-motion): no movement; fades are cut to the 120 ms limit
-   or less; the skeleton shimmer is static. */
+   (html.atlas-reduce-motion) mean fewer and gentler animations, not none:
+   movement goes, fades stay. Only opacity and colour may transition (at the
+   durations each component already sets, 120-240 ms), so a dialog, sheet,
+   scrim, menu or toast still fades in and out, in place, and a colour state
+   still eases instead of snapping; a transform (scale-in, slide, press)
+   applies at once. Keyframe animations, which carry movement and loops,
+   finish at once. The --move-* and --press-scale tokens are 0 / 1 here too. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+    transition-property: opacity, color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, box-shadow !important;
     scroll-behavior: auto !important;
   }
 }
@@ -161,7 +191,7 @@ html.atlas-reduce-motion *::before,
 html.atlas-reduce-motion *::after {
   animation-duration: .01ms !important;
   animation-iteration-count: 1 !important;
-  transition-duration: .01ms !important;
+  transition-property: opacity, color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, box-shadow !important;
   scroll-behavior: auto !important;
 }
 }

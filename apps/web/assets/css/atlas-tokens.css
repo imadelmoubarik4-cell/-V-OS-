@@ -1,23 +1,23 @@
-/* Atlas design tokens — the single source of truth.
+/* ALCEDO design tokens — the single source of truth.
  *
- * ALCEDO rebrand: token NAMES are unchanged (they are internal identifiers
- * referenced across every stylesheet); only their VALUES carry the ALCEDO kit
- * (apps/web/assets/brand/alcedo/brand-tokens.json, README.txt). Teal #08495C is
- * the workhorse interactive/structure colour (primary fills, active nav, focus,
- * links, icons, charts); orange #E8732A is a sparing non-text highlight only
- * (--highlight); warm ivory #F8F5ED and ink #10201F are the surface/ink anchors.
- *
- * Canonical reference: docs/design/Atlas_Design_System.md (S88 redesign,
- * spec docs/design/Atlas_Experience_Redesign.md §5). New CSS uses the short
- * names (--bg, --text-2, --accent, --r-md, --s-4, --type-body, --dur-2 …).
- * The older names further down are aliases of the new values, kept for module
- * code that still reads them; new CSS never uses them.
+ * ALCEDO redesign (2026-10, "Basalt & Kingfisher", framed-sheet app style):
+ * token NAMES are unchanged (internal identifiers read by every stylesheet);
+ * their VALUES carry the new direction:
+ *   - a cool basalt-stone frame (--bg-subtle) holds the sidebar and the 48px
+ *     top bar; the work sits on a white sheet (--bg) with a 1px edge, 16px
+ *     corners and no shadow;
+ *   - near-black ink is the one filled primary (--accent); kingfisher blue
+ *     (--accent-brand) is the one hue, on data, focus, selection and links;
+ *   - one grotesk (IBM Plex Sans) for everything, IBM Plex Mono for IDs only;
+ *   - flat surfaces: a border or a tone step, never a resting shadow;
+ *   - motion after Emil Kowalski: strong ease-out, 120-240ms, press feedback.
+ * The direction sheet is docs/design/Alcedo_Redesign_2026.md.
  *
  * Do not define :root custom properties anywhere else;
  * css-hygiene-s88.test.js fails if another stylesheet redefines one of these.
  *
  * Linked FIRST in index.html because it also declares the cascade-layer order
- * for every Atlas stylesheet. Between layers, the later layer wins for normal
+ * for every stylesheet. Between layers, the later layer wins for normal
  * declarations whatever the specificity or load order; for !important the
  * order reverses (the earlier layer wins).
  *
@@ -28,183 +28,197 @@
  *                     (atlas-shell.css)
  *   atlas.modules     one stylesheet per module: layout and module-specific
  *                     pieces only, never !important
- *
- * S88 retired the atlas.legacy layer (the pre-S88 page CSS, the inline
- * index.html style block and the legacy/ fragments of the old override files);
- * nothing may reintroduce it (css-hygiene-s88.test.js).
  */
 @layer atlas.tokens, atlas.base, atlas.components, atlas.modules;
 
 @layer atlas.tokens {
 :root {
-  /* ---------- ALCEDO brand palette (apps/web/assets/brand/alcedo/) ----------
-     The kit anchors: deep teal, orange, warm ivory, sage, ink (brand-tokens.json).
-     Everything below derives from them. The logo art is teal (color on light,
-     white on dark); teal is the product-interface accent, orange a sparing
-     non-text highlight. Names are kept from the Atlas system (internal ids). */
-  --atlas-midnight: #10201F;   /* ink */
-  --atlas-slate: #1F2937;      /* neutral dark surface (toasts, tooltips) */
-  --atlas-mist: #CBD5E1;       /* light neutral border */
-  --atlas-snow: #F8F5ED;       /* warm ivory */
-  --atlas-blue: #08495C;       /* deep teal — the interface accent */
+  /* ---------- Palette anchors ----------
+     Basalt (ink), stone (frame), white (sheet), kingfisher (the one hue).
+     The legacy --atlas-* anchor names are kept as internal identifiers. */
+  --atlas-midnight: #131416;   /* basalt ink: text and the filled primary */
+  --atlas-slate: #1d1f21;      /* floating dark surfaces: tooltips, toasts, bulk bar */
+  --atlas-mist: #cdced1;       /* control borders */
+  --atlas-snow: #f3f5f4;       /* stone: the frame (sidebar + top bar) */
+  --atlas-blue: #1f6aa5;       /* kingfisher blue: the one hue (Alcedo atthis) */
 
   /* ---------- Colour: surfaces ---------- */
-  --bg: var(--atlas-snow);       /* content canvas — warm ivory #F8F5ED (no white in the app chrome) */
-  --bg-subtle: var(--atlas-snow);   /* warm ivory: sidebar, topbar, table header, inset panels */
-  --bg-muted: #E8E1D2;           /* hover on subtle, segmented track, skeleton (deeper warm cream) */
-  --bg-hover: #EFE9DB;           /* table row hover (warm cream, off the ivory canvas) */
-  --surface: #F3EFE3;            /* cards, sheets, popovers, inputs — warm cream, NEVER white; set off the ivory canvas by a hairline + soft teal shadow */
-  --overlay: rgba(16, 32, 31, .32);  /* ink */
+  --bg: #ffffff;                 /* the sheet: content canvas */
+  --bg-subtle: var(--atlas-snow);/* the frame: sidebar, top bar, tab bar, inset wells */
+  --bg-muted: #ebedee;           /* active nav pill, segmented track, skeleton */
+  --bg-hover: #f6f7f8;           /* row and item hover on white */
+  --surface: #ffffff;            /* cards, popovers, inputs */
+  --overlay: rgba(19, 20, 22, .36);
 
-  /* ---------- Colour: text (all ≥ 4.5:1 on --bg, --bg-subtle and --bg-muted) ---------- */
-  --text: var(--atlas-midnight); /* headings and primary text, 19.2:1 on white */
-  --text-2: #2E3D3A;             /* secondary — warm ink family (ALCEDO), ≥ 9:1 on light surfaces */
-  --text-3: #4E5E58;             /* placeholders, group labels, meta — warm ink family, ≥ 5.5:1 on light surfaces */
-  --text-on-accent: var(--atlas-snow);  /* ivory text on teal/dark fills (no stark white); ~9.3:1 on teal */
-  --ink: var(--atlas-slate);     /* dark surfaces: tooltips, toasts, bulk bar (white text 14.7:1) */
+  /* ---------- Colour: text (every tier >= 4.5:1 on --bg, --bg-subtle, --bg-muted) ---------- */
+  --text: var(--atlas-midnight); /* 18.4:1 on white */
+  --text-2: #4f5254;             /* secondary, 8.0:1 on white */
+  --text-3: #5d6062;             /* meta, placeholders, group labels: 6.4:1 on white, 5.3:1 on --bg-muted */
+  --text-on-accent: #ffffff;     /* on the near-black primary */
+  --ink: var(--atlas-slate);
 
-  /* ---------- Colour: lines (Mist) ---------- */
-  --line: rgba(16, 32, 31, .14); /* card borders, dividers — warm ink hairline (ALCEDO) */
+  /* ---------- Colour: lines (three steps) ---------- */
+  --line: #e8eaec;               /* card and sheet edges, dividers */
   --line-strong: var(--atlas-mist); /* inputs, secondary buttons */
-  --line-hover: rgba(16, 32, 31, .34); /* input hover */
-  --line-subtle: rgba(16, 32, 31, .08); /* row dividers inside cards and tables */
-  --control-border: rgba(16, 32, 31, .40); /* checkbox / radio outline */
-  --toggle-off: var(--atlas-mist);
+  --line-hover: #a9acb0;         /* input hover */
+  --line-subtle: #f0f1f2;        /* row rules inside cards and tables */
+  --control-border: #8a8e93;     /* checkbox / radio outline (3.3:1) */
+  --toggle-off: #cdced1;
 
   /* ---------- Colour: accent ----------
-     ALCEDO deep teal #08495C is the brand/interface accent: focus ring,
-     selection and active-nav indicators, icons, badges, charts, AND — because
-     teal is dark — text-bearing fills too. White text on teal is ~9.9:1 (passes
-     WCAG AA), so unlike Atlas Blue the one teal serves both the indicator role
-     and the primary-button/link role. Orange (--highlight) is the sparing
-     non-text pop, never a fill behind white body text. */
-  --accent-brand: var(--atlas-blue); /* indicators, focus, icons, charts */
-  --accent: var(--atlas-blue);   /* primary fills with white text (~9.9:1), accent text/links */
-  --accent-hover: #063a49;       /* darker teal for hover */
-  --accent-press: #052e3a;       /* darker teal for press */
-  --accent-soft: #eef4f5;        /* selected rows, active chip, info tiles (pale teal wash) */
-  --accent-soft-hover: #dde9ec;
-  --accent-text: var(--accent);  /* link / label text: ~9.9:1 on white, ~9:1 on --accent-soft */
-  --accent-ring: rgba(8, 73, 92, .22);
-  --accent-illustration: var(--atlas-blue); /* charts and illustration */
+     The filled primary is near-black ink with white text (18:1). Kingfisher
+     blue is the one hue: focus ring, selection, active indicators, unread dots,
+     charts, links. It never fills a large area. */
+  --accent-brand: var(--atlas-blue);  /* indicators, focus, icons, charts: 5.6:1 on white */
+  --accent: #18191b;             /* primary fills (white text), count badges */
+  --accent-hover: #2b2d30;
+  --accent-press: #000000;
+  --accent-soft: #edf3f9;        /* info wells, selected chip (pale kingfisher) */
+  --accent-soft-hover: #dfeaf4;
+  --accent-text: #1b5d91;        /* links and accent text: 6.9:1 on white, 6.3:1 on --accent-soft */
+  --accent-ring: rgba(31, 106, 165, .24);
+  --accent-illustration: var(--atlas-blue);
 
-  /* ---------- Colour: highlight (orange, sparing, never behind small text) ----
-     Orange #E8732A fails AA for text on white, so it is used only as a non-text
-     pop: the active-nav indicator bar/dot, a selected-chip edge, unread /
-     notification dots and small emphasis, or paired with ink text. */
-  --highlight: #E8732A;
-  --highlight-soft: #fdece1;
-  --highlight-ring: rgba(232, 115, 42, .28);
+  /* ---------- Colour: highlight ----------
+     Formerly the brand orange. Now the kingfisher hue at small sizes only:
+     the active-tab underline, unread and notification dots, ::selection. */
+  --highlight: var(--atlas-blue);
+  --highlight-soft: #e3eef8;
+  --highlight-ring: rgba(31, 106, 165, .28);
 
   /* ---------- Colour: status (always paired with a word or icon) ---------- */
-  --positive: #047857;           /* 5.5:1 on white, 5.2:1 on --positive-soft */
-  --positive-soft: #ecfdf5;
-  --warning: #b45309;            /* text: 5.0:1 on white, 4.8:1 on --warning-soft */
-  --warning-icon: #c26a04;       /* icons only, deep amber — >= 3:1 non-text on the ivory canvas, kept clearly distinct from brand orange #E8732A */
+  --positive: #1e7b4f;           /* 5.3:1 on white */
+  --positive-soft: #dcfae5;
+  --positive-ink: #04250e;
+  /* Attention is one amber that reads as amber, never the retired brand
+     orange: dots, icons and thin rules only, never a wide fill (a bar shows
+     "below par" as a hatched or ink-tint segment and keeps the hue for its
+     label). */
+  --warning: #7c5a10;            /* text: 6.3:1 on white */
+  --warning-icon: #9a6a0a;       /* dots, icons, thin rules: 4.7:1 on white */
   --warning-soft: #fffbeb;
-  --danger: #c42020;             /* 5.9:1 on white (text and white-on-fill), 5.4:1 on --danger-soft */
-  --danger-soft: #fef2f2;
-  --danger-ring: rgba(196, 32, 32, .12);
-  --neutral-soft: #f1f5f9;
+  --warning-line: #fde68a;
+  --danger: #c4242a;             /* 5.6:1 on white */
+  --danger-soft: #ffedea;
+  --danger-ink: #831c1e;
+  --danger-ring: rgba(196, 36, 42, .14);
+  --neutral-soft: #ebedee;
 
-  /* ---------- Typography ---------- */
-  /* ALCEDO type system (self-hosted OFL webfonts, see @font-face at foot of file):
-     display/headings = Instrument Serif; body/UI = Manrope; labels/eyebrows/meta/
-     numeric = JetBrains Mono (used selectively). */
-  --font-sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* ---------- Colour: identity (data, never chrome) ----------
+     Six muted hues that tell people apart in the Shifts rota and the
+     Today/Tomorrow strip, used only as a 14 % tint, a 3 px edge or an 8 px
+     dot. No orange and no teal; kingfisher stays the one UI hue ("today",
+     selection). Each reads at 4.5:1 or better on white. */
+  --person-1: #4f6d94;           /* slate blue */
+  --person-2: #5f7d45;           /* moss */
+  --person-3: #85577e;           /* plum */
+  --person-4: #77706a;           /* stone */
+  --person-5: #6b62a8;           /* iris */
+  --person-6: #9a5d5f;           /* rosewood */
 
-  /* Role shorthands: font: var(--type-body); letter-spacing where given.
-     Instrument Serif ships a single 400 weight, so display headings are 400. */
-  --type-display: 400 34px/40px var(--font-display);  --track-display: -0.01em;
-  --type-title:   600 24px/32px var(--font-sans);     --track-title: -0.015em;
-  --type-section: 600 17px/24px var(--font-sans);     --track-section: -0.005em;
-  --type-heading: 600 15px/22px var(--font-sans);
+  /* ---------- Typography ----------
+     One grotesk: IBM Plex Sans for every role (display included). IBM Plex
+     Mono has one job: IDs, keys and codes. Numbers use tabular figures in the
+     text face (.num / --type-num). App type, not display type: the page title
+     is 22px, nothing reaches 48px. */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --type-display: 600 26px/32px var(--font-display);  --track-display: -0.02em;
+  --type-title:   600 22px/28px var(--font-sans);     --track-title: -0.015em;
+  --type-section: 600 16px/24px var(--font-sans);     --track-section: -0.005em;
+  --type-heading: 600 14px/20px var(--font-sans);
   --type-body:    400 14px/20px var(--font-sans);
-  --type-body-lg: 400 15px/24px var(--font-sans);
+  --type-body-lg: 400 16px/24px var(--font-sans);
   --type-label:   500 13px/18px var(--font-sans);
   --type-meta:    400 13px/18px var(--font-sans);
   --type-caption: 400 12px/16px var(--font-sans);     /* the minimum size */
-  --type-kpi:     500 28px/32px var(--font-sans);     --track-kpi: -0.02em;
+  --type-kpi:     400 28px/32px var(--font-sans);     --track-kpi: -0.02em;
   --type-num:     500 14px/20px var(--font-sans);
+  /* Figures tier: designed once, reused by every module. A phone list row's
+     title, a figure that leads a row or a card, and the one big count on a
+     counting screen. Tabular figures, tightened as they grow. */
+  --type-row:     500 15px/22px var(--font-sans);
+  --type-figure:  500 18px/24px var(--font-sans);     --track-figure: -0.01em;
+  --type-count:   500 40px/48px var(--font-sans);     --track-count: -0.025em;
 
-  /* Sizes for rules that set font-size only. */
-  --fs-display: 32px;
-  --fs-title: 24px;
-  --fs-section: 17px;
-  --fs-heading: 15px;
+  --fs-display: 26px;
+  --fs-title: 22px;
+  --fs-section: 16px;
+  --fs-heading: 14px;
   --fs-body: 14px;
-  --fs-body-lg: 15px;
+  --fs-body-lg: 16px;
   --fs-label: 13px;
   --fs-caption: 12px;
   --fs-kpi: 28px;
 
-  /* ---------- Spacing (4 px base) ---------- */
+  /* ---------- Spacing (4 px base; one gutter: --s-6) ---------- */
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
   --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px;
 
-  /* ---------- Radius ---------- */
-  --r-xs: 4px;     /* checkbox, kbd, skeleton */
-  --r-sm: 6px;     /* segmented inner, small tags, tooltip */
-  --r-md: 12px;    /* inputs, nav items, record chips (ALCEDO softer radius; buttons are pill) */
-  --r-lg: 16px;    /* cards, tables, alerts, popovers, toasts */
-  --r-xl: 20px;    /* dialogs, sheets, palette, composer */
-  --r-pill: 999px; /* pills, chips, avatars, toggles, buttons */
+  /* ---------- Radius (tight style; nested radii step down) ---------- */
+  --r-xs: 4px;     /* checkbox, kbd, skeleton, chips/tags */
+  --r-sm: 6px;     /* buttons, inputs, nav items, segmented */
+  --r-md: 6px;     /* inputs, nav items, record chips */
+  --r-lg: 8px;     /* cards, tables, alerts, popovers, toasts */
+  --r-xl: 12px;    /* dialogs, sheets, palette, composer */
+  --r-sheet: 16px; /* the work sheet inside the frame */
+  --r-pill: 999px; /* avatars, toggles, status pills, dots */
 
-  /* ---------- Elevation (near flat; cards at rest have none) ---------- */
+  /* ---------- Elevation: only what floats casts a shadow ---------- */
   --shadow-none: 0 0 0 0 transparent;
-  --shadow-1: 0 1px 2px rgba(8, 73, 92, .08);            /* soft, teal-tinted (ALCEDO) */
-  --shadow-soft: 0 18px 40px -32px rgba(8, 73, 92, .26), 0 4px 10px -8px rgba(8, 73, 92, .10);
-  --shadow-pop: 0 18px 40px -32px rgba(8, 73, 92, .28), 0 4px 10px -8px rgba(8, 73, 92, .12);
-  --shadow-modal: 0 24px 48px -32px rgba(8, 73, 92, .42), 0 6px 14px -10px rgba(8, 73, 92, .16);
+  --shadow-1: 0 1px 2px rgba(19, 20, 22, .06);
+  --shadow-soft: var(--shadow-none);   /* resting cards: none (border instead) */
+  --shadow-pop: 0 1px 2px rgba(19, 20, 22, .06), 0 8px 24px -4px rgba(19, 20, 22, .14);
+  --shadow-modal: 0 2px 6px rgba(19, 20, 22, .08), 0 24px 56px -12px rgba(19, 20, 22, .28);
 
   /* ---------- Focus ---------- */
   --focus-width: 2px;
-  --focus-offset: 3px;
-  --focus-color: var(--accent-brand);   /* teal: ≥ 3:1 on white, ivory, --bg-muted (light surfaces); dark --ink surfaces use a light ring */
+  --focus-offset: 2px;
+  --focus-color: var(--accent-brand);
   --focus-outline: var(--focus-width) solid var(--focus-color);
-  --focus-ring: 0 0 0 3px var(--accent-ring);   /* inputs: border + ring */
+  --focus-ring: 0 0 0 3px var(--accent-ring);
 
   /* ---------- Controls and icons ---------- */
   --control-sm: 32px;
   --control-md: 36px;
   --control-lg: 44px;
   --touch: 44px;
-  --icon-sm: 16px;     /* inline, buttons, rows */
-  --icon-md: 18px;     /* top bar, header icon buttons */
-  --icon-lg: 20px;     /* sheet close, phone top bar */
-  --icon-xl: 22px;     /* phone tab bar */
-  --icon-stroke: 1.75;
-  --icon-stroke-xl: 1.6;
-  --icon-stroke-strong: 2;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-lg: 20px;
+  --icon-xl: 22px;
 
-  /* ---------- Shell geometry ---------- */
+  /* ---------- Shell geometry (framed sheet) ---------- */
+  --sidebar-w: 228px;
   --sidebar-rail: 64px;
-  --topbar-h: 56px;
+  --sheet-inset: 8px;      /* the sheet's gap to the window's right and bottom edges */
+  --topbar-h: 48px;
   --tabbar-h: 56px;
-  --page-max: 1200px;
-  --page-gutter: 40px;
+  --page-max: 1240px;
+  --page-gutter: 24px;     /* the sheet's content padding */
   --reading-max: 720px;
 
-  /* ---------- Motion ---------- */
-  --dur-1: 120ms;   /* hover, press, colour */
+  /* ---------- Motion (Emil Kowalski: fast, ease-out, interruptible) ----------
+     Enter/exit: --ease-out. On-screen movement: --ease-in-out. Sheets and
+     drawers: --ease-drawer. There is no ease-in for UI: --ease-in is kept as
+     a name only and resolves to the ease-out curve. Keyboard-initiated actions
+     (palette toggle, shortcuts) do not animate. */
+  --dur-1: 120ms;   /* hover, colour */
   --dur-2: 180ms;   /* menus, popovers, toggles, tabs, row expand */
-  --dur-3: 240ms;   /* sheets, dialogs, palette */
-  --ease-out: cubic-bezier(.2, .7, .1, 1);
-  --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --dur-3: 240ms;   /* sheets, dialogs */
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out: cubic-bezier(.77, 0, .175, 1);
+  --ease-drawer: cubic-bezier(.32, .72, 0, 1);
 
-  /* Shared motion system (animation pass). Durations and easing are
-     theme-independent, so they are defined once here (never mirrored in a
-     theme block). Controls animate at --motion-fast/--motion-mid (~120–250ms),
-     larger transitions at --motion-mid/--motion-slow (~200–350ms). Prefer
-     opacity + transform only. The movement tokens below collapse to 0 under
-     prefers-reduced-motion (media block at the foot of :root). */
+  --motion-press: 140ms;   /* :active scale(.97) */
   --motion-fast: 140ms;
   --motion-mid: 200ms;
-  --motion-slow: 300ms;
-  --ease-standard: cubic-bezier(.4, 0, .2, 1);
-  --ease-in: cubic-bezier(.4, 0, 1, 1);
+  --motion-slow: 260ms;
+  --ease-standard: cubic-bezier(.23, 1, .32, 1);
+  --ease-in: cubic-bezier(.23, 1, .32, 1);
+  --press-scale: .97;
   --move-sm: 4px;
   --move-md: 8px;
 
@@ -230,15 +244,15 @@
   --atlas-line: var(--line);
   --atlas-line-strong: var(--line-strong);
 
-  /* Accent: every module "primary blue" alias resolves to the one ALCEDO teal */
+  /* Accent: every module "primary blue" alias resolves to the one primary */
   --atlas-accent: var(--accent);
   --atlas-accent-strong: var(--accent-hover);
   --atlas-accent-soft: var(--accent-soft);
-  --atlas-accent-line: rgba(8, 73, 92, .24);
+  --atlas-accent-line: rgba(31, 106, 165, .24);
   --atlas-focus-ring: var(--focus-ring);
   --atlas-action: var(--accent);
   --atlas-action-hover: var(--accent-hover);
-  --atlas-action-focus: rgba(8, 73, 92, .24);
+  --atlas-action-focus: rgba(31, 106, 165, .24);
   --atlas-home-accent: var(--accent);
   --atlas-home-accent-strong: var(--accent-hover);
   --atlas-home-accent-soft: var(--accent-soft);
@@ -294,7 +308,7 @@
   /* Cards, radius and elevation */
   --atlas-radius: var(--r-lg);
   --atlas-card-radius: var(--r-lg);
-  --atlas-card-shadow: var(--shadow-soft);      /* cards lift softly on the ivory canvas (ALCEDO) */
+  --atlas-card-shadow: var(--shadow-none);      /* flat: cards are separated by a 1px edge */
   --atlas-card-shadow-hover: var(--shadow-pop);
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);
@@ -344,62 +358,79 @@
      are defined once in the Motion section above (shared motion system). */
   --motion-base: var(--dur-2);
 }
-@media (max-width: 1279px) { :root { --page-gutter: 32px; } }
-@media (max-width: 1023px) { :root { --page-gutter: 24px; } }
 @media (max-width: 767px) {
   :root {
     --page-gutter: 16px;
-    --type-display: 400 30px/36px var(--font-display);
-    --type-title: 600 22px/28px var(--font-sans);
+    --sheet-inset: 0px;
+    --type-display: 600 22px/28px var(--font-display);
+    --type-title: 600 20px/26px var(--font-sans);
     --type-body: 400 15px/22px var(--font-sans);
-    --type-kpi: 500 22px/28px var(--font-sans);
+    --type-kpi: 400 24px/28px var(--font-sans);
   }
 }
 /* Reduced motion: the movement tokens collapse to 0, so every transform that
-   reads --move-sm / --move-md (button press, drawer/menu/toast slide, page
-   entry) resolves to no movement while colour, shadow and opacity states stay
-   intact. Durations/looping are additionally neutralized in atlas-base.css
-   (global) and per-component reduced-motion blocks. Defined here because tokens
+   reads --move-sm / --move-md (button press, drawer/menu/toast slide)
+   resolves to no movement while colour, shadow and opacity states stay
+   intact. atlas-base.css lets only opacity and colour transition (fades
+   stay, movement goes) and ends keyframe loops; components drop the
+   transforms that read no token. Defined here because tokens
    may only be declared in this file. The mascot is unaffected — it reads none
    of these tokens and keeps its own reduced-motion handling. */
 @media (prefers-reduced-motion: reduce) {
-  :root { --move-sm: 0px; --move-md: 0px; }
+  :root { --move-sm: 0px; --move-md: 0px; --press-scale: 1; }
 }
 }
 
 /* =====================================================================
-   ALCEDO self-hosted webfonts (OFL). Latin subsets pulled from Google
-   Fonts and served from apps/web/assets/fonts/. Declared at file top
-   level (outside the cascade layers, like every @font-face) so the type
-   tokens above resolve to real faces. font-display:swap keeps text
-   visible while the woff2 loads; the serif/sans/mono stacks fall back to
-   Georgia / system-ui / ui-monospace if a face is unavailable.
+   Self-hosted webfonts (OFL): IBM Plex Sans (variable, 100-700) and IBM
+   Plex Mono 400/500, latin + latin-ext (Icelandic á ð þ æ ö), from
+   @fontsource. Declared outside the cascade layers, like every @font-face.
    ===================================================================== */
 @font-face {
-  font-family: 'Instrument Serif';
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('../fonts/IBMPlexSans-LatinExt-Variable.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('../fonts/IBMPlexSans-Latin-Variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../fonts/InstrumentSerif-Regular.woff2') format('woff2');
+  src: url('../fonts/IBMPlexMono-LatinExt-400.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: 'Instrument Serif';
-  font-style: italic;
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../fonts/InstrumentSerif-Italic.woff2') format('woff2');
+  src: url('../fonts/IBMPlexMono-Latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: 'Manrope';
+  font-family: 'IBM Plex Mono';
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 500;
   font-display: swap;
-  src: url('../fonts/Manrope-Variable.woff2') format('woff2');
+  src: url('../fonts/IBMPlexMono-LatinExt-500.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: 'IBM Plex Mono';
   font-style: normal;
-  font-weight: 400 600;
+  font-weight: 500;
   font-display: swap;
-  src: url('../fonts/JetBrainsMono-Variable.woff2') format('woff2');
+  src: url('../fonts/IBMPlexMono-Latin-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }

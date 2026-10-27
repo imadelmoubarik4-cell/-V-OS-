@@ -222,22 +222,33 @@
   function title(doc) {
     return doc.supplier_name || doc.file_name || `${KINDS[doc.kind] || 'Document'} without a supplier`;
   }
+  const hasAmount = (doc) => !(doc.total_amount === null || doc.total_amount === undefined || doc.total_amount === '');
   function meta(doc) {
     return [
       KINDS[doc.kind] || 'Document',
       doc.document_number ? `No. ${doc.document_number}` : null,
       dateOnly(doc.issue_date),
-      doc.total_amount === null || doc.total_amount === undefined || doc.total_amount === '' ? null : money(doc.total_amount, doc.currency),
       doc.status === 'approved' && doc.due_date ? `Due ${dateOnly(doc.due_date)}` : null,
       doc.paid_by === 'staff' ? `Paid by ${doc.paid_by_label || 'a team member'}` : null
     ].filter(Boolean).join(' · ');
   }
+  // The document's amount as the row's figure: tabular, signed (a credit note
+  // reads as a minus amount, in ink like every other amount: the sign is in
+  // the text, not the colour). It sits in the meta line so the line reads whole
+  // on a phone; on wider screens the Accounting stylesheet sets it in its own
+  // right-aligned column (the separator is then hidden). A document without an
+  // amount keeps the column with an empty, unannounced cell.
+  function amountMarkup(doc) {
+    if (!hasAmount(doc)) return '<span class="acc-row__amount is-empty" aria-hidden="true"></span>';
+    return `<span class="acc-row__amount"><span class="acc-row__sep" aria-hidden="true"> · </span>${escapeHtml(money(signed(doc, doc.total_amount), doc.currency))}</span>`;
+  }
 
-  // `status: false` leaves out the status pill (the To review tab says it).
+  // `status: false` leaves out the status pill where the tab already says it
+  // (To review, Unpaid, Owed to team): one status mark per row.
   function row(doc, action = '', { status = true } = {}) {
     return `<li class="atlas-row atlas-row--link acc-row" data-acc-row="${escapeHtml(doc.id)}">
         <span class="atlas-row__icon">${icon(doc.mime_type === 'application/pdf' ? 'file-text' : 'receipt-text')}</span>
-        <div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-row__link acc-link" data-acc-open="${escapeHtml(doc.id)}">${escapeHtml(title(doc))}</button></p><p class="atlas-row__meta">${escapeHtml(meta(doc))}</p></div>
+        <div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-row__link acc-link" data-acc-open="${escapeHtml(doc.id)}">${escapeHtml(title(doc))}</button></p><p class="atlas-row__meta"><span class="acc-row__facts">${escapeHtml(meta(doc))}</span>${amountMarkup(doc)}</p></div>
         <div class="atlas-row__end acc-row__end">${flagPills(doc)}${status ? statusPill(doc) : ''}${action}</div></li>`;
   }
   const rowAction = (doc, label, attr) => `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" ${attr}="${escapeHtml(doc.id)}" aria-label="${escapeHtml(`${label}: ${title(doc)}`)}">${escapeHtml(label)}</button>`;
@@ -284,7 +295,7 @@
   function reviewMarkup() {
     const list = documents().filter((doc) => doc.status === 'to_review');
     return list.length
-      ? `<p class="acc-lead">Check what Alcedo filled in, add anything missing and approve. Nothing is final until you approve it.</p><ul class="atlas-list">${list.map((doc) => row(doc, rowAction(doc, 'Review', 'data-acc-open'), { status: false })).join('')}</ul>`
+      ? `<p class="acc-lead">Check what Alcedo filled in, add anything missing and approve. Nothing is final until you approve it.</p><ul class="atlas-list acc-list">${list.map((doc) => row(doc, rowAction(doc, 'Review', 'data-acc-open'), { status: false })).join('')}</ul>`
       : empty('inbox', 'Nothing to review', 'Upload an invoice or a receipt — a photo or a PDF — and it waits here for you to check.', uploadButton('secondary'));
   }
 
@@ -297,7 +308,7 @@
         <div class="atlas-stat"><p class="atlas-stat__label">Unpaid</p><p class="atlas-stat__value">${escapeHtml(money(sum(list)))}</p><p class="atlas-stat__detail">${plural(list.length, 'document', 'documents')}</p>${otherCurrencies(list)}</div>
         <div class="atlas-stat"><p class="atlas-stat__label">Overdue</p><p class="atlas-stat__value">${escapeHtml(money(sum(overdue)))}</p><p class="atlas-stat__detail">${plural(overdue.length, 'document', 'documents')}</p>${otherCurrencies(overdue)}</div>
       </div>
-      <ul class="atlas-list">${list.map((doc) => row(doc, rowAction(doc, 'Mark paid', 'data-acc-pay'))).join('')}</ul>`;
+      <ul class="atlas-list acc-list">${list.map((doc) => row(doc, rowAction(doc, 'Mark paid', 'data-acc-pay'), { status: false })).join('')}</ul>`;
   }
 
   function owedGroups() {
@@ -314,7 +325,7 @@
     const groups = owedGroups();
     if (!groups.size) return empty('hand-coins', 'Nobody is owed money', 'When a team member pays with their own money, upload the receipt and choose who paid. It shows here until you reimburse them.');
     return [...groups.values()].map((group) => `<section class="atlas-section acc-owed" data-acc-owed="${escapeHtml(group.key)}"><div class="atlas-section__head acc-owed__head"><h2 class="atlas-section__title">${escapeHtml(group.label)}</h2><div class="acc-owed__end"><span class="atlas-section__meta">Owed ${escapeHtml(totalsText(group.docs))}</span>${group.docs.length > 1 ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm acc-owed__all" data-acc-pay-all="${escapeHtml(group.key)}" aria-label="${escapeHtml(`Mark all reimbursed: ${group.label}`)}">Mark all reimbursed</button>` : ''}</div></div>
-        <ul class="atlas-list">${group.docs.map((doc) => row(doc, rowAction(doc, 'Mark reimbursed', 'data-acc-pay'))).join('')}</ul></section>`).join('');
+        <ul class="atlas-list acc-list">${group.docs.map((doc) => row(doc, rowAction(doc, 'Mark reimbursed', 'data-acc-pay'), { status: false })).join('')}</ul></section>`).join('');
   }
 
   const FILTERS = [['all', 'All'], ['to_review', 'To review'], ['approved', 'Unpaid'], ['paid', 'Paid'], ['void', 'Void'], ['discarded', 'Discarded']];
@@ -331,7 +342,7 @@
         <div class="atlas-segmented acc-filter" role="group" aria-label="Show">${FILTERS.map(([key, label]) => `<button type="button" aria-pressed="${state.filter === key}" data-acc-filter="${key}">${label}</button>`).join('')}</div>
         <select class="atlas-select acc-filter-select" data-acc-filter-select aria-label="Show">${FILTERS.map(([key, label]) => `<option value="${key}"${state.filter === key ? ' selected' : ''}>${label}</option>`).join('')}</select>
         <div class="atlas-toolbar__end">${plural(list.length, 'document', 'documents')}</div></div>
-      ${list.length ? `<ul class="atlas-list">${list.map((doc) => row(doc)).join('')}</ul>` : '<p class="acc-muted">No documents match.</p>'}
+      ${list.length ? `<ul class="atlas-list acc-list acc-list--plain">${list.map((doc) => row(doc)).join('')}</ul>` : '<p class="acc-muted">No documents match.</p>'}
       <p class="acc-muted">${state.workspace?.complete === false ? 'Shows every open document and the most recent closed ones. Use Export for a full month.' : 'Shows every open document and everything from the last 13 months. Use Export for older months.'}</p>`;
   }
 
@@ -367,7 +378,11 @@
     const disabled = state.exporting || nothing ? ' disabled' : '';
     const alert = (tone, head, text) => `<div class="atlas-alert atlas-alert--${tone}" role="status">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(head)}</p><p class="atlas-alert__body">${escapeHtml(text)}</p></div></div>`;
     return `<div class="atlas-stack acc-export">
-        <div class="atlas-field acc-export__month"><label for="acc-month">Month</label><select class="atlas-select" id="acc-month" data-acc-month>${months.map((key) => `<option value="${key}"${key === month ? ' selected' : ''}>${monthLabel(key)}</option>`).join('')}</select></div>
+        <div class="acc-export__bar">
+          <div class="atlas-field acc-export__month"><label for="acc-month">Month</label><select class="atlas-select" id="acc-month" data-acc-month>${months.map((key) => `<option value="${key}"${key === month ? ' selected' : ''}>${monthLabel(key)}</option>`).join('')}</select></div>
+          <div class="acc-export__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-acc-export="csv-is"${disabled}>${icon('file-spreadsheet')}Spreadsheet for Excel</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="csv"${disabled}>${icon('file-spreadsheet')}CSV for Regla / Payday import</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="zip"${disabled}>${icon('file-archive')}Download files (ZIP)</button></div>
+        </div>
+        <p class="acc-muted acc-export__status" data-acc-export-status aria-live="polite"></p>
         <div class="atlas-stats acc-stats">
           <div class="atlas-stat"><p class="atlas-stat__label">Documents</p><p class="atlas-stat__value">${counted.length}</p><p class="atlas-stat__detail">${inMonth.length - counted.length} void</p></div>
           <div class="atlas-stat"><p class="atlas-stat__label">Total</p><p class="atlas-stat__value">${escapeHtml(money(sum(counted)))}</p>${otherCurrencies(counted)}</div>
@@ -376,11 +391,48 @@
         </div>
         ${waiting ? alert('warning', `${waiting} ${waiting === 1 ? 'document is' : 'documents are'} still to review`, 'Only approved documents are exported. Review the ones dated in this month, or without a date, first.') : ''}
         ${newSince ? alert('info', `${newSince} ${newSince === 1 ? 'document in this month was' : 'documents in this month were'} approved after it was last exported`, 'Export the month again and send your accountant the new spreadsheet.') : ''}
-        <p class="acc-lead">For your accountant (Regla, Payday): every approved, paid and void document dated in this month. Open the spreadsheet in Excel, import the CSV into your accounting software, or send the ZIP: the original files plus both spreadsheets. Credit notes count as minus amounts. Void documents are listed, marked “No – void” under Counted, and left out of the totals.</p>
-        ${nothing ? '<p class="acc-muted" data-acc-export-empty>Nothing approved is dated in this month.</p>' : ''}
-        <div class="acc-export__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-acc-export="csv-is"${disabled}>${icon('file-spreadsheet')}Spreadsheet for Excel</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="csv"${disabled}>${icon('file-spreadsheet')}CSV for Regla / Payday import</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="zip"${disabled}>${icon('file-archive')}Download files (ZIP)</button></div>
-        <p class="acc-muted" data-acc-export-status aria-live="polite"></p>
+        ${nothing ? '<p class="acc-muted" data-acc-export-empty>Nothing approved is dated in this month.</p>' : monthLedger(inMonth, month)}
+        <p class="acc-lead acc-export__note">For your accountant (Regla, Payday): every approved, paid and void document dated in this month. Open the spreadsheet in Excel, import the CSV into your accounting software, or send the ZIP: the original files plus both spreadsheets. Credit notes count as minus amounts. Void documents are listed, marked “No – void” under Counted, and left out of the totals.</p>
       </div>`;
+  }
+
+  // The month as the accountant will read it: one row per document in date
+  // order, net, VAT and total right-aligned in tabular figures (credit notes
+  // with their minus sign), and a total row per currency summed from the
+  // counted rows above it, so the foot reconciles with the Total figure. Void
+  // documents stay listed in grey and are left out of the sums.
+  function monthLedger(list, month) {
+    if (!list.length) return '';
+    const rows = [...list].sort((a, b) => String(a.issue_date).localeCompare(String(b.issue_date)));
+    const amount = (doc, value) => (value === null || value === undefined || value === '' ? '<span class="acc-dash">—</span>' : escapeHtml(money(signed(doc, value), doc.currency)));
+    const body = rows.map((doc) => {
+      const isVoid = doc.status === 'void';
+      return `<tr class="${isVoid ? 'acc-ledger__void' : ''}">
+          <td class="acc-ledger__date">${escapeHtml(dateOnly(doc.issue_date))}</td>
+          <td class="acc-ledger__who"><button type="button" class="atlas-link acc-ledger__open" data-acc-open="${escapeHtml(doc.id)}">${escapeHtml(title(doc))}</button><span class="cell-sub">${escapeHtml([KINDS[doc.kind] || 'Document', doc.document_number ? `No. ${doc.document_number}` : null].filter(Boolean).join(' · '))}</span></td>
+          <td>${statusPill(doc)}</td>
+          <td class="is-num">${amount(doc, doc.net_amount)}</td>
+          <td class="is-num">${amount(doc, doc.vat_amount)}</td>
+          <td class="is-num acc-ledger__total">${amount(doc, doc.total_amount)}</td>
+        </tr>`;
+    }).join('');
+    const counted = rows.filter((doc) => doc.status !== 'void');
+    const add = (docs, key) => docs.reduce((total, doc) => total + signOf(doc) * (Number(doc[key]) || 0), 0);
+    const foot = byCurrency(counted).map((group) => `<tr>
+        <td colspan="3" class="acc-ledger__foot-label">Total${byCurrency(counted).length > 1 ? ` in ${escapeHtml(group.code)}` : ''} · ${plural(group.docs.length, 'counted document', 'counted documents')}</td>
+        <td class="is-num">${escapeHtml(money(add(group.docs, 'net_amount'), group.code))}</td>
+        <td class="is-num">${escapeHtml(money(add(group.docs, 'vat_amount'), group.code))}</td>
+        <td class="is-num acc-ledger__total">${escapeHtml(money(group.total, group.code))}</td>
+      </tr>`).join('');
+    const phone = rows.map((doc) => `<li class="atlas-table-list__row acc-ledger__row${doc.status === 'void' ? ' acc-ledger__void' : ''}"><div class="atlas-table-list__body"><p class="atlas-table-list__title">${escapeHtml(title(doc))}</p><p class="atlas-table-list__meta">${escapeHtml([dateOnly(doc.issue_date), doc.document_number ? `No. ${doc.document_number}` : null, `VAT ${doc.vat_amount === null || doc.vat_amount === undefined ? '—' : money(signed(doc, doc.vat_amount), doc.currency)}`].filter(Boolean).join(' · '))}</p></div><div class="atlas-table-list__value">${amount(doc, doc.total_amount)}<br>${statusPill(doc)}</div></li>`).join('');
+    const phoneFoot = byCurrency(counted).map((group) => `<li class="atlas-table-list__row acc-ledger__row acc-ledger__sum"><div class="atlas-table-list__body"><p class="atlas-table-list__title">Total${byCurrency(counted).length > 1 ? ` in ${escapeHtml(group.code)}` : ''}</p><p class="atlas-table-list__meta">${escapeHtml(`${plural(group.docs.length, 'counted document', 'counted documents')} · VAT ${money(add(group.docs, 'vat_amount'), group.code)}`)}</p></div><div class="atlas-table-list__value">${escapeHtml(money(group.total, group.code))}</div></li>`).join('');
+    return `<section class="acc-ledger" aria-labelledby="acc-ledger-title">
+        <div class="atlas-section__head acc-ledger__head"><h2 class="atlas-section__title" id="acc-ledger-title">${escapeHtml(monthLabel(month))}</h2><span class="atlas-section__meta">${plural(rows.length, 'document', 'documents')} in the export</span></div>
+        <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table acc-ledger__table"><caption class="atlas-sr-only">Documents dated in ${escapeHtml(monthLabel(month))}</caption>
+          <thead><tr><th scope="col">Date</th><th scope="col">Supplier</th><th scope="col">Status</th><th scope="col" class="is-num">Net</th><th scope="col" class="is-num">VAT</th><th scope="col" class="is-num">Total</th></tr></thead>
+          <tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>
+        <ul class="atlas-table-list acc-ledger__list">${phone}${phoneFoot}</ul>
+      </section>`;
   }
 
   const tabRoute = (key) => `#accounting${key === 'review' ? '' : `/${key}`}`;
@@ -396,6 +448,9 @@
     const review = documents().filter((doc) => doc.status === 'to_review').length;
     const unpaid = documents().filter((doc) => doc.status === 'approved' && doc.paid_by !== 'staff').length;
     const owed = documents().filter((doc) => doc.status === 'approved' && doc.paid_by === 'staff').length;
+    // The finding leads the line under the title: what is overdue, in krónur.
+    const overdue = documents().filter((doc) => doc.status === 'approved' && doc.checks?.overdue);
+    const overdueText = overdue.length ? `${totalsText(overdue)} overdue · ` : '';
     let body;
     if (state.error && !state.workspace && state.notDeployed) body = `<div class="atlas-alert atlas-alert--warning" role="status" data-acc-not-deployed>${icon('server-off')}<div class="atlas-alert__content"><p class="atlas-alert__title">Accounting backend is not deployed yet.</p><p class="atlas-alert__body">Nothing was changed. Deploy S92 Accounting before testing this preview.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-retry>Check again</button></div></div>`;
     else if (state.error && !state.workspace) body = `<div class="atlas-alert atlas-alert--danger" role="alert" data-acc-load-error>${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Accounting couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(errorText(state.error))}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-retry>Try again</button></div></div>`;
@@ -405,7 +460,7 @@
     // Upload waits for the workspace (the team list and whether Alcedo reads).
     const uploadAttrs = state.workspace ? { 'data-acc-upload': '' } : { 'data-acc-upload': '', disabled: '' };
     element.innerHTML = `<div class="atlas-page acc-page">
-        ${window.AtlasShell.pageHead({ title: 'Accounting', sub: state.workspace ? `${review} to review · ${unpaid} unpaid · ${owed} owed to team` : 'Invoices, receipts and reimbursements', actions: [{ label: 'Upload', icon: 'upload', variant: 'primary', attrs: uploadAttrs }] })}
+        ${window.AtlasShell.pageHead({ title: 'Accounting', sub: state.workspace ? `${overdueText}${review} to review · ${unpaid} unpaid · ${owed} owed to team` : 'Invoices, receipts and reimbursements', actions: [{ label: 'Upload', icon: 'upload', variant: 'primary', attrs: uploadAttrs }] })}
         <nav class="atlas-tabs acc-tabs" aria-label="Accounting">${TABS.map(([key, label]) => `<a href="${tabRoute(key)}"${state.tab === key ? ' aria-current="page"' : ''}>${label}${count(key) ? ` <span class="count">${count(key)}</span>` : ''}</a>`).join('')}</nav>
         <div class="acc-body">${body}</div>
       </div>`;
@@ -637,7 +692,9 @@
   function readBanner(doc) {
     const canRead = doc.status === 'to_review' && doc.has_file && Number(doc.byte_size || 0) <= 5 * 1024 * 1024 && /pdf|jpeg|png|webp/.test(doc.mime_type || '') && state.workspace?.ai_enabled;
     const again = canRead ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-read>Read again</button>' : '';
-    const alert = (tone, head, text, actions = '') => `<div class="atlas-alert atlas-alert--${tone}" role="status">${icon(tone === 'info' ? 'sparkles' : 'circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(head)}</p>${text ? `<p class="atlas-alert__body">${escapeHtml(text)}</p>` : ''}</div>${actions ? `<div class="atlas-alert__actions">${actions}</div>` : ''}</div>`;
+    // An info note about Alcedo's own work carries the kingfisher glyph; any
+    // other note the plain info glyph.
+    const alert = (tone, head, text, actions = '') => `<div class="atlas-alert atlas-alert--${tone}" role="status">${icon(tone === 'info' ? (/Alcedo/.test(head) ? 'atlas-bot' : 'info') : 'circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(head)}</p>${text ? `<p class="atlas-alert__body">${escapeHtml(text)}</p>` : ''}</div>${actions ? `<div class="atlas-alert__actions">${actions}</div>` : ''}</div>`;
     switch (doc.extraction_status) {
       case 'read': return doc.status === 'to_review' ? alert('info', 'Alcedo read this document', 'It filled in the empty fields, marked “Filled by Alcedo”. Check every value against the document before approving.') : '';
       case 'reading': return alert('info', 'Alcedo is reading it…', 'If this takes more than a minute, try again.', again);
@@ -819,7 +876,7 @@
     const out = [];
     const keys = key === 'supplier' ? ['supplier_id', 'supplier_name'] : [key];
     if (keys.some((name) => Object.prototype.hasOwnProperty.call(prefill, name) && same(prefill[name], doc[name]))) {
-      out.push(`<p class="atlas-field__help acc-filled">${icon('sparkles')}Filled by Alcedo</p>`);
+      out.push(`<p class="atlas-field__help acc-filled">${icon('atlas-bot')}Filled by Alcedo</p>`);
     }
     const readKey = key === 'supplier' ? 'supplier_name' : key;
     if (['supplier', 'issue_date', 'total_amount'].includes(key) && read[readKey] !== null && read[readKey] !== undefined && read[readKey] !== ''

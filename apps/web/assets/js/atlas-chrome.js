@@ -38,17 +38,13 @@
   const escape = (value) => shell.escape(value);
 
   // ---------- icons ----------
-  // Inline Lucide SVG from the pinned library (no document-wide createIcons
-  // pass for every panel render).
-  function icon(name, { size = 16, stroke = 1.75, className = '' } = {}) {
-    // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), a touch larger than a
-    // stroke icon so its face reads.
-    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: size + 4, className });
-    const pascal = String(name || '').split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('');
-    const node = window.lucide?.icons?.[pascal];
-    if (!Array.isArray(node)) return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;
-    const children = (node[2] || []).map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('');
-    return `<svg class="atlas-svg-icon lucide lucide-${escape(name)}${className ? ` ${className}` : ''}" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${children}</svg>`;
+  // Inline <svg> from the self-hosted ALCEDO icon set (assets/js/alcedo-icons.js),
+  // so a panel render needs no document-wide createIcons pass. 'atlas-bot' is
+  // the kingfisher glyph, the same mark as the Alcedo AI nav entry: every small
+  // "Ask Alcedo" control shows it; the 3D mascot lives only in the AI view.
+  function icon(name, { size = 16, className = '' } = {}) {
+    if (window.AlcedoIcons) return window.AlcedoIcons.svg(name, { size, className: `atlas-svg-icon${className ? ` ${className}` : ''}` });
+    return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;
   }
 
   function refreshStaticIcons() {
@@ -176,6 +172,34 @@
     }
     document.body.classList.toggle('atlas-topbar-own', Boolean(state.topbar.own));
     syncActive();
+    queueTitled();
+  }
+
+  // ---------- phone large title ----------
+  // On a phone the page's own H1 names the screen at the top. The top bar
+  // shows the same name only once that H1 has scrolled under the bar
+  // (.is-titled), or at once when the page has no visible H1 or owns the bar
+  // (a back button or its own title), so the name is never printed twice.
+  let titleFrame = 0;
+  function pageHeading() {
+    const main = $('atlas-main');
+    if (!main) return null;
+    return [...main.querySelectorAll('h1')].find((heading) => {
+      const box = heading.getBoundingClientRect();
+      return box.width > 1 && box.height > 1;
+    }) || null;
+  }
+  function syncTitled() {
+    titleFrame = 0;
+    const bar = $('atlas-topbar');
+    if (!bar) return;
+    if (!PHONE.matches) { bar.classList.remove('is-titled'); return; }
+    const owned = Boolean(state.topbar.title || state.topbar.back) || document.body.classList.contains('stock-count-active');
+    const heading = owned ? null : pageHeading();
+    bar.classList.toggle('is-titled', owned || !heading || heading.getBoundingClientRect().bottom <= bar.getBoundingClientRect().bottom);
+  }
+  function queueTitled() {
+    if (!titleFrame) titleFrame = window.requestAnimationFrame(syncTitled);
   }
 
   function setTopBar(options = {}) {
@@ -246,14 +270,46 @@
   }
 
   // Rail items show their label in a tooltip on hover/focus after 400 ms
-  // (spec §4.2); the rail scrolls, so the tooltip is fixed-positioned.
+  // (spec §4.2); the rail scrolls, so the tooltip is fixed-positioned. Once
+  // one is showing, the next appears at once: moving down the rail (or along
+  // a row of [data-atlas-tooltip] icon buttons) within 300 ms of the last
+  // tooltip skips the delay and the fade (html.atlas-tips-warm).
   let tooltipTimer = null;
+  let tipsWarmUntil = 0;
+  let tipsShownTimer = null;
+  let tipsCoolTimer = null;
+  const tipsWarm = () => Date.now() < tipsWarmUntil || document.documentElement.classList.contains('atlas-tips-warm');
+  function warmTips() {
+    window.clearTimeout(tipsCoolTimer);
+    document.documentElement.classList.add('atlas-tips-warm');
+  }
+  function coolTips() {
+    tipsWarmUntil = Date.now() + 300;
+    window.clearTimeout(tipsCoolTimer);
+    tipsCoolTimer = window.setTimeout(() => document.documentElement.classList.remove('atlas-tips-warm'), 300);
+  }
+  // CSS tooltips ([data-atlas-tooltip]): the stylesheet shows them after
+  // 400 ms; this only tracks whether one has shown, to skip the next delay.
+  function cssTipOver(event) {
+    const target = event.target instanceof Element ? event.target.closest('[data-atlas-tooltip]') : null;
+    if (!target) return;
+    if (tipsWarm()) { warmTips(); return; }
+    window.clearTimeout(tipsShownTimer);
+    tipsShownTimer = window.setTimeout(warmTips, 400);
+  }
+  function cssTipOut(event) {
+    const target = event.target instanceof Element ? event.target.closest('[data-atlas-tooltip]') : null;
+    if (!target || (event.relatedTarget instanceof Node && target.contains(event.relatedTarget))) return;
+    window.clearTimeout(tipsShownTimer);
+    if (document.documentElement.classList.contains('atlas-tips-warm')) coolTips();
+  }
   function railTarget(element) {
     if (!document.body.classList.contains('atlas-rail') || document.body.classList.contains('atlas-sidebar-open')) return null;
     return element instanceof Element ? element.closest('.atlas-sidebar .nav-item[aria-label], .atlas-sidebar .atlas-account, .atlas-sidebar .atlas-brand__link') : null;
   }
   function showTooltip(target) {
     window.clearTimeout(tooltipTimer);
+    window.clearTimeout(tipsCoolTimer);
     tooltipTimer = window.setTimeout(() => {
       let tip = $('atlas-tooltip');
       if (!tip) {
@@ -273,11 +329,13 @@
       tip.style.left = `${Math.max(8, left)}px`;
       tip.style.top = `${Math.max(8, Math.min(top, window.innerHeight - tip.offsetHeight - 8))}px`;
       target.setAttribute('aria-describedby', 'atlas-tooltip');
-    }, 400);
+      warmTips();
+    }, tipsWarm() ? 0 : 400);
   }
   function hideTooltip() {
     window.clearTimeout(tooltipTimer);
     const tip = $('atlas-tooltip');
+    if (tip && !tip.hidden) coolTips();
     if (tip) tip.hidden = true;
     document.querySelectorAll('[aria-describedby="atlas-tooltip"]').forEach((element) => element.removeAttribute('aria-describedby'));
   }
@@ -309,10 +367,19 @@
         <div class="atlas-more__body"></div>
       </section>`;
     document.body.appendChild(layer);
+    // The grabber drags the sheet down to dismiss it; a scrim tap slides it
+    // out by the edge it came in from (AtlasShell.sheetGesture).
+    const panel = layer.querySelector('.atlas-sheet-panel');
+    const scrim = layer.querySelector('.atlas-scrim');
+    shell.sheetGesture?.(layer, { panel: '.atlas-sheet-panel', handle: '.atlas-sheet-panel__grabber', scrim, dismiss: () => closeMore() });
     layer.addEventListener('click', (event) => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
-      if (target.closest('[data-atlas-close]')) { closeMore(); return; }
+      if (target.closest('[data-atlas-close]')) {
+        if (shell.sheetGesture?.slideOut) shell.sheetGesture.slideOut(panel, () => closeMore(), scrim);
+        else closeMore();
+        return;
+      }
       const row = target.closest('a.atlas-more__row[href^="#"]');
       if (row && plainClick(event)) {
         event.preventDefault();
@@ -358,6 +425,9 @@
     if (!layer || layer.hidden) return;
     layer.classList.remove('is-open');
     layer.hidden = true;
+    // A drag let go of the entry animation; the next open plays it again.
+    const panel = layer.querySelector('.atlas-sheet-panel');
+    if (panel) { panel.style.animation = ''; panel.style.transform = ''; panel.style.transition = ''; }
     document.body.classList.remove('atlas-overlay-open');
     $('atlas-more-btn')?.setAttribute('aria-expanded', 'false');
     if (restoreFocus) state.moreTrigger?.focus?.();
@@ -515,7 +585,9 @@
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes} min ago`;
     if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
-    return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(time));
+    // The venue's calendar day, spelled 'Sep' on every device (audit L35).
+    const venue = window.AtlasVenueClock?.formatDate?.(new Date(time));
+    return venue || new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Atlantic/Reykjavik' }).format(new Date(time));
   }
 
   const NOTIFY_ICONS = { danger: 'triangle-alert', warning: 'clock', info: 'bell', message: 'messages-square', attention: 'circle-alert' };
@@ -864,18 +936,26 @@
     document.addEventListener('mouseout', (event) => { if (railTarget(event.target)) hideTooltip(); });
     document.addEventListener('focusin', (event) => { const target = railTarget(event.target); if (target && target.matches(':focus-visible')) showTooltip(target); else hideTooltip(); });
     document.addEventListener('focusout', hideTooltip);
-    window.addEventListener('scroll', () => $('atlas-topbar')?.classList.toggle('is-scrolled', window.scrollY > 4), { passive: true });
-    window.addEventListener('resize', () => { if (state.notifyOpen) positionNotify(); if ($('atlas-account-layer')?.hidden === false) closeAccountMenu({ restoreFocus: false }); });
+    document.addEventListener('mouseover', cssTipOver);
+    document.addEventListener('mouseout', cssTipOut);
+    window.addEventListener('scroll', () => { $('atlas-topbar')?.classList.toggle('is-scrolled', window.scrollY > 4); queueTitled(); }, { passive: true });
+    window.addEventListener('resize', () => { queueTitled(); if (state.notifyOpen) positionNotify(); if ($('atlas-account-layer')?.hidden === false) closeAccountMenu({ restoreFocus: false }); });
+    // A module renders its header after the view shows (skeleton, then the
+    // real page): the large-title check runs again once it has had time to.
+    shell.on('data:loaded', queueTitled);
+    shell.on('home:rendered', queueTitled);
     window.addEventListener('online', syncOnline);
     window.addEventListener('offline', syncOnline);
     window.addEventListener('hashchange', () => {
       if (window.location.hash !== '#notifications' && state.notifyOpen && PHONE.matches) shell.notify.close({ restoreFocus: false });
       syncActive();
     });
-    [PHONE, RAIL].forEach((query) => query.addEventListener('change', () => { applyLayout(); closeMore({ restoreFocus: false }); if (state.notifyOpen) shell.notify.close({ restoreFocus: false }); }));
+    [PHONE, RAIL].forEach((query) => query.addEventListener('change', () => { applyLayout(); queueTitled(); closeMore({ restoreFocus: false }); if (state.notifyOpen) shell.notify.close({ restoreFocus: false }); }));
     shell.on('view:before-show', () => { if (state.topbar.title || state.topbar.back || state.topbar.actions.length || state.topbar.own) setTopBar({}); });
     shell.on('view:show', (detail) => {
       syncActive();
+      queueTitled();
+      [240, 900].forEach((delay) => window.setTimeout(queueTitled, delay));
       closeMore({ restoreFocus: false });
       if (document.body.classList.contains('atlas-sidebar-open')) closeOverlaySidebar({ restoreFocus: false });
       if (isNotifyHash(state.initialHash) && detail.source === 'link') { const initial = shell.parseRoute(state.initialHash); state.initialHash = ''; shell.notify.open({ ...initial.params, fromRoute: false }); }

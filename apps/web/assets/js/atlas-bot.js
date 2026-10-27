@@ -89,8 +89,9 @@
   let webgl = null;
   let idleAfter = 15000;
   // WebGL drawn in software (no usable GPU: the browser reports a major
-  // performance caveat). Building and drawing the scene there blocks the
-  // page's main thread for seconds, so the badge poster stays instead.
+  // performance caveat, or names a software rasteriser as the renderer).
+  // Building and drawing the scene there blocks the page's main thread for
+  // seconds, so the badge poster stays instead.
   let software = false;
   let animateInSoftware = false;
   const now = () => root.performance?.now?.() ?? Date.now();
@@ -137,17 +138,30 @@
   // released straight away. A GPU context first; failing that, any context
   // means WebGL in software.
   const release = (context) => context?.getExtension?.('WEBGL_lose_context')?.loseContext();
+  // Recent Chromium no longer reports SwiftShader as a major performance
+  // caveat; the renderer name still gives a software rasteriser away.
+  const SOFTWARE_RENDERER = /swiftshader|llvmpipe|softpipe|software rasterizer|basic render driver/i;
+  function rendererName(context) {
+    try {
+      const info = context.getExtension?.('WEBGL_debug_renderer_info');
+      return String(context.getParameter?.(info ? info.UNMASKED_RENDERER_WEBGL : context.RENDERER) || '');
+    } catch {
+      return '';
+    }
+  }
+  // null without WebGL; otherwise whether the context draws in software.
   function probe(options) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('webgl2', options) || canvas.getContext('webgl', options);
+    const result = context ? { software: SOFTWARE_RENDERER.test(rendererName(context)) } : null;
     release(context);
-    return Boolean(context);
+    return result;
   }
   function webglAvailable() {
     if (webgl !== null) return webgl;
     try {
-      webgl = probe({ failIfMajorPerformanceCaveat: true });
-      if (!webgl) { webgl = probe(undefined); software = webgl; }
+      const gpu = probe({ failIfMajorPerformanceCaveat: true });
+      if (gpu) { webgl = true; software = gpu.software; } else { webgl = Boolean(probe(undefined)); software = webgl; }
     } catch {
       webgl = false;
     }

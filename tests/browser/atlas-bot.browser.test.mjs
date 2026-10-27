@@ -1,10 +1,12 @@
 // The Atlas AI robot (atlas-bot.js): the interactive 3D robot on Atlas AI and
-// the robot badge wherever the assistant is the symbol. The Atlas logo stays
-// the brand mark. Runs the shipped scene bundle in Chromium (WebGL through
+// the small robot badge that speaks for the assistant inside Alcedo AI (the
+// who-line of an answer). The Alcedo logo stays the brand mark, and the Alcedo
+// AI entry in the sidebar and the tab bar is the kingfisher glyph
+// (alcedo-icons.js), like every small "Ask Alcedo" control. Runs the shipped scene bundle in Chromium (WebGL through
 // SwiftShader) against the mocked atlas-ai.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, settle, until, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, settle, until as untilWithin, USERS } from './harness.mjs';
 import { aiFixtures, AI_FIXTURE_NOW } from './atlas-ai-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -19,7 +21,12 @@ async function openAi({ viewport, contextOptions, initScript, hash = '#ai/new', 
   });
   try {
     await launched.page.waitForFunction(() => document.body.dataset.atlasView === 'ai' && document.querySelector('#ai-view [data-ai-composer]'));
-    if (animate) await launched.page.evaluate(() => window.AtlasBot?.animateInSoftware(true));
+    if (animate) {
+      await launched.page.evaluate(() => window.AtlasBot?.animateInSoftware(true));
+      // The robot now draws in software for the whole test: every Playwright
+      // wait and action gets the slow renderer's budget (RENDER_MS, below).
+      launched.page.setDefaultTimeout(RENDER_MS);
+    }
     await settle(launched.page);
   } catch (error) {
     await launched.close();
@@ -34,11 +41,17 @@ async function openAi({ viewport, contextOptions, initScript, hash = '#ai/new', 
 // Render/animation-driven waits below use this generous budget — every check
 // must still become true; we only wait longer for the slow renderer.
 const RENDER_MS = 45000;
+// Every page here draws the robot in software, so conditions get the same
+// budget unless a test sets its own (they must still become true).
+const until = (check, options = {}) => untilWithin(check, { timeout: RENDER_MS, ...options });
 const info = (page, key = 'ai-empty') => page.evaluate((name) => window.AtlasBot?.info(name), key);
-// Share of drawn (non-transparent) pixels in the robot canvas.
-const drawn = (page) => page.evaluate(() => {
+// Share of drawn (non-transparent) pixels in the robot canvas. The WebGL
+// canvas can only be read back in the frame it was drawn in, so the read
+// happens in the next animation frame, after the robot's own draw; a frame
+// the robot skipped (or a paused loop) reads as 0, so callers keep it drawing.
+const drawn = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => {
   const canvas = document.querySelector('.atlas-bot-live__canvas');
-  if (!canvas) return 0;
+  if (!canvas) { resolve(0); return; }
   const copy = document.createElement('canvas');
   copy.width = canvas.width;
   copy.height = canvas.height;
@@ -47,8 +60,8 @@ const drawn = (page) => page.evaluate(() => {
   const { data } = ctx.getImageData(0, 0, copy.width, copy.height);
   let lit = 0;
   for (let index = 3; index < data.length; index += 4) if (data[index] > 0) lit += 1;
-  return lit / (data.length / 4);
-});
+  resolve(lit / (data.length / 4));
+})));
 // The lowest drawn row of the robot canvas (alpha above a faint threshold,
 // so the contact shadow counts), in CSS px from the canvas top; 0 when the
 // copy caught a cleared frame.
@@ -82,10 +95,35 @@ const spriteLoaded = (page, selector) => page.evaluate(async (css) => {
   return { found: true, url, width: image.naturalWidth, height: image.naturalHeight, box: [Math.round(box.width), Math.round(box.height)] };
 }, selector);
 
+// The sidebar and tab-bar Alcedo AI entries carry the kingfisher glyph, not a
+// robot: what the entry shows and how big it is.
+const navGlyph = (page, item) => page.evaluate((css) => {
+  const node = document.querySelector(css);
+  const glyph = node?.querySelector(':scope > svg.alcedo-icon.lucide-alcedo');
+  if (!glyph) return null;
+  const box = glyph.getBoundingClientRect();
+  return { box: [Math.round(box.width), Math.round(box.height)], robots: node.querySelectorAll('.atlas-bot, [data-atlas-bot]').length, animations: glyph.getAnimations().length };
+}, item);
+// A small badge that follows the assistant's state, exactly as atlas-bot.js
+// draws it for the who-line of an answer being written, mounted in a button
+// in a corner of the page so its states, Z, hover and reduced-motion rules
+// stay covered now that no navigation entry carries one.
+const FOLLOWER = '#atlas-bot-follower > .atlas-bot';
+const mountFollower = (page, size = 20) => page.evaluate((px) => {
+  document.getElementById('atlas-bot-follower')?.remove();
+  const holder = document.createElement('button');
+  holder.type = 'button';
+  holder.id = 'atlas-bot-follower';
+  holder.setAttribute('aria-label', 'Alcedo');
+  Object.assign(holder.style, { position: 'fixed', left: '320px', bottom: '24px', zIndex: '9999', width: '44px', height: '44px', display: 'grid', placeItems: 'center', padding: '0', border: '0', background: 'transparent' });
+  holder.innerHTML = window.AtlasBot.html({ size: px, follow: true });
+  document.body.append(holder);
+}, size);
+
 test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and reacts to a tap', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 3, { timeout: RENDER_MS, message: 'robot frames' });
     const first = await info(page);
     assert.equal(first.live, true);
@@ -156,7 +194,7 @@ test('Atlas AI: while an answer streams the robot label thinks, then settles', {
 test('reduced motion: one still frame, no animation loop, badges do not animate', { skip }, async () => {
   const { page, close } = await openAi({ contextOptions: { reducedMotion: 'reduce' } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames >= 1, { message: 'a still frame' });
     // The still frame for the mount is drawn on the next animation frame; then nothing is pending.
     await until(async () => (await info(page))?.running === false, { message: 'no frame pending' });
@@ -168,8 +206,10 @@ test('reduced motion: one still frame, no animation loop, badges do not animate'
     assert.equal(later.running, false, 'no animation loop');
     assert.equal(later.scene.frames, first.scene.frames, 'no frames drawn while idle');
     assert.equal(await page.locator('#ai-view .atlas-bot-live__poster').isVisible(), false, 'the still 3D frame replaces the poster');
-    const animation = await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => getComputedStyle(node).animationIterationCount);
+    await mountFollower(page);
+    const animation = await page.$eval(FOLLOWER, (node) => getComputedStyle(node).animationIterationCount);
     assert.equal(animation, '1', 'badge blink stops (reduced motion rule)');
+    assert.equal((await navGlyph(page, '.atlas-nav .nav-item--ai')).animations, 0, 'the nav glyph never animates');
   } finally { await close(); }
 });
 
@@ -191,26 +231,31 @@ test('no WebGL: the robot badge stays as the poster; nothing breaks', { skip }, 
   } finally { await close(); }
 });
 
-test('badges: sidebar, palette Ask Atlas and the robot sprite; the Atlas logo stays the brand mark', { skip }, async () => {
+test('badges: the sidebar kingfisher glyph, the palette Ask Alcedo glyph and the robot sprite; the Alcedo logo stays the brand mark', { skip }, async () => {
   const { fixtures } = aiFixtures();
   const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, hash: '#home', fixedTime: AI_FIXTURE_NOW });
   try {
-    const nav = await spriteLoaded(page, '.atlas-nav .nav-item--ai .atlas-bot');
-    assert.equal(nav.found, true);
-    // 20 px: the small GLB head-crop poster (a single contained image).
-    assert.match(nav.url, /assets\/atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb2/);
-    assert.deepEqual([nav.width, nav.height], [640, 640], 'the head-crop poster');
-    assert.deepEqual(nav.box, [20, 20]);
-    if (process.env.ATLAS_BOT_SHOTS) await page.locator('.atlas-nav .nav-group[data-nav-group="main"]').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/nav-badge-1440.png` });
+    // The sidebar entry: the 16 px kingfisher glyph, no robot.
+    const glyph = await navGlyph(page, '.atlas-nav .nav-item--ai');
+    assert.deepEqual(glyph, { box: [16, 16], robots: 0, animations: 0 });
+    if (process.env.ATLAS_BOT_SHOTS) await page.locator('.atlas-nav .nav-group[data-nav-group="main"]').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/nav-glyph-1440.png` });
     assert.equal(await page.locator('.atlas-nav .nav-item--ai [data-lucide="sparkles"], .atlas-nav .nav-item--ai .lucide-sparkles').count(), 0);
-    // Hovering the item lifts the badge (a small transform; there are no sprite frames).
-    await page.hover('.atlas-nav .nav-item--ai');
-    assert.notEqual(await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => getComputedStyle(node).transform), 'none', 'hover lifts the badge');
-    // Ctrl K: the Ask Alcedo row carries the mascot.
+    // The small robot badge (20 px: the GLB head-crop poster, a single contained image).
+    await mountFollower(page);
+    const badge = await spriteLoaded(page, FOLLOWER);
+    assert.equal(badge.found, true);
+    assert.match(badge.url, /assets\/atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb2/);
+    assert.deepEqual([badge.width, badge.height], [256, 256], 'the head-crop poster, sized for its largest badge at 2x (L28)');
+    assert.deepEqual(badge.box, [20, 20]);
+    // Hovering its button lifts the badge (a small transform; there are no sprite frames).
+    await page.hover('#atlas-bot-follower');
+    assert.notEqual(await page.$eval(FOLLOWER, (node) => getComputedStyle(node).transform), 'none', 'hover lifts the badge');
+    // Ctrl K: the Ask Alcedo row carries the kingfisher glyph, not the mascot.
+    await page.mouse.move(1400, 600);
     await page.keyboard.press('Control+k');
     await page.waitForSelector('.atlas-palette');
     await page.keyboard.type('campari');
-    await until(() => page.evaluate(() => [...document.querySelectorAll('.atlas-palette [role="option"]')].some((row) => /Ask Alcedo/.test(row.textContent) && row.querySelector('.atlas-bot'))), { message: 'Ask Alcedo row with the mascot' });
+    await until(() => page.evaluate(() => [...document.querySelectorAll('.atlas-palette [role="option"]')].some((row) => /Ask Alcedo/.test(row.textContent) && row.querySelector('svg.alcedo-icon.lucide-atlas-bot') && !row.querySelector('.atlas-bot'))), { message: 'Ask Alcedo row with the kingfisher glyph' });
     if (process.env.ATLAS_BOT_SHOTS) await page.screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/palette-ask-1440.png` });
     // The brand mark is still the kit logo.
     const brand = await page.$eval('.atlas-sidebar .atlas-brand', (node) => node.innerHTML);
@@ -238,7 +283,7 @@ test('every robot asset the page references loads (200) with the keys atlas-bot.
     });
     const entries = Object.entries(result.statuses);
     const names = entries.map(([url]) => url);
-    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20260930-glb2$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
+    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20261027-swgl$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
     assert.ok(names.some((url) => /atlas-bot\/alcedo-mascot-poster\.png\?v=20260930-glb2$/.test(url)), 'the full poster from the stylesheet');
     assert.ok(names.some((url) => /atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb2$/.test(url)), 'the head crop from the stylesheet');
     for (const [url, status] of entries) assert.equal(status, 200, url);
@@ -261,13 +306,12 @@ test('every robot asset the page references loads (200) with the keys atlas-bot.
   } finally { await close(); }
 });
 
-test('phone 390: tab bar robot, a smaller live robot, no sideways scroll, nothing overlaps the tab bar', { skip }, async () => {
+test('phone 390: tab bar kingfisher glyph, a smaller live robot, no sideways scroll, nothing overlaps the tab bar', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 390, height: 844 }, contextOptions: { hasTouch: true, isMobile: true } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
-    const tab = await spriteLoaded(page, '.atlas-tabbar__item--ai .atlas-bot');
-    assert.deepEqual(tab.box, [24, 24]);
-    assert.match(tab.url, /alcedo-mascot-head\.png/, '24 px: the small head-crop poster');
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
+    const tab = await navGlyph(page, '.atlas-tabbar__item--ai');
+    assert.deepEqual(tab, { box: [22, 22], robots: 0, animations: 0 }, 'the 22 px kingfisher glyph, no robot');
     if (process.env.ATLAS_BOT_SHOTS) await page.locator('#atlas-tabbar').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/tabbar-390.png` });
     const bot = await page.locator('#ai-view .ai-empty .atlas-bot-live').boundingBox();
     assert.deepEqual([Math.round(bot.width), Math.round(bot.height)], [136, 136]);
@@ -299,7 +343,7 @@ for (const [label, viewport, mobile, size] of [
     // not drawn (software WebGL would only slow the page down).
     const { page, close } = await openAi({ viewport, contextOptions: mobile ? { hasTouch: true, isMobile: true } : {}, animate: false });
     try {
-      await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live', { timeout: 15000 });
+      await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live', { timeout: RENDER_MS });
       await settle(page);
       if (process.env.ATLAS_BOT_SHOTS) await page.screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/ai-empty-${viewport.width}x${viewport.height}.png` });
       const box = async (selector) => page.locator(selector).first().boundingBox();
@@ -323,15 +367,17 @@ for (const [label, viewport, mobile, size] of [
       // At the top of the conversation area the whole robot is visible (nothing clipped above the fold).
       const area = await box('#ai-view .ai-scroll');
       assert.ok(bot.y >= area.y - 1, `robot top is not clipped (${bot.y} vs ${area.y})`);
-      // The robot and the greeting read as one unit: the drawn robot (here its
-      // poster; the live robot is checked by pixels in the 1440 test) ends just
-      // above the greeting, never on it. Only the transparent band below the
-      // robot's feet may tuck under the greeting's line box.
+      // The robot and the greeting read as one unit: the whole bird (full
+      // framing; here its poster, which fills the robot box; the live robot is
+      // checked by pixels in the 1440 test) stands just above the greeting,
+      // never on it. Its feet are at 81% of the box; only the transparent band
+      // below them (about 19%) may tuck under the greeting's line box.
       const poster = await box('#ai-view .ai-empty .atlas-bot-live__poster');
-      const gap = greeting.y - (poster.y + poster.height);
-      assert.ok(gap >= 0 && gap <= 22, `drawn robot to greeting gap ${gap}`);
-      assert.ok(bot.y + bot.height - greeting.y <= bot.height * 0.1, 'only the empty band under the feet tucks under the greeting');
-      assert.ok(bot.y + bot.height <= greeting.y + greeting.height / 2, 'robot above the greeting');
+      const feet = poster.y + poster.height * 0.81;
+      const gap = greeting.y - feet;
+      assert.ok(gap >= 4 && gap <= 22, `drawn robot to greeting gap ${gap}`);
+      assert.ok(bot.y + bot.height - greeting.y <= bot.height * 0.2, 'only the empty band under the feet tucks under the greeting');
+      assert.ok(feet <= greeting.y + greeting.height / 2, 'the drawn robot stands above the greeting');
       assert.ok(greeting.y + greeting.height <= chips.y + 1, 'greeting above the suggestions');
       // The composer never covers the empty state: it sits below the conversation area,
       // and the last suggestion can be scrolled into view above it.
@@ -368,7 +414,7 @@ const frames = (page, count = 3) => page.evaluate((n) => new Promise((resolve) =
 test('WebGL context lost: the poster shows and drawing stops; restored: the robot comes back', { skip }, async () => {
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 2, { timeout: RENDER_MS, message: 'robot frames' });
     await page.evaluate(() => {
       const canvas = document.querySelector('.atlas-bot-live__canvas');
@@ -384,14 +430,18 @@ test('WebGL context lost: the poster shows and drawing stops; restored: the robo
     // A re-render while lost keeps the poster.
     await page.evaluate(() => {
       const slot = document.querySelector('#ai-view .ai-empty__bot');
-      slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'head', size: 176 });
+      slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176 });
       window.AtlasBot.upgrade(slot);
     });
     assert.equal(await page.locator('#ai-view .atlas-bot-live.is-static').count(), 1);
     await page.evaluate(() => window.loseContextForTest.restoreContext());
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live:not(.is-static)', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live:not(.is-static)', { timeout: RENDER_MS });
     await until(async () => { const now = await info(page); return now?.lost === false && now.scene?.frames > 1; }, { timeout: RENDER_MS, message: 'drawing again' });
-    await until(async () => (await drawn(page)) > 0.08, { timeout: RENDER_MS, message: 'the robot is drawn again after the restore' });
+    // A pointer move over the robot keeps the loop drawing (it may have gone
+    // calm-idle on a slow runner) while the pixels are read back.
+    const box = await page.locator('#ai-view .atlas-bot-live__canvas').boundingBox();
+    let jiggle = 0;
+    await until(async () => { jiggle += 1; await page.mouse.move(box.x + box.width / 2 + (jiggle % 2 ? 6 : -6), box.y + box.height / 2); return (await drawn(page)) > 0.08; }, { timeout: RENDER_MS, message: 'the robot is drawn again after the restore' });
     assert.equal(await page.locator('canvas.atlas-bot-live__canvas').count(), 1);
     assert.deepEqual(record?.pageErrors || [], []);
   } finally { await close(); }
@@ -408,7 +458,7 @@ test('many rapid re-renders reuse one WebGL context and draw at most once per fr
   };
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 }, initScript });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 2, { message: 'robot frames' });
     const base = await page.evaluate(() => window.webglContextCalls.length);
     // The GPU probe (webgl2, webgl: both refused here, WebGL is in software),
@@ -420,7 +470,7 @@ test('many rapid re-renders reuse one WebGL context and draw at most once per fr
       const slot = document.querySelector('#ai-view .ai-empty__bot');
       const before = window.AtlasBot.info('ai-empty').scene.frames;
       for (let index = 0; index < 60; index += 1) {
-        slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'head', size: 176 });
+        slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176 });
         window.AtlasBot.upgrade(slot);
       }
       const after = window.AtlasBot.info('ai-empty').scene.frames;
@@ -455,7 +505,7 @@ test('many rapid re-renders reuse one WebGL context and draw at most once per fr
 test('reduced motion switched on while the robot runs: the scene is told, drawing and pointer tracking stop; off again: it resumes', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.running === true, { message: 'running' });
     for (const [on, off] of [
       [() => page.emulateMedia({ reducedMotion: 'reduce' }), () => page.emulateMedia({ reducedMotion: 'no-preference' })],
@@ -465,7 +515,7 @@ test('reduced motion switched on while the robot runs: the scene is told, drawin
       await until(async () => { const now = await info(page); return now.reducedMotion === true && now.running === false; }, { message: 'reduced motion taken live' });
       // No state change inside the window (a state change draws one still
       // frame, by design): the robot stays awake throughout, and the pointer
-      // stays off the sidebar's Atlas AI item (hovering it is a wake trigger).
+      // stays off any robot (hovering one is a wake trigger).
       await page.evaluate(() => { window.AtlasBot.robot.setDelays({ awake: 600000 }); window.AtlasBot.robot.set('awake'); });
       await frames(page, 3);
       await until(async () => (await info(page)).running === false, { message: 'still' });
@@ -480,15 +530,16 @@ test('reduced motion switched on while the robot runs: the scene is told, drawin
     }
     // The badge's hover tilt honours the system setting too.
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.hover('.atlas-nav .nav-item--ai');
-    assert.equal(await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => getComputedStyle(node).transform), 'none');
+    await mountFollower(page);
+    await page.hover('#atlas-bot-follower');
+    assert.equal(await page.$eval(FOLLOWER, (node) => getComputedStyle(node).transform), 'none');
   } finally { await close(); }
 });
 
 test('calm idle pauses the render loop; a pointer move, a state change or a moment resumes it', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     // Precondition only: the ~3 s greeting runs in scene time, which a starved
     // CI runner (software WebGL) advances slowly; this test is about the pause.
     await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
@@ -520,7 +571,7 @@ test('calm idle pauses the render loop; a pointer move, a state change or a mome
 test('the robot canvas follows its host size', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     const width = () => page.$eval('.atlas-bot-live__canvas', (canvas) => canvas.width / devicePixelRatio);
     await until(async () => (await width()) === 176, { message: 'initial size' });
     await page.$eval('#ai-view .ai-empty .atlas-bot-live', (host) => { host.style.width = '120px'; host.style.height = '120px'; });
@@ -545,11 +596,16 @@ test('WebGL in software (no GPU): the poster stays, no scene is built, and it ca
     assert.equal(await page.locator('#ai-view .atlas-bot-live__poster').isVisible(), true, 'the robot badge is the poster');
     assert.equal(await page.locator('#ai-view canvas.atlas-bot-live__canvas').count(), 0);
     assert.equal(await info(page), null);
-    assert.deepEqual(await page.evaluate(() => window.webglContextCalls), ['webgl2', 'webgl', 'webgl2'], 'only the two probes, once');
+    // Only the probes, once: the GPU probe fails the performance caveat and
+    // the software probe succeeds, or (recent Chromium) the GPU probe succeeds
+    // and names SwiftShader as its renderer.
+    const probes = await page.evaluate(() => window.webglContextCalls);
+    assert.ok([['webgl2', 'webgl', 'webgl2'], ['webgl2']].some((expected) => JSON.stringify(expected) === JSON.stringify(probes)), `only the probes, once: ${probes}`);
     // The badges are unaffected.
-    assert.equal(await page.locator('.atlas-nav .nav-item--ai .atlas-bot--small').count(), 1);
+    await mountFollower(page);
+    assert.equal(await page.locator('#atlas-bot-follower .atlas-bot--small').count(), 1);
     await page.evaluate(() => window.AtlasBot.animateInSoftware(true));
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     assert.deepEqual(record?.pageErrors || [], []);
   } finally { await close(); }
 });
@@ -563,23 +619,23 @@ const setRobot = (page, state) => page.evaluate((name) => window.AtlasBot.robot.
 // Precondition only: the ~3 s greeting runs in scene time, which a starved CI
 // runner (software WebGL) advances slowly.
 const greeted = (page) => until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
-// What every following surface shows: the welcome robot, its poster, the
-// sidebar and tab bar robots.
+// What every following surface shows: the welcome robot, its poster and a
+// small following badge (mountFollower).
 const shown = (page) => page.evaluate(() => ({
   host: document.querySelector('#ai-view .ai-empty .atlas-bot-live')?.dataset.state,
   poster: document.querySelector('#ai-view .ai-empty .atlas-bot-live__poster')?.dataset.state,
-  nav: document.querySelector('.atlas-nav .nav-item--ai .atlas-bot')?.dataset.state,
-  tab: document.querySelector('.atlas-tabbar__item--ai .atlas-bot')?.dataset.state
+  badge: document.querySelector('#atlas-bot-follower > .atlas-bot')?.dataset.state
 }));
 // Any clearly red colour in a computed style value.
 const reds = (value) => [...String(value).matchAll(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/g)].filter(([, r, g, b]) => Number(r) > Number(g) + 40 && Number(r) > Number(b) + 40).map(([match]) => match);
 const hexRed = (hex) => { const [r, g, b] = [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16)); return r > g + 40 && r > b + 40; };
 
-test('every state is reachable through the one controller and shows the same on the welcome robot, its scene and the sidebar robot; never red', { skip }, async () => {
+test('every state is reachable through the one controller and shows the same on the welcome robot, its scene and a small following badge; never red', { skip }, async () => {
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
+    await mountFollower(page);
     // Transient awake would otherwise return to idle while it is checked.
     await page.evaluate(() => window.AtlasBot.robot.setDelays({ awake: 60000 }));
     // The GLB scene poses each state through its named pivots. info().scene
@@ -601,10 +657,10 @@ test('every state is reachable through the one controller and shows the same on 
       await until(async () => pose((await info(page)).scene), { timeout: 12000, message: `${state}: the scene takes the pose` });
       const now = await info(page);
       assert.equal(now.state, state, `${state}: the welcome mascot follows`);
-      assert.deepEqual(await shown(page), { host: state, poster: state, nav: state, tab: state }, `${state}: every following surface shows it`);
+      assert.deepEqual(await shown(page), { host: state, poster: state, badge: state }, `${state}: every following surface shows it`);
       seen[state] = { alert: now.scene.pose.alert };
-      const badge = await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => { const style = getComputedStyle(node); return `${style.boxShadow} ${style.filter} ${style.backgroundColor} ${style.color}`; });
-      assert.deepEqual(reds(badge), [], `${state}: the sidebar mascot has no red`);
+      const badge = await page.$eval(FOLLOWER, (node) => { const style = getComputedStyle(node); return `${style.boxShadow} ${style.filter} ${style.backgroundColor} ${style.color}`; });
+      assert.deepEqual(reds(badge), [], `${state}: the small mascot has no red`);
       if (process.env.ATLAS_BOT_SHOTS) await page.locator('#ai-view .ai-empty').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/state-${state}-1440.png` });
     }
     // Distinct posture: error and sleeping dim (lower alert), attention and awake brighten.
@@ -612,10 +668,10 @@ test('every state is reachable through the one controller and shows the same on 
     // Success: a moment, then idle by itself.
     await page.evaluate(() => window.AtlasBot.robot.setDelays({ success: 900 }));
     await setRobot(page, 'success');
-    assert.equal((await shown(page)).nav, 'success');
+    assert.equal((await shown(page)).badge, 'success');
     await until(async () => (await info(page)).scene.moment === 'success', { message: 'success moment' });
     await until(async () => (await robotInfo(page)).state === 'idle', { message: 'success returns to idle' });
-    assert.deepEqual(await shown(page), { host: 'idle', poster: 'idle', nav: 'idle', tab: 'idle' });
+    assert.deepEqual(await shown(page), { host: 'idle', poster: 'idle', badge: 'idle' });
     // Old name: speaking is answering.
     assert.equal(await setRobot(page, 'speaking'), 'answering');
     // One live robot, one canvas throughout.
@@ -624,11 +680,12 @@ test('every state is reachable through the one controller and shows the same on 
   } finally { await close(); }
 });
 
-test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in the robot corner and the sidebar; hover wakes it at once and the Z is gone', { skip }, async () => {
+test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in the robot corner and on a small badge; hover wakes it at once and the Z is gone', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
+    await mountFollower(page);
     assert.equal((await robotInfo(page)).active, true, 'Atlas AI is open');
     await page.evaluate(() => window.AtlasBot.robot.setDelays({ active: 700, awake: 300 }));
     await until(async () => (await robotInfo(page)).state === 'sleeping', { timeout: 10000, message: 'falls asleep' });
@@ -652,9 +709,9 @@ test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in th
     // The Z stays inside the robot's own box.
     const [hostBox, ...letterBoxes] = await page.evaluate(() => [document.querySelector('#ai-view .ai-empty .atlas-bot-live'), ...document.querySelectorAll('#ai-view .ai-empty .atlas-bot-z > i')].map((node) => node.getBoundingClientRect().toJSON()));
     for (const zBox of letterBoxes) assert.ok(zBox.left >= hostBox.left && zBox.right <= hostBox.right && zBox.top >= hostBox.top && zBox.bottom <= hostBox.bottom, 'every Z inside the robot box');
-    // The sidebar robot: the sleep frame and a tiny ZZZ revealed one letter at a time.
+    // The small badge: the sleep frame and a tiny ZZZ revealed one letter at a time.
     const mini = await page.evaluate(() => {
-      const badge = document.querySelector('.atlas-nav .nav-item--ai .atlas-bot');
+      const badge = document.querySelector('#atlas-bot-follower > .atlas-bot');
       const after = getComputedStyle(badge, '::after');
       const animations = document.getAnimations().filter((animation) => animation.effect?.target === badge && animation.effect?.pseudoElement === '::after');
       // How many Zs show: the letter plus its visible text-shadow copies.
@@ -678,7 +735,7 @@ test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in th
     const woken = await page.evaluate(() => ({
       state: window.AtlasBot.robot.state,
       z: getComputedStyle(document.querySelector('#ai-view .ai-empty .atlas-bot-z')).display,
-      mini: getComputedStyle(document.querySelector('.atlas-nav .nav-item--ai .atlas-bot'), '::after').content
+      mini: getComputedStyle(document.querySelector('#atlas-bot-follower > .atlas-bot'), '::after').content
     }));
     assert.deepEqual(woken, { state: 'awake', z: 'none', mini: 'none' });
     await until(async () => (await info(page)).scene.eyes === 'open', { message: 'eyes open' });
@@ -687,20 +744,23 @@ test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in th
   } finally { await close(); }
 });
 
-test('wake triggers: tap, sidebar hover, composer focus, typing, a new conversation and an AI task each wake a sleeping robot at once', { skip }, async () => {
+test('wake triggers: tap, hovering a robot badge, composer focus, typing, a new conversation and an AI task each wake a sleeping robot at once', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
-    const asleep = async () => { await page.evaluate(() => document.activeElement?.blur?.()); await page.mouse.move(1430, 890); await setRobot(page, 'sleeping'); assert.equal((await robotInfo(page)).state, 'sleeping'); };
+    await mountFollower(page);
+    // Let the previous step finish (a focus on the next frame, an input event)
+    // before putting the robot to sleep, so only the next trigger can wake it.
+    const asleep = async () => { await page.evaluate(() => document.activeElement?.blur?.()); await page.mouse.move(1430, 890); await settle(page); await setRobot(page, 'sleeping'); assert.equal((await robotInfo(page)).state, 'sleeping'); };
     const awake = async (label) => { const now = await robotInfo(page); assert.notEqual(now.state, 'sleeping', `${label} wakes the robot`); return now; };
     await asleep();
     await page.locator('#ai-view .ai-empty .atlas-bot-live__canvas').click();
     assert.equal((await awake('a tap')).state, 'awake');
     await until(async () => (await info(page)).scene.moment === 'react', { message: 'the tap reacts' });
     await asleep();
-    await page.hover('.atlas-nav .nav-item--ai');
-    assert.equal((await awake('hovering the sidebar robot')).state, 'awake');
+    await page.hover('#atlas-bot-follower');
+    assert.equal((await awake('hovering a robot badge')).state, 'awake');
     await asleep();
     await page.focus('#ai-view [data-ai-input]');
     assert.equal((await awake('composer focus')).state, 'awake');
@@ -734,7 +794,7 @@ test('wake triggers: tap, sidebar hover, composer focus, typing, a new conversat
 test('answering never restarts: repeated updates keep one state (same start, same scene timing)', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
     await setRobot(page, 'thinking');
     await setRobot(page, 'answering');
@@ -754,26 +814,28 @@ test('answering never restarts: repeated updates keep one state (same start, sam
 test('reduced motion: a sleeping robot is still (closed eyes, one still Z, no loops) and every state keeps its own look', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 }, contextOptions: { reducedMotion: 'reduce' } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
+    await mountFollower(page);
+    await page.mouse.move(1400, 600);
     await setRobot(page, 'sleeping');
     await until(async () => { const now = await info(page); return now.scene.eyes === 'closed' && now.running === false; }, { message: 'a still sleeping frame' });
     const still = await page.evaluate(() => {
       const robots = [...document.querySelectorAll('.atlas-bot, .atlas-bot-z > i')];
       const loops = document.getAnimations().filter((animation) => animation.playState === 'running' && robots.includes(animation.effect?.target) && animation.effect.getComputedTiming().endTime === Infinity);
       const letters = [...document.querySelectorAll('#ai-view .ai-empty .atlas-bot-z > i')].map((letter) => Number(getComputedStyle(letter).opacity) > 0.3);
-      const badge = document.querySelector('.atlas-nav .nav-item--ai .atlas-bot');
+      const badge = document.querySelector('#atlas-bot-follower > .atlas-bot');
       const shadows = [...getComputedStyle(badge, '::after').textShadow.matchAll(/rgba?\(([^)]*)\)/g)].filter(([, parts]) => (parts.split(',').map(Number)[3] ?? 1) > 0.3).length;
       return { loops: loops.length, letters, mini: getComputedStyle(badge, '::after').content, shadows };
     });
     assert.equal(still.loops, 0, 'no running mascot animation');
     assert.deepEqual(still.letters, [true, false, false], 'one still Z');
     assert.equal(still.mini, '"Z"');
-    assert.equal(still.shadows, 0, 'the sidebar shows one still Z');
+    assert.equal(still.shadows, 0, 'the small badge shows one still Z');
     const frames = (await info(page)).scene.frames;
     for (const state of ['listening', 'thinking', 'answering', 'attention', 'error', 'idle']) {
       await setRobot(page, state);
       await until(async () => (await info(page)).scene.base === ({ idle: 'idle' }[state] || state), { message: state });
-      assert.equal((await shown(page)).nav, state, `${state} still shows on the sidebar robot`);
+      assert.equal((await shown(page)).badge, state, `${state} still shows on the small badge`);
     }
     await until(async () => (await info(page)).running === false, { message: 'no loop' });
     assert.ok((await info(page)).scene.frames > frames, 'each change draws one still frame');
@@ -791,12 +853,13 @@ for (const [label, contextOptions, own] of [['system setting', { reducedMotion: 
     const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, hash: '#home', viewport: { width: 1440, height: 900 }, contextOptions, fixedTime: AI_FIXTURE_NOW });
     try {
       if (own) await page.evaluate(() => document.documentElement.classList.add('atlas-reduce-motion'));
+      await mountFollower(page);
       await page.mouse.move(1400, 600);
       const looks = {};
       for (const state of ['idle', 'awake', 'sleeping', 'listening', 'thinking', 'answering', 'success', 'attention', 'error']) {
         await setRobot(page, state);
         await frames(page, 2);
-        const look = await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => {
+        const look = await page.$eval(FOLLOWER, (node) => {
           const style = getComputedStyle(node);
           const moving = node.getAnimations().filter((animation) => animation.playState === 'running').map((animation) => animation.animationName || animation.transitionProperty).join(',');
           return { state: node.dataset.state, moving, animation: style.animationName, filter: style.filter, z: getComputedStyle(node, '::after').content };
@@ -828,7 +891,7 @@ test('reduced motion: the still frame after a moment shows the state (an error r
     return (await info(page)).scene;
   };
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.greetings === 1, { message: 'greeted' });
     // The still greeting lasts 1.2 s (on the page's clock); nothing is drawn
     // after it until a change.
@@ -858,7 +921,7 @@ test('reduced motion: the still frame after a moment shows the state (an error r
 test('hidden tab and off screen: drawing and the timer stop; they resume cleanly', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await setRobot(page, 'thinking');
     await until(async () => (await info(page)).running === true, { message: 'running' });
     await setRobot(page, 'idle');
@@ -901,7 +964,7 @@ test('no duplicates: navigation, open/close, new conversations, focus/blur, hidd
   };
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 }, initScript });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 2, { message: 'robot frames' });
     const base = await page.evaluate(() => ({ contexts: window.webglContextCalls, pointers: window.pointerListeners }));
     const visibility = (hidden) => page.evaluate((value) => {
@@ -939,23 +1002,6 @@ test('no duplicates: navigation, open/close, new conversations, focus/blur, hidd
   } finally { await close(); }
 });
 
-// The sleeping Z of a small badge is a pseudo-element: its box is computed
-// from its style (position and size), widened by its two text-shadow copies
-// (the second and third Z) and its rise.
-const miniZ = (page, selector) => page.evaluate((css) => {
-  const badge = document.querySelector(css);
-  const style = getComputedStyle(badge, '::after');
-  if (style.content === 'none') return null;
-  const box = badge.getBoundingClientRect();
-  const width = parseFloat(style.width);
-  const height = parseFloat(style.height);
-  const left = box.left + parseFloat(style.left);
-  const bottom = box.bottom - parseFloat(style.bottom);
-  const offsets = [[0, 0], ...[...style.textShadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px/g)].map(([, x, y]) => [Number(x), Number(y)])];
-  const xs = offsets.flatMap(([x]) => [left + x, left + x + width]);
-  const ys = offsets.flatMap(([, y]) => [bottom + y - height - 2, bottom + y]);
-  return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
-}, selector);
 const textRect = (page, selector) => page.evaluate((css) => {
   const node = document.querySelector(css);
   if (!node || !node.getClientRects().length) return null;
@@ -967,63 +1013,57 @@ const textRect = (page, selector) => page.evaluate((css) => {
 const boxOf = (page, selector) => page.evaluate((css) => { const node = document.querySelector(css); if (!node || !node.getClientRects().length) return null; const rect = node.getBoundingClientRect(); return rect.width ? { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom } : null; }, selector);
 const overlaps = (a, b) => Boolean(a && b && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom);
 
-for (const [label, viewport, mobile, badge, item, others] of [
-  ['expanded sidebar 1440', { width: 1440, height: 900 }, false, '.atlas-nav .nav-item--ai .atlas-bot', '.atlas-nav .nav-item--ai', ['.atlas-nav .nav-item--ai .nav-item-label', '.atlas-nav .nav-item[data-nav-id="home"] .nav-item-label', '.atlas-nav .nav-item[data-nav-id="messages"] .nav-item-label']],
-  ['collapsed sidebar (rail) 1024', { width: 1024, height: 768 }, false, '.atlas-nav .nav-item--ai .atlas-bot', '.atlas-nav .nav-item--ai', []],
-  ['phone tab bar 390', { width: 390, height: 844 }, true, '.atlas-tabbar__item--ai .atlas-bot', '.atlas-tabbar__item--ai', ['.atlas-tabbar__item--ai > span:not(.atlas-bot)', '.atlas-tabbar__item[data-nav-id="inventory"] > span', '.atlas-tabbar__item[data-nav-id="recipes"] > span']],
-  ['narrow phone tab bar 360', { width: 360, height: 640 }, true, '.atlas-tabbar__item--ai .atlas-bot', '.atlas-tabbar__item--ai', ['.atlas-tabbar__item--ai > span:not(.atlas-bot)', '.atlas-tabbar__item[data-nav-id="inventory"] > span', '.atlas-tabbar__item[data-nav-id="recipes"] > span']],
+for (const [label, viewport, mobile, item, size, others] of [
+  ['expanded sidebar 1440', { width: 1440, height: 900 }, false, '.atlas-nav .nav-item--ai', 16, ['.atlas-nav .nav-item--ai .nav-item-label', '.atlas-nav .nav-item[data-nav-id="home"] .nav-item-label', '.atlas-nav .nav-item[data-nav-id="messages"] .nav-item-label']],
+  ['collapsed sidebar (rail) 1024', { width: 1024, height: 768 }, false, '.atlas-nav .nav-item--ai', 16, []],
+  ['phone tab bar 390', { width: 390, height: 844 }, true, '.atlas-tabbar__item--ai', 22, ['.atlas-tabbar__item--ai > span', '.atlas-tabbar__item[data-nav-id="inventory"] > span', '.atlas-tabbar__item[data-nav-id="recipes"] > span']],
+  ['narrow phone tab bar 360', { width: 360, height: 640 }, true, '.atlas-tabbar__item--ai', 22, ['.atlas-tabbar__item--ai > span', '.atlas-tabbar__item[data-nav-id="inventory"] > span', '.atlas-tabbar__item[data-nav-id="recipes"] > span']],
 ]) {
-  test(`the small robot sleeps in the ${label}: its ZZZ stays in the item and never touches a label, an unread badge or the bar's edge`, { skip }, async () => {
+  test(`the ${label} Alcedo AI entry is the kingfisher glyph: it sits in its item, shows no robot or Z whatever the state, and never touches a label, an unread badge or the bar's edge`, { skip }, async () => {
     const { fixtures } = aiFixtures();
     const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, hash: '#home', viewport, contextOptions: mobile ? { hasTouch: true, isMobile: true } : {}, fixedTime: AI_FIXTURE_NOW });
     try {
       // Unread badges showing (Messages in the sidebar, More in the tab bar).
       await page.evaluate(() => document.querySelectorAll('[data-nav-badge]').forEach((node) => { node.hidden = false; node.textContent = '12'; }));
       await page.mouse.move(viewport.width - 2, viewport.height / 2);
+      // The assistant asleep (its widest small-robot look used to be the ZZZ):
+      // the entry stays the still glyph.
       await setRobot(page, 'sleeping');
-      assert.equal(await page.$eval(badge, (node) => node.dataset.state), 'sleeping');
-      // ZZZ fully shown (the widest moment).
-      await page.evaluate(() => document.getAnimations().forEach((animation) => { if (/atlas-bot-z/.test(animation.animationName)) { animation.pause(); animation.currentTime = 3000; } }));
-      const z = await miniZ(page, badge);
-      assert.ok(z, 'the Z shows');
+      assert.deepEqual(await navGlyph(page, item), { box: [size, size], robots: 0, animations: 0 }, 'the kingfisher glyph, no robot');
+      const glyph = await boxOf(page, `${item} > svg.lucide-alcedo`);
+      assert.equal(await page.$eval(`${item} > svg.lucide-alcedo`, (node) => getComputedStyle(node, '::after').content), 'none', 'no Z');
       const home = await boxOf(page, item);
-      assert.ok(z.left >= home.left - 0.5 && z.right <= home.right + 0.5, `Z inside its item horizontally (${JSON.stringify(z)} in ${JSON.stringify(home)})`);
+      assert.ok(glyph.left >= home.left - 0.5 && glyph.right <= home.right + 0.5 && glyph.top >= home.top - 0.5 && glyph.bottom <= home.bottom + 0.5, `glyph inside its item (${JSON.stringify(glyph)} in ${JSON.stringify(home)})`);
       for (const other of [...others, '[data-nav-badge="messages"]', '[data-nav-badge="more"]', '.atlas-brand']) {
-        assert.equal(overlaps(z, await textRect(page, other) || await boxOf(page, other)), false, `Z clear of ${other}`);
+        assert.equal(overlaps(glyph, await textRect(page, other) || await boxOf(page, other)), false, `glyph clear of ${other}`);
       }
       if (mobile) {
         const bar = await boxOf(page, '#atlas-tabbar');
-        assert.ok(z.top >= bar.top && z.bottom <= bar.bottom, 'Z inside the tab bar');
+        assert.ok(glyph.top >= bar.top && glyph.bottom <= bar.bottom, 'glyph inside the tab bar');
       } else {
         const sidebar = await boxOf(page, '.atlas-sidebar');
-        assert.ok(z.right <= sidebar.right && z.left >= sidebar.left, 'Z inside the sidebar');
+        assert.ok(glyph.right <= sidebar.right && glyph.left >= sidebar.left, 'glyph inside the sidebar');
       }
       if (process.env.ATLAS_BOT_SHOTS) {
         const shot = mobile ? '#atlas-tabbar' : '.atlas-nav .nav-group[data-nav-group="main"]';
-        await page.locator(shot).screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/mini-sleeping-${viewport.width}x${viewport.height}.png` });
+        await page.locator(shot).screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/nav-glyph-${viewport.width}x${viewport.height}.png` });
       }
-      // Hovering (or tapping) the item wakes it: the Z is gone at once.
-      await page.evaluate(() => document.getAnimations().forEach((animation) => animation.play()));
-      if (mobile) await page.tap(item); else await page.hover(item);
-      assert.notEqual(await page.$eval(badge, (node) => node.dataset.state), 'sleeping');
-      assert.equal(await miniZ(page, badge), null, 'no Z once awake');
-      if (process.env.ATLAS_BOT_SHOTS && !mobile) await page.locator('.atlas-nav .nav-group[data-nav-group="main"]').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/mini-awake-${viewport.width}x${viewport.height}.png` });
     } finally { await close(); }
   });
 }
 
-test('Daily Briefing: the robot thinks while the briefing is prepared, then rests; badges keep their animation phase when drawn again', { skip }, async () => {
+test('Daily Briefing: the kingfisher glyph heads the briefing and the text says when it is still being prepared; badges keep their animation phase when drawn again', { skip }, async () => {
   const { fixtures } = aiFixtures();
   const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, hash: '#home', fixedTime: AI_FIXTURE_NOW });
   try {
-    await page.waitForSelector('.home-briefing .home-briefing__head .atlas-bot');
-    assert.equal(await page.$eval('.home-briefing__head .atlas-bot', (node) => node.dataset.state), 'idle', 'ready: idle');
+    await page.waitForSelector('.home-briefing .home-briefing__head svg.alcedo-icon.lucide-atlas-bot');
+    assert.equal(await page.locator('.home-briefing__head .atlas-bot').count(), 0, 'a glyph, not the robot');
     // Before the shell's data, the venue clock and the checklists are there,
-    // Home prepares the briefing: the robot thinks (and the text says so).
+    // Home prepares the briefing and says so.
     const seen = await page.evaluate(async () => {
       const saved = { clock: window.AtlasVenueClock, operations: window.AtlasOperations, loaded: window.AtlasShell.dataLoadedAt };
       const frame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const read = () => { const head = document.querySelector('.home-briefing .home-briefing__head .atlas-bot'); return { state: head?.dataset.state, text: document.querySelector('.home-briefing .home-briefing__text')?.textContent.trim(), animations: head ? head.getAnimations().map((animation) => animation.animationName).sort() : [] }; };
+      const read = () => ({ glyph: Boolean(document.querySelector('.home-briefing .home-briefing__head svg.lucide-atlas-bot')), text: document.querySelector('.home-briefing .home-briefing__text')?.textContent.trim() });
       delete window.AtlasVenueClock;
       delete window.AtlasOperations;
       window.AtlasShell.dataLoadedAt = () => 0;
@@ -1038,12 +1078,9 @@ test('Daily Briefing: the robot thinks while the briefing is prepared, then rest
       return { preparing };
     });
     assert.equal(seen.preparing.text, 'Preparing today’s briefing…');
-    assert.equal(seen.preparing.state, 'thinking', 'thinking while the briefing is prepared');
-    // The small badge no longer animates per state (the old sprite's think bob
-    // is gone); thinking is conveyed by data-state and the accompanying text.
-    assert.ok(!seen.preparing.animations.includes('atlas-bot-think'), 'no stale per-state badge animation');
+    assert.equal(seen.preparing.glyph, true, 'the glyph stays while the briefing is prepared');
     await page.evaluate(() => { window.AtlasShell.navigate('#inventory'); window.AtlasShell.navigate('#home'); });
-    await until(() => page.evaluate(() => document.querySelector('.home-briefing .home-briefing__head .atlas-bot')?.dataset.state === 'idle' && !/Preparing/.test(document.querySelector('.home-briefing .home-briefing__text')?.textContent || '')), { message: 'ready: the robot rests' });
+    await until(() => page.evaluate(() => Boolean(document.querySelector('.home-briefing .home-briefing__head svg.lucide-atlas-bot')) && !/Preparing/.test(document.querySelector('.home-briefing .home-briefing__text')?.textContent || '')), { message: 'ready: the briefing shows' });
     if (process.env.ATLAS_BOT_SHOTS) await page.locator('.home-briefing').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/briefing-1440.png` });
     // Badges run on the page clock: one drawn now and one drawn later (a label
     // drawn again by a stream update) are in the same phase, never restarted.
@@ -1091,17 +1128,18 @@ for (const [label, contextOptions] of [['motion', undefined], ['reduced motion',
   test(`failed answer (${label}): the robot shows the error for about 4 s, then idle; the error message stays in the conversation`, { skip }, async () => {
     const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 }, contextOptions, backend: failingChat });
     try {
+      await mountFollower(page);
       await askAndFail(page);
-      assert.equal((await shown(page)).nav, 'error', 'the sidebar robot shows the error');
+      assert.equal((await shown(page)).badge, 'error', 'a following robot shows the error');
       if (contextOptions) {
-        const still = await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => ({ animation: getComputedStyle(node).animationName, moving: node.getAnimations().filter((animation) => animation.playState === 'running').length }));
+        const still = await page.$eval(FOLLOWER, (node) => ({ animation: getComputedStyle(node).animationName, moving: node.getAnimations().filter((animation) => animation.playState === 'running').length }));
         assert.deepEqual(still, { animation: 'none', moving: 0 }, 'a still error pose');
       }
       // Nothing is touched: the pointer rests away from any robot.
       await page.mouse.move(1400, 880);
       const elapsed = await errorShownFor(page);
       assert.ok(elapsed >= 3900 && elapsed < 5500, `about 4 s of error (${Math.round(elapsed)} ms)`);
-      assert.deepEqual([(await shown(page)).nav, (await shown(page)).tab], ['idle', 'idle'], 'every following robot is back to idle');
+      assert.equal((await shown(page)).badge, 'idle', 'every following robot is back to idle');
       assert.match(await page.textContent('.msg-ai .atlas-alert'), /Alcedo couldn’t finish this answer\. Nothing was changed\./, 'the error message stays');
       const path = (await robotInfo(page)).history.map((step) => step.to).slice(-3);
       assert.deepEqual(path, ['thinking', 'error', 'idle']);
@@ -1113,12 +1151,13 @@ for (const [label, contextOptions] of [['motion', undefined], ['reduced motion',
 test('failed answer: typing, tapping the robot or a new question during the error wakes it at once', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 }, backend: failingChat });
   try {
+    await mountFollower(page);
     await askAndFail(page);
     await page.type('#ai-composer-input', 'W');
     assert.equal((await robotInfo(page)).state, 'awake', 'typing wakes it at once');
     await page.fill('#ai-composer-input', '');
     await askAndFail(page);
-    await page.click('.atlas-nav .nav-item--ai');
+    await page.click('#atlas-bot-follower');
     await until(async () => (await robotInfo(page)).state !== 'error', { timeout: 1500, message: 'a tap on the robot ends the error at once' });
     await askAndFail(page);
     await page.fill('#ai-composer-input', 'And tomorrow?');

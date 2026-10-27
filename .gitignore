@@ -44,3 +44,6 @@ supabase/functions/.env
 id_rsa*
 .npmrc
 .netrc
+
+# taste-skill working files
+.taste-skill/

@@ -1,159 +1,380 @@
-/* Shifts (#shifts, week and month) — docs/design/Atlas_Experience_Redesign.md §7.9, §8.4.
+/* Shifts (#shifts, week and month) — docs/design/Alcedo_Redesign_2026.md,
+ * docs/design/Atlas_Experience_Redesign.md §7.9, §8.4.
  * Module layout only. Buttons, segmented controls, tabs, pills, rows, alerts,
  * empty states, sheets, dialogs, toggles and inputs are the shared components
- * from atlas-components.css. No tokens are defined here. */
+ * from atlas-components.css. No tokens are defined here.
+ *
+ * The schedule speaks in three marks, the same everywhere (week grid, month,
+ * day list, time off, legend):
+ *   published  a filled bar: the pale kingfisher well with a 3 px edge, or the
+ *              person's colour at a 14 % tint when colour by person is on;
+ *   draft      the same bar dashed and unfilled: the team can't see it yet;
+ *   time off   a hatched bar in the stone tint.
+ * Bars are 22 px (20 in the month), 4 px corners, times in tabular figures. */
 @layer atlas.modules {
 
 .shifts-host { display: block; }
-.shifts-head .page-head__actions { flex-wrap: wrap; align-items: center; }
-.shifts-nav { display: inline-flex; align-items: center; gap: var(--s-1); }
+
+/* ---------- header ---------- */
+.shifts-head .page-head__actions { flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.shifts-nav { display: inline-flex; align-items: center; gap: 2px; }
 .shifts-publish { display: inline-flex; align-items: center; gap: var(--s-3); }
-.shifts-publish__caption { font: var(--type-caption); color: var(--text-2); }
+.shifts-publish__caption { font: var(--type-meta); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Handover notes: the header's one secondary link, a ghost before the pager. */
+.shifts-handover { color: var(--text-2); }
+/* One control height across the header row (32 px) with a mouse; touch keeps 44. */
+@media (pointer: fine) {
+  .shifts-nav .atlas-icon-btn { width: var(--control-sm); height: var(--control-sm); }
+  .shifts-publish .atlas-btn { height: var(--control-sm); }
+}
 .shifts-tabs { margin-top: var(--s-4); }
 .shifts-body { margin-top: var(--s-5); }
 .shifts-alert { margin-bottom: var(--s-4); }
-.shifts-toolbar { margin-bottom: var(--s-3); }
+
+/* ---------- toolbar: the publish state left; the key to the marks, the colour
+   switch and the view's actions together at the right end ---------- */
+.shifts-toolbar { gap: var(--s-2) var(--s-4); margin: 0 0 var(--s-3); }
 .shifts-toolbar__note { margin: 0; font: var(--type-meta); color: var(--text-2); }
-.shifts-toolbar__legend { display: inline-flex; align-items: center; gap: var(--s-2); font: var(--type-caption); color: var(--text-2); }
+.shifts-toolbar .atlas-toolbar__end { gap: var(--s-3); }
+.shifts-legend { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); margin-right: var(--s-2); padding-right: var(--s-5); border-right: 1px solid var(--line); font: var(--type-caption); color: var(--text-2); }
+.shifts-legend__item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.shifts-legend__mark { position: relative; display: inline-block; width: 18px; height: 10px; flex: none; overflow: hidden; border-radius: 2px; background: var(--accent-soft); }
+.shifts-legend__mark::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--accent-brand); }
+.shifts-legend__mark--leave { background: repeating-linear-gradient(135deg, var(--line-strong) 0 1px, transparent 1px 4px), var(--bg-subtle); } /* taste-skill-ignore: time-off hatching is a data mark */
+.shifts-legend__mark--leave::before { display: none; }
+.shifts-legend__mark--await { width: 8px; height: 8px; border: 1.5px solid var(--text-3); border-radius: 50%; background: transparent; }
+.shifts-legend__mark--await::before { display: none; }
 .shifts-inline-field { min-width: 220px; }
-.shifts-skel { display: grid; gap: var(--s-2); }
-.shifts-skel--grid .atlas-skel--block { height: 56px; }
-.shifts-empty { margin-top: var(--s-6); }
+.shifts-empty { margin-top: var(--s-2); border: 1px solid var(--line); border-radius: var(--r-lg); }
 
-/* ---------- today / tomorrow ---------- */
-.shifts-now { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-2) var(--s-8); margin-bottom: var(--s-4); padding: var(--s-3) 0; border-bottom: 1px solid var(--line-subtle); }
-.shifts-now__day { display: grid; gap: var(--s-1); min-width: 0; }
+/* A first load that failed: the schedule's frame stays, the reason sits inside it. */
+.shifts-failed { display: grid; place-items: center; min-height: 240px; padding: var(--s-8) var(--s-6); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.shifts-failed .shifts-alert { display: grid; justify-items: center; gap: var(--s-2); max-width: 420px; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; text-align: center; }
+.shifts-failed .shifts-alert > svg { width: 20px; height: 20px; color: var(--danger); }
+.shifts-failed .atlas-alert__actions { margin: var(--s-2) 0 0; }
+
+/* Lists that are read, not scanned across: a measure that keeps a name and its actions together. */
+.shifts:is([data-view-tab="time-off"], [data-view-tab="confirmations"], [data-view-tab="activity"]) .shifts-body { max-width: 880px; }
+
+/* Colour by person: a quiet switch (28 × 16, ink when on) with its label. */
+.shifts-color-toggle { display: inline-flex; align-items: center; gap: var(--s-2); height: var(--control-sm); margin: 0; padding: 0 2px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: var(--type-meta); white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.shifts-color-toggle__track { position: relative; width: 28px; height: 16px; flex: none; border-radius: var(--r-pill); background: var(--toggle-off); transition: background-color var(--dur-2) ease; }
+.shifts-color-toggle__track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); transition: transform var(--dur-2) var(--ease-out); }
+.shifts-color-toggle[aria-checked="true"] { color: var(--text); }
+.shifts-color-toggle[aria-checked="true"] .shifts-color-toggle__track { background: var(--accent); }
+.shifts-color-toggle[aria-checked="true"] .shifts-color-toggle__track::after { transform: translateX(12px); }
+.shifts-color-toggle:active .shifts-color-toggle__track::after { width: 14px; }
+.shifts-color-toggle[aria-checked="true"]:active .shifts-color-toggle__track::after { transform: translateX(10px); }
+.shifts-color-toggle:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) {
+  .shifts-color-toggle:hover { color: var(--text); }
+}
+
+/* ---------- loading: the grid's own frame with flat bars ---------- */
+.shifts-skel--grid { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.shifts-skel__row { display: grid; grid-template-columns: 208px repeat(7, minmax(0, 1fr)) 72px; min-height: 56px; border-top: 1px solid var(--line-subtle); }
+.shifts-skel__row > span { display: flex; align-items: flex-start; padding: 6px; border-left: 1px solid var(--line-subtle); }
+.shifts-skel__row > span:first-child { border-left: 0; padding: 6px var(--s-3); }
+.shifts-skel__row > span:last-child { justify-content: flex-end; padding: 11px var(--s-3) 0; }
+.shifts-skel__row--head { min-height: 44px; border-top: 0; border-bottom: 1px solid var(--line); }
+.shifts-skel__row--head > span { align-items: center; padding: 0 var(--s-3); }
+.shifts-skel__person { gap: var(--s-2); }
+.shifts-skel__person .atlas-skel--circle { width: 24px; height: 24px; }
+.shifts-skel__name { width: 104px; height: 12px; margin-top: 6px; }
+.shifts-skel__day { width: 44px; height: 12px; }
+.shifts-skel__bar { width: 100%; height: 22px; }
+.shifts-skel__total { width: 32px; height: 12px; }
+.shifts-skel--list { display: grid; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.shifts-skel__item { display: grid; align-content: center; gap: var(--s-2); min-height: 64px; padding: 0 var(--s-4); }
+.shifts-skel__item + .shifts-skel__item { border-top: 1px solid var(--line-subtle); }
+.shifts-skel__line { width: 40%; height: 14px; }
+.shifts-skel__meta { width: 24%; height: 12px; }
+
+/* ---------- who's on today and tomorrow ---------- */
+.shifts-now { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-3) var(--s-10); margin: 0 0 var(--s-5); }
+.shifts-now__day { display: grid; gap: 6px; min-width: 0; }
 .shifts-now__label { margin: 0; font: var(--type-label); color: var(--text); }
-.shifts-now__label span { font-weight: 400; color: var(--text-2); }
-.shifts-now__people { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin: 0; }
-.shifts-now__person { display: inline-flex; align-items: center; gap: 6px; font: var(--type-meta); color: var(--text); }
-.shifts-now__person .num { color: var(--text-2); }
-.shifts-now__none { margin: 0; font: var(--type-meta); color: var(--text-2); }
-.shifts-now__handover { margin-left: auto; align-self: center; }
+.shifts-now__label span { margin-left: 2px; font-weight: 400; color: var(--text-3); }
+.shifts-now__people { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-5); margin: 0; }
+.shifts-now__person { display: inline-flex; align-items: center; gap: 6px; font: var(--type-meta); font-weight: 500; color: var(--text); white-space: nowrap; }
+.shifts-now__person[class*="atlas-person--"]::before { content: ''; width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--person-color); }
+.shifts-now__person .num { font-weight: 400; color: var(--text-2); }
+.shifts-now__none { margin: 0; font: var(--type-meta); color: var(--text-3); }
 
-/* ---------- week grid (manager, ≥ 1024) ---------- */
-.shifts-grid { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
-.shifts-grid__row { display: grid; grid-template-columns: minmax(168px, 1.4fr) repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line-subtle); }
-.shifts-grid__row--head { position: sticky; top: var(--table-sticky-top, 0); z-index: 1; border-top: 0; background: var(--bg-subtle); }
-.shifts-grid__corner, .shifts-grid__day { display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 var(--s-3); font: var(--type-label); color: var(--text-2); }
+/* ---------- week grid: the rota (managers and the team view, ≥ 1024) ---------- */
+.shifts-grid { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.shifts-grid__row { display: grid; grid-template-columns: 208px repeat(7, minmax(0, 1fr)) 72px; border-top: 1px solid var(--line-subtle); }
+.shifts-grid__row--head { position: sticky; top: var(--table-sticky-top, 0); z-index: 2; border-top: 0; border-bottom: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; background: var(--surface); }
+.shifts-grid__row--head + .shifts-grid__row { border-top: 0; }
+.shifts-grid__corner, .shifts-grid__day { display: flex; align-items: center; gap: 6px; min-width: 0; height: 44px; padding: 0 var(--s-3); font: var(--type-caption); color: var(--text-3); }
 .shifts-grid__day { border-left: 1px solid var(--line-subtle); }
-.shifts-grid__day.is-today { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent-brand); }
-.shifts-grid__person { display: flex; align-items: center; gap: var(--s-2); min-width: 0; padding: var(--s-2) var(--s-3); }
+.shifts-grid__date { font: 600 13px/18px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); }
+.shifts-grid__day.is-today .shifts-grid__dow { color: var(--accent-text); font-weight: 500; }
+.shifts-grid__day.is-today .shifts-grid__date { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: var(--r-pill); background: var(--accent-brand); color: var(--text-on-accent); }
+.shifts-grid__total { display: flex; white-space: nowrap; align-items: flex-start; justify-content: flex-end; min-width: 0; padding: 0 var(--s-3); border-left: 1px solid var(--line-subtle); font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); text-align: right; }
+.shifts-grid__row:not(.shifts-grid__row--head, .shifts-grid__row--foot) > .shifts-grid__total { padding-top: 7px; }
+.shifts-grid__total.is-zero { color: var(--text-3); font-weight: 400; }
+.shifts-grid__row--head > .shifts-grid__total { align-items: center; font: var(--type-caption); color: var(--text-3); }
+
+/* Weekends a tone darker; today runs down a 1 px kingfisher line. */
+.shifts-grid__day.is-weekend, .shifts-grid__cell.is-weekend, .shifts-grid__cover.is-weekend { background: var(--bg-subtle); }
+.shifts-grid__day.is-today, .shifts-grid__cell.is-today, .shifts-grid__cover.is-today { border-left-color: var(--accent-brand); }
+
+.shifts-grid__person { display: flex; align-items: flex-start; gap: var(--s-2); min-width: 0; padding: var(--s-2) var(--s-3) var(--s-2); }
+.shifts-grid__person .atlas-avatar { margin-top: 1px; }
+.shifts-grid__person[class*="atlas-person--"] .atlas-avatar { outline: 1.5px solid var(--person-color); outline-offset: 1.5px; }
 .shifts-grid__name { display: grid; min-width: 0; }
-.shifts-grid__display { overflow: hidden; font: var(--type-label); color: var(--text); white-space: nowrap; text-overflow: ellipsis; }
-.shifts-grid__hours { font: var(--type-caption); color: var(--text-2); }
-.shifts-grid__cell { position: relative; display: grid; align-content: start; gap: var(--s-1); min-width: 0; min-height: 56px; padding: 6px; border-left: 1px solid var(--line-subtle); }
-.shifts-grid__cell.is-today { background: var(--bg-hover); }
-.shifts-grid__leave { font: var(--type-caption); color: var(--text-2); padding: 4px 6px; }
-.shifts-grid__add { display: grid; place-items: center; width: 100%; min-height: 24px; padding: 0; border: 1px dashed transparent; border-radius: var(--r-sm); background: transparent; color: var(--text-3); cursor: pointer; opacity: 0; }
+.shifts-grid__display { overflow: hidden; font: 500 14px/20px var(--font-sans); color: var(--text); white-space: nowrap; text-overflow: ellipsis; }
+.shifts-grid__hours { overflow: hidden; font: var(--type-caption); color: var(--text-3); white-space: nowrap; text-overflow: ellipsis; }
+
+.shifts-grid__cell { position: relative; display: grid; align-content: start; gap: 6px; min-width: 0; min-height: 60px; padding: 6px; border-left: 1px solid var(--line-subtle); }
+.shifts-grid__shift { display: grid; gap: 2px; min-width: 0; }
+.shifts-grid__shift[data-shifts-edit] { cursor: pointer; }
+
+/* The bar. */
+.shift-chip { position: relative; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; height: 22px; margin: 0; padding: 0 6px 0 9px; overflow: hidden; border: 1px solid transparent; border-radius: var(--r-xs); background: var(--accent-soft); color: var(--text); text-align: left; font: inherit; -webkit-tap-highlight-color: transparent; }
+.shift-chip::before { content: ''; position: absolute; top: -1px; bottom: -1px; left: -1px; width: 3px; background: var(--accent-brand); }
+button.shift-chip { cursor: pointer; touch-action: manipulation; transition: background-color var(--dur-1) ease, border-color var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
+button.shift-chip:active { transform: scale(var(--press-scale)); }
+button.shift-chip:focus-visible { outline: var(--focus-outline); outline-offset: 1px; }
+.shift-chip__time { overflow: hidden; font: 500 12px/16px var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: clip; }
+.shift-chip__await { width: 7px; height: 7px; flex: none; margin-left: auto; border: 1.5px solid var(--text-3); border-radius: 50%; }
+.shift-chip__role { overflow: hidden; padding-left: 1px; font: var(--type-caption); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
+.shift-chip__warn { display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding-left: 1px; font: 500 12px/16px var(--font-sans); color: var(--warning); }
+.shift-chip__warn svg { flex: none; width: 12px; height: 12px; color: var(--warning-icon); }
+.shift-chip__warn > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* The key's swatch is the chip itself at 18 × 10, its edge 2 px. With colour
+   by person on, the plain swatch is neutral: the hue belongs to the person. */
+.shift-chip--legend { display: inline-block; width: 18px; height: 10px; padding: 0; border-radius: 2px; }
+.shift-chip--legend::before { width: 2px; }
+.shift-chip--neutral { background: var(--bg-muted); }
+.shift-chip--neutral::before { background: var(--text-3); }
+
+/* Coloured by person: the person's hue as the edge and a 14 % tint. */
+.shift-chip[class*="atlas-person--"]::before { width: 3px; background: var(--person-color); }
+.shift-chip[class*="atlas-person--"] { background: color-mix(in srgb, var(--person-color) 14%, var(--surface)); }
+
+/* A draft: dashed and unfilled, so it reads as not yet real. */
+.shift-chip.is-unpublished { border-style: dashed; border-color: var(--text-3); background: var(--surface); }
+.shift-chip.is-unpublished::before { display: none; }
+.shift-chip.is-unpublished[class*="atlas-person--"] { border-color: var(--person-color); background: var(--surface); }
+.shift-chip--legend.is-unpublished { border-color: var(--text-3); }
+
+@media (hover: hover) and (pointer: fine) {
+  button.shift-chip:hover { background: color-mix(in srgb, var(--accent-brand) 16%, var(--surface)); }
+  button.shift-chip[class*="atlas-person--"]:hover { background: color-mix(in srgb, var(--person-color) 24%, var(--surface)); }
+  button.shift-chip.is-unpublished:hover { background: var(--bg-hover); }
+}
+
+/* Time off (or a day the person is never available): the hatched bar. */
+.shifts-grid__leave { display: flex; align-items: center; height: 22px; padding: 0 var(--s-2); overflow: hidden; border-radius: var(--r-xs); background: repeating-linear-gradient(135deg, var(--line-strong) 0 1px, transparent 1px 6px), var(--bg-subtle); font: 500 12px/16px var(--font-sans); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; } /* taste-skill-ignore: time-off hatching is a data mark */
+
+/* Adding into an empty slot: a dashed target that shows on hover (always on touch). */
+.shifts-grid__add { display: grid; place-items: center; width: 100%; height: 22px; margin: 0; padding: 0; border: 1px dashed var(--line-strong); border-radius: var(--r-xs); background: transparent; color: var(--text-3); cursor: pointer; opacity: 0; touch-action: manipulation; transition: opacity var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
 .shifts-grid__add svg { width: 14px; height: 14px; }
-.shifts-grid__cell:hover .shifts-grid__add, .shifts-grid__add:focus-visible { opacity: 1; border-color: var(--line-strong); }
-.shifts-grid__cell:not(:has(.shift-chip)) .shifts-grid__add { min-height: 42px; }
+.shifts-grid__add:active { transform: scale(var(--press-scale)); }
+.shifts-grid__add:focus-visible { opacity: 1; outline: var(--focus-outline); outline-offset: 1px; }
+.shifts-grid__cell:not(:has(.shifts-grid__shift, .shifts-grid__leave)) .shifts-grid__add { height: 46px; }
+@media (hover: hover) and (pointer: fine) {
+  .shifts-grid__cell:hover .shifts-grid__add { opacity: 1; }
+  .shifts-grid__add:hover { border-color: var(--line-hover); background: var(--bg-hover); color: var(--text); }
+}
 @media (hover: none) { .shifts-grid__add { opacity: 1; border-color: var(--line); } }
 
-.shift-chip { position: relative; display: grid; gap: 0; width: 100%; min-width: 0; padding: 5px 8px 5px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--text); text-align: left; font: inherit; }
-button.shift-chip { cursor: pointer; }
-button.shift-chip:hover { border-color: var(--line-strong); background: var(--bg-subtle); }
-.shift-chip::before { content: ''; position: absolute; left: 3px; top: 6px; bottom: 6px; width: 2px; border-radius: 1px; background: var(--line-strong); }
-.shift-chip.is-unpublished { border-style: dashed; border-color: var(--line-hover); }
-.shift-chip__time { font: 500 13px/18px var(--font-sans); }
-.shift-chip__role { overflow: hidden; font: var(--type-caption); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
-.shift-chip__warn { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font: var(--type-caption); color: var(--warning); }
-.shift-chip__warn svg { flex: none; width: 14px; height: 14px; color: var(--warning-icon); }
-.shift-chip__warn > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.shift-chip--legend { display: inline-block; width: 18px; height: 12px; padding: 0; }
-.shift-chip--legend::before { display: none; }
+/* Cover: each day's people and hours, the week's total on the right edge. */
+.shifts-grid__row--foot { border-top: 1px solid var(--line); }
+.shifts-grid__row--foot > .shifts-grid__corner { height: 40px; }
+.shifts-grid__cover { display: flex; align-items: center; justify-content: space-between; gap: var(--s-1); min-width: 0; height: 40px; padding: 0 var(--s-3); border-left: 1px solid var(--line-subtle); font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.shifts-grid__count { overflow: hidden; font: var(--type-caption); color: var(--text-3); text-overflow: ellipsis; }
+.shifts-grid__gap { font: 500 12px/16px var(--font-sans); color: var(--warning); }
+.shifts-grid__none { margin-left: auto; color: var(--text-3); font-weight: 400; }
+.shifts-grid__row--foot > .shifts-grid__total { align-items: center; height: 40px; font-weight: 600; }
 
-/* ---------- colour by person (toggle in the toolbar) ---------- */
-/* Palette tokens (--person-color) come from atlas-components.css via the
-   atlas-person--N class the module adds to each coloured element. */
-.shifts-color-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text-2); font: var(--type-caption); cursor: pointer; }
-.shifts-color-toggle svg { width: 14px; height: 14px; }
-.shifts-color-toggle:hover { border-color: var(--line-strong); color: var(--text); }
-.shifts-color-toggle[aria-checked="true"] { border-color: var(--accent-brand); color: var(--text); }
-.shift-chip[class*="atlas-person--"]::before { width: 3px; background: var(--person-color); }
-.shift-chip[class*="atlas-person--"] { border-color: color-mix(in srgb, var(--person-color) 40%, var(--line)); background: color-mix(in srgb, var(--person-color) 9%, var(--surface)); }
-button.shift-chip[class*="atlas-person--"]:hover { border-color: color-mix(in srgb, var(--person-color) 60%, var(--line)); background: color-mix(in srgb, var(--person-color) 16%, var(--surface)); }
-.shifts-grid__person[class*="atlas-person--"] .atlas-avatar, .shifts-now__person[class*="atlas-person--"] .atlas-avatar { outline: 2px solid var(--person-color); outline-offset: 1px; }
-.shifts-row[class*="atlas-person--"] { box-shadow: inset 3px 0 0 var(--person-color); }
-
-/* ---------- day list (phones, tablets, staff "Team") ---------- */
+/* ---------- day list (phones, tablets, a teammate's own week) ---------- */
 .shifts-days { display: grid; gap: var(--s-6); }
 .shifts-days__earlier { justify-self: start; }
-.shifts-day__head { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
+.shifts-day__head { display: flex; align-items: center; gap: var(--s-2); min-height: 40px; border-bottom: 1px solid var(--line); }
 .shifts-day__title { margin: 0; font: var(--type-heading); color: var(--text); }
+.shifts-day__sum { margin-left: auto; font: var(--type-caption); color: var(--text-3); }
 .shifts-day__add { margin-left: auto; }
-.shifts-day__empty { margin: 0; padding: var(--s-2) 0; font: var(--type-meta); color: var(--text-2); }
-.shifts-row__time { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); }
-.shifts-row__name { font: var(--type-label); color: var(--text-2); }
-.shifts-row__warn { display: flex; align-items: center; gap: var(--s-1); color: var(--warning); }
-.shifts-row__warn svg { width: 14px; height: 14px; flex: none; color: var(--warning-icon); }
-.shifts-row__with { display: flex; align-items: center; gap: 4px; margin: var(--s-1) 0 0; }
-.shifts-row__with .atlas-row__meta { margin-left: 4px; }
-.shifts-row.is-unpublished { border-left: 2px dashed var(--line-hover); }
-.shifts-row .atlas-row__end { flex-wrap: wrap; justify-content: flex-end; }
+.shifts-day__sum + .shifts-day__add { margin-left: var(--s-1); }
+.shifts-day__empty { margin: 0; padding: var(--s-3) 0; font: var(--type-meta); color: var(--text-3); }
+.shifts-row.atlas-row { align-items: stretch; gap: var(--s-3); min-height: 64px; padding: var(--s-3) 0; }
+.shifts-row__mark { width: 3px; flex: none; border-radius: 2px; background: var(--accent-brand); }
+.shifts-row[class*="atlas-person--"] .shifts-row__mark { background: var(--person-color); }
+.shifts-row.is-unpublished .shifts-row__mark { width: 0; border-left: 2px dashed var(--text-3); border-radius: 0; background: transparent; }
+.shifts-row.is-unpublished[class*="atlas-person--"] .shifts-row__mark { border-left-color: var(--person-color); }
+.shifts-row .atlas-row__body { align-self: center; }
+.shifts-row__time { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--s-3); font: 600 15px/22px var(--font-sans); font-variant-numeric: tabular-nums; }
+.shifts-row__name { font: 500 14px/20px var(--font-sans); color: var(--text-2); }
+.shifts-row__asked { color: var(--text); }
+.shifts-row__warn { display: flex; align-items: flex-start; gap: 6px; color: var(--warning); }
+.shifts-row__warn svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--warning-icon); }
+.shifts-row__with { display: flex; align-items: center; gap: var(--s-2); margin: var(--s-2) 0 0; }
+.shifts-row__faces { display: inline-flex; }
+.shifts-row__faces .atlas-avatar { box-shadow: 0 0 0 2px var(--surface); }
+.shifts-row__faces .atlas-avatar + .atlas-avatar { margin-left: -6px; }
+.shifts-row__with .atlas-row__meta { margin: 0; }
+.shifts-row .atlas-row__end { align-self: center; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ---------- month ---------- */
-.shifts-month { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
-.shifts-month__weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--bg-subtle); border-bottom: 1px solid var(--line); }
-.shifts-month__weekdays span { padding: 8px var(--s-3); font: var(--type-label); color: var(--text-2); }
+.shifts-month { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.shifts-month__weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+.shifts-month__weekdays span { padding: 0 var(--s-3); font: var(--type-caption); line-height: 36px; color: var(--text-3); }
+.shifts-month__weekdays span + span { border-left: 1px solid var(--line-subtle); }
+.shifts-month__weekdays span.is-weekend { background: var(--bg-subtle); }
 .shifts-month__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.shifts-month__cell { position: relative; display: grid; align-content: start; gap: var(--s-1); min-width: 0; min-height: 112px; padding: var(--s-2); border: 0; border-right: 1px solid var(--line-subtle); border-bottom: 1px solid var(--line-subtle); background: var(--surface); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
-.shifts-month__cell:nth-child(7n) { border-right: 0; }
-.shifts-month__cell:hover { background: var(--bg-hover); }
-.shifts-month__cell.is-outside { background: var(--bg-subtle); color: var(--text-3); cursor: default; }
-.shifts-month__num { display: inline-grid; place-items: center; width: 24px; height: 24px; margin: -4px 0 0 -4px; border-radius: 50%; font: var(--type-label); }
-.shifts-month__cell.is-today .shifts-month__num { background: var(--ink); color: var(--surface); }
-.shifts-month__chips { display: grid; gap: 2px; min-width: 0; }
-.shifts-month__chip { overflow: hidden; padding: 2px 6px; border: 1px solid var(--line); border-radius: var(--r-xs); font: var(--type-caption); white-space: nowrap; text-overflow: ellipsis; }
-.shifts-month__chip.is-unpublished { border-style: dashed; border-color: var(--line-hover); }
-.shifts-month__chip[class*="atlas-person--"] { border-inline-start: 3px solid var(--person-color); border-inline-start-color: var(--person-color); background: color-mix(in srgb, var(--person-color) 9%, var(--surface)); }
-.shifts-month__who { font-weight: 500; }
-.shifts-month__more, .shifts-month__gap { font: var(--type-caption); color: var(--text-2); }
-.shifts-month__gap { color: var(--warning); }
+.shifts-month__cell { position: relative; display: grid; grid-template-rows: auto 1fr; align-content: start; gap: 6px; min-width: 0; min-height: 116px; margin: 0; padding: var(--s-2); border: 0; border-bottom: 1px solid var(--line-subtle); border-left: 1px solid var(--line-subtle); background: var(--surface); color: var(--text); text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background-color var(--dur-1) ease; }
+.shifts-month__cell:nth-child(7n + 1) { border-left: 0; }
+.shifts-month__cell:nth-last-child(-n + 7) { border-bottom: 0; }
+.shifts-month__cell.is-weekend { background: var(--bg-subtle); }
+.shifts-month__cell.is-outside { cursor: default; }
+.shifts-month__cell.is-outside .shifts-month__num { color: var(--text-3); font-weight: 400; }
+.shifts-month__cell:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) {
+  .shifts-month__cell:not(.is-outside):hover { background: var(--bg-hover); }
+  .shifts-month__cell.is-weekend:not(.is-outside):hover { background: var(--bg-muted); }
+}
+.shifts-month__num { display: inline-grid; place-items: center; justify-self: start; min-width: 22px; height: 22px; margin: -1px 0 0 -3px; padding: 0 3px; border-radius: var(--r-pill); font: 600 13px/18px var(--font-sans); }
+.shifts-month__cell.is-today .shifts-month__num { background: var(--accent-brand); color: var(--text-on-accent); }
+.shifts-month__chips:empty { display: none; }
+.shifts-month__chips { display: grid; align-content: start; gap: 3px; min-width: 0; }
+.shifts-month__chip { position: relative; display: block; height: 20px; padding: 0 6px 0 8px; overflow: hidden; border: 1px solid transparent; border-radius: var(--r-xs); background: var(--accent-soft); font: 400 12px/18px var(--font-sans); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
+.shifts-month__chip::before { content: ''; position: absolute; top: -1px; bottom: -1px; left: -1px; width: 3px; background: var(--accent-brand); }
+.shifts-month__chip .num { font-variant-numeric: tabular-nums; }
+.shifts-month__chip[class*="atlas-person--"] { background: color-mix(in srgb, var(--person-color) 14%, var(--surface)); }
+.shifts-month__chip[class*="atlas-person--"]::before { background: var(--person-color); }
+.shifts-month__chip.is-unpublished { border-style: dashed; border-color: var(--text-3); background: var(--surface); }
+.shifts-month__chip.is-unpublished::before { display: none; }
+.shifts-month__chip.is-unpublished[class*="atlas-person--"] { border-color: var(--person-color); }
+.shifts-month__who { font-weight: 500; color: var(--text); }
+.shifts-month__more { padding-left: 2px; font: var(--type-caption); color: var(--text-3); }
+.shifts-month__gap { align-self: start; font: 500 12px/16px var(--font-sans); color: var(--warning); }
 .shifts-month__count { display: none; }
+.shifts-month__dot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--accent-brand); }
+.shifts-month__dot[class*="atlas-person--"] { background: var(--person-color); }
+.shifts-month__dot.is-unpublished { border: 1px solid var(--text-3); background: transparent; }
+.shifts-month__dot.is-unpublished[class*="atlas-person--"] { border-color: var(--person-color); }
 
-/* ---------- availability ---------- */
-.shifts-avail { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+/* ---------- availability: the usual week, one row per day ---------- */
+.shifts-avail-frame { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.shifts-avail__head, .shifts-avail__form { display: grid; grid-template-columns: 128px 168px minmax(0, 296px) minmax(0, 1fr) 72px; align-items: center; gap: var(--s-4); padding: 0 var(--s-4); }
+.shifts-avail__head { height: 40px; border-bottom: 1px solid var(--line); font: var(--type-caption); color: var(--text-3); }
 .shifts-avail__row + .shifts-avail__row { border-top: 1px solid var(--line-subtle); }
-.shifts-avail__form { display: grid; grid-template-columns: 120px 150px minmax(0, 220px) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); }
-.shifts-avail__day { font: var(--type-label); color: var(--text); }
-.shifts-avail__toggle { display: inline-flex; align-items: center; gap: var(--s-2); }
+.shifts-avail__form { min-height: 56px; padding-top: var(--s-2); padding-bottom: var(--s-2); }
+.shifts-avail__day { font: 500 14px/20px var(--font-sans); color: var(--text); }
+.shifts-avail__row.is-off .shifts-avail__day { color: var(--text-2); }
+.shifts-avail__toggle { display: inline-flex; align-items: center; gap: var(--s-3); }
 .shifts-avail__state { font: var(--type-meta); color: var(--text-2); }
-.shifts-avail__times { display: flex; align-items: center; gap: var(--s-1); color: var(--text-3); }
-.shifts-avail__times .atlas-input { min-width: 0; }
+.shifts-avail__times { display: flex; align-items: center; gap: var(--s-2); color: var(--text-3); }
+.shifts-avail__times .atlas-input { flex: 1 1 0; min-width: 0; }
+.shifts-avail__row.is-off .shifts-avail__times { visibility: hidden; }
+.shifts-avail__note .atlas-input { width: 100%; }
+/* Save appears when the row has a change to save. */
+.shifts-avail__save { justify-self: end; transition: opacity var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
+.shifts-avail__save:disabled { opacity: 0; pointer-events: none; }
+
+/* ---------- time off, confirmations, activity ---------- */
+.shifts-groups { display: grid; gap: var(--s-6); }
+.shifts-group__title { display: flex; align-items: baseline; gap: var(--s-2); margin: 0 0 var(--s-2); font: var(--type-heading); color: var(--text); }
+.shifts-group__count { font: var(--type-meta); color: var(--text-3); }
 .shifts-list { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.shifts-leave.atlas-row { align-items: center; }
+.shifts-leave__mark { align-self: stretch; width: 6px; flex: none; border: 1px dashed var(--text-3); border-radius: 2px; }
+.shifts-leave.is-approved .shifts-leave__mark { border: 0; background: repeating-linear-gradient(135deg, var(--line-strong) 0 1px, transparent 1px 4px), var(--bg-subtle); } /* taste-skill-ignore: time-off hatching is a data mark */
+.shifts-leave:not(.is-approved):has(.atlas-pill--neutral) .shifts-leave__mark { border-color: var(--line); }
+.shifts-leave .atlas-row__meta, .shifts-response .atlas-row__meta { font-variant-numeric: tabular-nums; }
+.shifts-response__note { color: var(--text); }
+.shifts-event .atlas-row__title { font-weight: 500; }
+.shifts-event__time { flex: none; font: var(--type-meta); color: var(--text-3); white-space: nowrap; }
+
+/* ---------- shift editor ---------- */
+.shifts-editor__when { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-3); }
+.shifts-editor__pair { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--s-3); }
+.shifts-editor__readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); margin-top: calc(var(--s-2) * -1); }
+.shifts-editor__readout > .error, .shifts-editor__readout > [data-shifts-start-note] { flex: 1 1 100%; }
+.shifts-editor__warn { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; padding: var(--s-2) var(--s-3); border: 1px solid var(--warning-line); border-radius: var(--r-md); background: var(--warning-soft); font: var(--type-meta); color: var(--warning); }
+.shifts-editor__warn svg { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--warning-icon); }
+.shifts-editor__readout:not(:has(> :not([hidden]))) { display: none; }
+.shifts-editor__length { margin: 0; font: var(--type-label); color: var(--text); }
+.shifts-editor__readout .help, .shifts-editor__readout .error { margin: 0; font: var(--type-caption); }
+.shifts-editor__readout .help { color: var(--text-2); }
+.shifts-editor__readout .error { color: var(--danger); }
 
 /* ---------- widths ---------- */
 @media (max-width: 1279px) {
-  .shifts-grid__row { grid-template-columns: minmax(140px, 1.2fr) repeat(7, minmax(0, 1fr)); }
+  .shifts-grid__row, .shifts-skel__row { grid-template-columns: 168px repeat(7, minmax(0, 1fr)) 64px; }
+  .shifts-grid__cell { padding: 5px 4px; }
+  .shifts-grid__total, .shifts-grid__cover { padding: 0 var(--s-2); }
+  .shift-chip { padding: 0 4px 0 8px; }
+  /* Narrow days keep the full times; the not-confirmed ring stays in the label. */
+  .shift-chip__await, .shifts-legend__item:has(.shifts-legend__mark--await) { display: none; }
+  .shifts-grid__count { display: none; }
+  .shifts-grid__cover { justify-content: flex-end; }
+  .shifts-avail__head, .shifts-avail__form { grid-template-columns: 112px 160px minmax(0, 272px) minmax(0, 1fr) 64px; gap: var(--s-3); }
 }
 @media (max-width: 1023px) {
-  .shifts-avail__form { grid-template-columns: 110px 1fr; }
+  .shifts-toolbar .shifts-legend { display: none; }
+  .shifts-avail__head { display: none; }
+  .shifts-avail__form { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-2) var(--s-3); padding: var(--s-3) var(--s-4); }
   .shifts-avail__times, .shifts-avail__note { grid-column: 1 / -1; }
-  .shifts-avail__save { grid-column: 1 / -1; justify-self: end; }
+  .shifts-avail__row.is-off .shifts-avail__times { display: none; }
+  .shifts-avail__save { grid-column: 1 / -1; }
+  .shifts-avail__save:disabled { display: none; }
 }
 @media (max-width: 767px) {
-  .shifts-head .page-head__actions { display: grid; grid-template-columns: auto 1fr; gap: var(--s-2); }
+  .shifts-head .page-head__actions { display: grid; grid-template-columns: auto 1fr auto; gap: var(--s-3) var(--s-2); }
   .shifts-head .atlas-segmented { justify-self: end; }
-  .shifts-publish { grid-column: 1 / -1; display: grid; justify-items: stretch; gap: 2px; }
-  .shifts-publish .atlas-btn { width: 100%; grid-row: 1; }
-  .shifts-publish__caption { grid-row: 2; text-align: center; }
+  /* Handover closes the pager row as an icon; its name stays in aria-label. */
+  .shifts-handover { order: 1; width: var(--touch); height: var(--touch); padding: 0; justify-content: center; }
+  .shifts-handover__text { display: none; }
+  .shifts-publish { order: 2; grid-column: 1 / -1; display: grid; justify-items: stretch; gap: var(--s-1); }
+  .shifts-publish .atlas-btn { width: 100%; height: var(--control-lg); grid-row: 1; }
+  .shifts-publish__caption { grid-row: 2; font: var(--type-caption); text-align: center; white-space: normal; }
   .shifts-tabs { margin-top: var(--s-2); }
   .shifts-body { margin-top: var(--s-4); }
-  .shifts-now { gap: var(--s-2) var(--s-5); }
-  .shifts-now__handover { margin-left: 0; }
-  .shifts-row__time { font: 600 17px/24px var(--font-sans); }
-  .shifts-row .atlas-row__end { width: 100%; justify-content: flex-start; }
-  .shifts-row.atlas-row { flex-wrap: wrap; }
-  .shifts-month { border-radius: var(--r-md); }
-  .shifts-month__weekdays span { padding: 6px 0; text-align: center; font-size: 12px; }
-  .shifts-month__cell { min-height: 56px; padding: 6px 4px; justify-items: center; }
+  /* The shared toolbar hides its end on phones (the top bar carries Add); the
+     colour switch stays, the buttons go. */
+  .shifts-toolbar .atlas-toolbar__end { display: flex; margin-left: auto; }
+  .shifts-toolbar .atlas-toolbar__end > .atlas-btn { display: none; }
+  .shifts-toolbar { margin: 0 calc(-1 * var(--page-gutter)) var(--s-3); }
+  /* A toolbar that carries a sentence wraps instead of scrolling sideways. */
+  .shifts-toolbar:has(.shifts-toolbar__note) { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .shifts-toolbar__note { flex: 1 1 100%; }
+  .shifts-day__sum { display: none; }
+  .shifts-day__sum + .shifts-day__add { margin-left: auto; }
+  .shifts-color-toggle { height: var(--touch); }
+  /* A row: the mark down the left, the times and the person, the status
+     under them; a manager's edit button sits at the top right. */
+  .shifts-row.atlas-row { display: grid; grid-template-columns: 3px minmax(0, 1fr) auto; align-items: start; gap: var(--s-2) var(--s-3); }
+  .shifts-row__mark { grid-row: 1; align-self: stretch; }
+  .shifts-row:has(.atlas-row__end :is(.atlas-pill, .atlas-btn)) .shifts-row__mark { grid-row: 1 / span 2; }
+  .shifts-row .atlas-row__body { grid-column: 2; grid-row: 1; align-self: start; }
+  .shifts-row .atlas-row__end { grid-column: 2 / -1; grid-row: 2; flex-wrap: wrap; justify-content: flex-start; }
+  .shifts-row.atlas-row { min-height: 0; }
+  .shifts-row .atlas-row__end:not(:has(*)) { display: none; }
+  .shifts-row .atlas-row__end:has(.shifts-row__edit) { display: contents; }
+  .shifts-row .atlas-row__end:has(.shifts-row__edit) > .atlas-pill { grid-column: 2; grid-row: 2; justify-self: start; }
+  .shifts-row__edit { grid-column: 3; grid-row: 1; margin: -10px -10px 0 0; }
+  .shifts-row__time { font: 600 16px/24px var(--font-sans); font-variant-numeric: tabular-nums; }
+  /* The shared phone row hides trailing buttons; here they are the row's job
+     (Confirm, Request change, Approve, Resolve), so they stay. */
+  :is(.shifts-row, .shifts-leave, .shifts-response) .atlas-row__end > .atlas-btn { display: inline-flex; }
+  .shifts-month__weekdays span { padding: 0; text-align: center; line-height: 32px; }
+  .shifts-month__cell { grid-template-rows: auto auto; justify-items: center; gap: 4px; min-height: 60px; padding: 6px 2px; }
+  .shifts-month__num { justify-self: center; margin: 0; }
   .shifts-month__chips, .shifts-month__gap { display: none; }
-  .shifts-month__count { display: block; min-width: 20px; height: 20px; border-radius: var(--r-pill); background: var(--bg-muted); font: 500 12px/20px var(--font-sans); text-align: center; color: var(--text); }
-  .shifts-month__count:empty { background: transparent; }
-  .shifts-month__num { margin: 0; }
+  .shifts-month__count { display: flex; justify-content: center; gap: 3px; min-height: 6px; }
+  .shifts-month__cell.has-gap .shifts-month__count::before { content: ''; width: 6px; height: 6px; border: 1px solid var(--warning-icon); border-radius: 50%; }
   .shifts-avail__form { padding: var(--s-3); }
   .shifts-inline-field { min-width: 0; width: 100%; }
+  .shifts-editor__when { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .shifts-editor__date { grid-column: 1 / -1; }
+  /* Two-line rows: the decision sits under the text, on the text's left edge. */
+  .shifts-leave.atlas-row, .shifts-response.atlas-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--s-2) var(--s-3); }
+  .shifts-leave.atlas-row:has(.atlas-avatar) { grid-template-columns: 6px auto minmax(0, 1fr); }
+  .shifts-leave__mark { grid-row: 1 / span 2; }
+  :is(.shifts-leave, .shifts-response) .atlas-row__body, :is(.shifts-leave, .shifts-response) .atlas-row__end { grid-column: -2; }
+  :is(.shifts-leave, .shifts-response) .atlas-row__end { grid-row: 2; flex-wrap: wrap; }
 }
 }

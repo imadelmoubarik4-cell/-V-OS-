@@ -5,13 +5,13 @@
   // A deployment may replace connection values, but it must not remove the
   // scripts that make an authorized navigation destination functional.
   const REQUIRED_MODULES = Object.freeze([
-    ['assets/css/team-messages.css?v=20261002-s93r', 'assets/js/team-messages.js', 'AtlasTeamMessages'],
+    ['assets/css/team-messages.css?v=20261026-redesign', 'assets/js/team-messages.js', 'AtlasTeamMessages'],
     [null, 'assets/js/team-unread-badge.js', 'AtlasTeamUnreadBadge'],
     [null, 'assets/js/team-profiles-bootstrap.js', 'AtlasTeamProfilesBootstrap'],
     ['assets/css/team-profile-photos.css', 'assets/js/team-profile-photos.js', 'AtlasTeamProfilePhotos'],
-    ['assets/css/shifts-workspace.css', 'assets/js/shifts-workspace.js', 'AtlasShifts'],
-    ['assets/css/knowledge-workspace.css', 'assets/js/knowledge-workspace.js', 'AtlasKnowledge'],
-    ['assets/css/settings-workspace.css', 'assets/js/settings-workspace.js', 'AtlasSettings'],
+    ['assets/css/shifts-workspace.css?v=20261026-redesign', 'assets/js/shifts-workspace.js', 'AtlasShifts'],
+    ['assets/css/knowledge-workspace.css?v=20261026-redesign', 'assets/js/knowledge-workspace.js', 'AtlasKnowledge'],
+    ['assets/css/settings-workspace.css?v=20261026-redesign', 'assets/js/settings-workspace.js', 'AtlasSettings'],
     [null, 'assets/js/notifications.js', 'AtlasNotifications']
   ]);
 

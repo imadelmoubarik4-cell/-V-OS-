@@ -1,46 +1,139 @@
 /* Bookings (#bookings, #bookings/config) — the Alcedo staff booking workspace
- * and manager configuration. Layout only; page header, buttons, rows, pills,
- * alerts, sheets, dialogs, fields, toggles, segmented control and empty states
- * are the shared atlas-* components. No tokens defined here (only used), no
- * !important. Section colours derive from the Alcedo palette tokens so the floor
- * plan inherits the brand. */
+ * and manager configuration, on the Basalt & Kingfisher sheet. Layout and the
+ * module's own pieces only; page header, buttons, pills, alerts, sheets,
+ * fields, toggles, segmented control and empty states are the shared atlas-*
+ * components. No tokens defined here (only used), no !important.
+ *
+ * One mark system for every booking kind, shared by the floor tiles, the time
+ * bars and the legend (docs/design/Alcedo_Redesign_2026.md, Taste timeline
+ * rules): free is a white tile on a hairline; booked a pale kingfisher fill;
+ * arrived adds a kingfisher edge; seated is the pale green of its pill; a
+ * request holding seats is a dashed amber outline, the one full colour,
+ * because it is the one thing waiting on staff; unavailable sits on stone. */
 @layer atlas.modules {
 .bk-host { display: block; }
-.bk-body { margin-top: var(--s-5); }
-.bk-alert { margin-top: var(--s-4); }
-.bk-skel { display: grid; gap: var(--s-2); margin-top: var(--s-5); }
+.bk-body { margin-top: var(--s-6); }
+.bk-day { display: grid; gap: var(--s-8); }
+.bk-alert { margin-bottom: var(--s-5); }
 .bk-note { margin: 0; font: var(--type-meta); color: var(--text-2); }
-.bk-crumb { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 var(--s-1) calc(-1 * var(--s-1)); font: var(--type-meta); color: var(--text-2); text-decoration: none; }
-.bk-crumb svg { width: 16px; height: 16px; }
-.bk-crumb:hover { color: var(--text); }
+.bk-empty-line { margin: 0; padding: var(--s-3) var(--s-4); border: 1px dashed var(--line-strong); border-radius: var(--r-lg); font: var(--type-meta); color: var(--text-2); }
+.bk-empty:not(.atlas-empty--page) { border: 1px solid var(--line); border-radius: var(--r-lg); }
+.bk-dash { color: var(--text-3); }
+.bk-crumb { display: inline-flex; align-items: center; gap: var(--s-1); margin: 0 0 var(--s-2) calc(-1 * var(--s-1)); font: var(--type-meta); color: var(--text-2); text-decoration: none; transition: color var(--dur-1) ease; }
+.bk-crumb svg { width: var(--icon-sm); height: var(--icon-sm); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-crumb:hover { color: var(--text); text-decoration: none; }
+}
 
-/* ---------- day controls ---------- */
-.bk-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-4); margin-top: var(--s-4); }
-.bk-date { max-width: 200px; }
-.bk-viewtoggle { margin-left: auto; }
+/* ---------- day controls: the date (scope) left, the view right ---------- */
+.bk-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-top: var(--s-5); }
+/* The day pager: ‹ Today › as in Shifts, then the day itself as a quiet
+   button that opens the month calendar. */
+.bk-date { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+.bk-pager { display: inline-flex; flex: none; align-items: center; gap: 2px; }
+@media (pointer: fine) {
+  .bk-pager .atlas-icon-btn { width: var(--control-sm); height: var(--control-sm); }
+}
+.bk-date__anchor { position: relative; min-width: 0; }
+.bk-date__pick { display: inline-flex; align-items: center; gap: var(--s-2); max-width: 100%; height: var(--control-sm); margin: 0; padding: 0 var(--s-2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); font: var(--type-heading); white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background-color var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
+.bk-date__pick:active { transform: scale(var(--press-scale)); }
+.bk-date__pick:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.bk-date__pick[aria-expanded="true"] { background: var(--bg-muted); }
+.bk-date__pick > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+.bk-date__short { display: none; }
+.bk-date__long, .bk-date__short { overflow: hidden; text-overflow: ellipsis; }
+.bk-date__rel { font: var(--type-meta); color: var(--text-3); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-date__pick:hover { background: var(--bg-hover); }
+}
 
-/* ---------- section colours (Alcedo palette, token-derived swatches) ---------- */
-.bk-c-teal { --bk-c: var(--accent); }
-.bk-c-orange { --bk-c: var(--highlight); }
-.bk-c-sage { --bk-c: var(--positive); }
-.bk-c-ivory { --bk-c: var(--bg-muted); }
-.bk-c-ink { --bk-c: var(--ink); }
-.bk-c-plum { --bk-c: color-mix(in srgb, var(--danger) 55%, var(--accent) 45%); }
-.bk-c-sky { --bk-c: color-mix(in srgb, var(--accent) 42%, var(--surface)); }
-.bk-c-clay { --bk-c: color-mix(in srgb, var(--highlight) 58%, var(--danger) 42%); }
-.bk-swatch { display: inline-block; width: 12px; height: 12px; flex: none; border-radius: var(--r-xs); background: var(--bk-c, var(--accent)); }
-.bk-row__swatch { display: inline-block; width: 8px; align-self: stretch; flex: none; border-radius: var(--r-pill); background: var(--bk-c, var(--accent)); }
+/* The calendar: a popover under the date, Monday first, 36 px days. The
+   chosen day is the one kingfisher fill; today wears a kingfisher ring. */
+.bk-cal { position: absolute; top: calc(100% + 6px); left: 0; width: 296px; max-width: calc(100vw - 2 * var(--s-4)); padding: var(--s-3); --atlas-origin: top left; }
+.bk-cal__head { display: flex; align-items: center; gap: 2px; margin: 0 0 var(--s-2); }
+.bk-cal__title { flex: 1 1 auto; margin: 0; padding-left: var(--s-1); font: var(--type-heading); color: var(--text); }
+.bk-cal__weekdays, .bk-cal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.bk-cal__weekdays span { font: var(--type-caption); line-height: 28px; color: var(--text-3); text-align: center; }
+.bk-cal__day { height: 36px; margin: 0; padding: 0; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--text); font: var(--type-body); font-variant-numeric: tabular-nums; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background-color var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
+.bk-cal__day:active { transform: scale(var(--press-scale)); }
+.bk-cal__day:focus-visible { outline: var(--focus-outline); outline-offset: 1px; }
+.bk-cal__day.is-outside { color: var(--text-3); }
+.bk-cal__day.is-today { border-color: var(--accent-brand); color: var(--accent-text); font-weight: 600; }
+.bk-cal__day.is-selected { border-color: var(--accent-brand); background: var(--accent-brand); color: var(--text-on-accent); font-weight: 600; }
+@media (hover: hover) and (pointer: fine) {
+  .bk-cal__day:not(.is-selected):hover { background: var(--bg-hover); }
+}
+.bk-viewtoggle { flex: none; }
+
+/* ---------- block heads (requests, areas) ---------- */
+.bk-block__head { display: flex; align-items: center; gap: var(--s-3); min-height: 24px; margin: 0 0 var(--s-3); }
+.bk-block__title { display: inline-flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
+.bk-block__meta { margin-left: auto; font: var(--type-meta); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- area identity: a small dot in the area's section colour ----------
+   Identity is data, so it draws from the muted person palette and never from
+   a status hue: no positive green (it would read as "seated"), no amber, no
+   red and no kingfisher (the booked fill). The stored names stay; each maps
+   to the nearest muted hue ("sage" a teal-grey, "orange" a warm stone). */
+.bk-c-teal { --bk-c: var(--person-1); }
+.bk-c-orange { --bk-c: color-mix(in srgb, var(--person-6) 55%, var(--person-4)); }
+.bk-c-sage { --bk-c: color-mix(in srgb, var(--person-1) 55%, var(--person-2)); }
+.bk-c-ivory { --bk-c: var(--line-strong); }
+.bk-c-ink { --bk-c: var(--text); }
+.bk-c-plum { --bk-c: var(--person-3); }
+.bk-c-sky { --bk-c: color-mix(in srgb, var(--person-1) 55%, var(--surface)); }
+.bk-c-clay { --bk-c: var(--person-6); }
+.bk-swatch { display: inline-block; width: 8px; height: 8px; flex: none; border-radius: var(--r-pill); background: var(--bk-c, var(--person-1)); }
+
+/* ---------- requests waiting: a queue of decisions ----------
+   Time leads in a fixed 64px column, the guest and their details follow, and
+   the decision sits in one fixed trailing column at the same pitch on every
+   row. The open area and the action are separate controls. */
+.bk-queue { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.bk-req { display: grid; grid-template-columns: minmax(0, 1fr) 132px; align-items: center; transition: background-color var(--dur-1) ease; }
+.bk-req + .bk-req { border-top: 1px solid var(--line-subtle); }
+.bk-req__open {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--s-4);
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: var(--s-3) 0 var(--s-3) var(--s-4);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.bk-req__open:focus-visible { outline: var(--focus-outline); outline-offset: -2px; border-radius: var(--r-lg); }
+.bk-req__time { font: 600 14px/20px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); }
+.bk-req__body { display: grid; gap: 2px; min-width: 0; }
+.bk-req__name { font: 500 14px/20px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
+.bk-req__meta { font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; }
+.bk-req__contact > span { white-space: nowrap; }
+.bk-req__contact > span::before { content: '·'; margin: 0 6px; color: var(--text-3); }
+.bk-req__note { margin-top: 2px; font: var(--type-meta); color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
+.bk-req__note::before { content: '“'; }
+.bk-req__note::after { content: '”'; }
+.bk-req__action { display: flex; justify-content: flex-end; padding-right: var(--s-4); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-req:has(> .bk-req__open:hover) { background: var(--bg-hover); }
+}
 
 /* ---------- floor plan ---------- */
-.bk-map { display: grid; gap: var(--s-6); margin-top: var(--s-5); }
-.bk-area { border-left: 3px solid var(--bk-c, var(--accent)); padding-left: var(--s-4); }
-.bk-area__title { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
-.bk-area__tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-3); }
+.bk-map { display: grid; gap: var(--s-8); }
+.bk-area { min-width: 0; }
+.bk-area__tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: var(--s-2); }
 
 /* VÁ Bar: confirmed 16-stool perimeter. 8 across the top, 4 down the right,
- * 4 back up the left, with an intentionally open centre. */
-.bk-floor-grid { grid-template-columns: repeat(8, minmax(88px, 1fr)); grid-template-rows: repeat(5, minmax(72px, auto)); }
-.bk-floor-grid .bk-table { min-width: 0; min-height: 72px; }
+ * 4 back up the left; the open centre is the counter. */
+.bk-floor-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(5, minmax(76px, auto)); }
+.bk-floor-grid .bk-table { min-width: 0; }
 .bk-floor-grid [data-bookings-position="1"] { grid-column: 1; grid-row: 1; }
 .bk-floor-grid [data-bookings-position="2"] { grid-column: 2; grid-row: 1; }
 .bk-floor-grid [data-bookings-position="3"] { grid-column: 3; grid-row: 1; }
@@ -58,93 +151,400 @@
 .bk-floor-grid [data-bookings-position="15"] { grid-column: 1; grid-row: 3; }
 .bk-floor-grid [data-bookings-position="16"] { grid-column: 1; grid-row: 2; }
 
-.bk-table { display: grid; align-content: start; gap: 2px; min-height: 96px; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); text-align: left; cursor: pointer; color: var(--text); }
-.bk-table:hover { background: var(--bg-hover); }
-.bk-table:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
-.bk-table__label { font: 600 16px/22px var(--font-sans); color: var(--text); }
-.bk-table__cap { font: var(--type-caption); color: var(--text-3); }
-.bk-table__status { margin-top: var(--s-1); font: var(--type-label); color: var(--text-2); }
-.bk-table__guest { font: var(--type-caption); color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Status accents pair a coloured edge WITH the text label (never colour alone). */
-.bk-table--free { border-left: 4px solid var(--line-strong); }
-.bk-table--booked { border-left: 4px solid var(--accent); background: var(--accent-soft); }
-.bk-table--booked .bk-table__status { color: var(--accent-text); }
-.bk-table--seated { border-left: 4px solid var(--positive); background: var(--positive-soft); }
-.bk-table--seated .bk-table__status { color: var(--positive); }
-.bk-table--unavailable { border-left: 4px solid var(--danger); background: var(--danger-soft); }
-.bk-table--unavailable .bk-table__status { color: var(--danger); }
+/* The counter: a stone well in the ring's open centre with the section key. */
+.bk-counter {
+  grid-column: 2 / 8;
+  grid-row: 2 / 6;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--s-4);
+  margin: var(--s-4);
+  padding: var(--s-6);
+  border-radius: var(--r-lg);
+  background: var(--bg-subtle);
+}
+.bk-counter__name { margin: 0; font: var(--type-label); color: var(--text-2); }
+.bk-counter__sections { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: var(--s-2) var(--s-4); margin: 0; padding: 0; list-style: none; }
+.bk-counter__row { display: contents; }
+.bk-counter__key { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--line-strong); border-radius: var(--r-xs); background: var(--surface); font: 600 13px/18px var(--font-sans); color: var(--text); }
+.bk-counter__range { font: var(--type-body); color: var(--text); }
+.bk-counter__free { font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); text-align: right; }
 
-/* ---------- list alternative ---------- */
-.bk-list { margin-top: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
-.bk-row { padding: 0; }
-.bk-row__btn { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 60px; padding: var(--s-2) var(--s-4) var(--s-2) 0; border: 0; background: transparent; text-align: left; cursor: pointer; color: var(--text); }
-.bk-row__btn:hover { background: var(--bg-hover); }
+/* A seat tile: the label and the booking's time on top, the guest, then the
+   text status (never colour alone) and the section and size. */
+.bk-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 76px;
+  margin: 0;
+  padding: 10px var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform var(--motion-press) var(--ease-out), border-color var(--dur-1) ease, background-color var(--dur-1) ease;
+}
+.bk-table:active { transform: scale(var(--press-scale)); }
+.bk-table:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.bk-table__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); min-width: 0; }
+.bk-table__label { font: 600 14px/20px var(--font-sans); color: var(--text); white-space: nowrap; }
+.bk-table__time { font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.bk-table__guest { overflow: hidden; font: var(--type-meta); color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.bk-table__more { margin-left: var(--s-1); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.bk-table__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-top: auto; padding-top: var(--s-1); min-width: 0; }
+.bk-table__status { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/16px var(--font-sans); color: var(--text-2); white-space: nowrap; }
+.bk-table__status::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--bk-dot, var(--text-3)); }
+.bk-table__cap { overflow: hidden; font: var(--type-caption); font-variant-numeric: tabular-nums; color: var(--text-3); text-overflow: ellipsis; white-space: nowrap; }
+
+/* The legend lists only the marks on screen; each key is the mark, scaled. */
+.bk-legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); margin: var(--s-4) 0 0; padding: 0; list-style: none; font: var(--type-meta); color: var(--text-2); }
+.bk-legend__item { display: inline-flex; align-items: center; gap: var(--s-2); }
+.bk-key { width: 20px; height: 14px; flex: none; border: 1px solid var(--line); border-radius: var(--r-xs); }
+
+/* ---------- pooled locations (guest capacity, no seats) ---------- */
+.bk-capacity { height: 6px; margin: 0 0 var(--s-3); overflow: hidden; border-radius: var(--r-pill); background: var(--bg-muted); }
+.bk-capacity__fill { display: block; width: calc(var(--bk-w, 0) * 100%); height: 100%; border-radius: var(--r-pill); background: var(--accent-brand); }
+.bk-capacity__fill.is-full { background: var(--text); }
+.bk-location__bookings { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.bk-location__bookings > li + li { border-top: 1px solid var(--line-subtle); }
+.bk-res-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto 112px;
+  align-items: center;
+  column-gap: var(--s-4);
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 var(--s-4);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color var(--dur-1) ease;
+}
+.bk-res-row:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.bk-res-row:active { background: var(--bg-muted); transition-duration: 0ms; }
+.bk-res-row__time { font: 600 14px/20px var(--font-sans); font-variant-numeric: tabular-nums; }
+.bk-res-row__name { overflow: hidden; font: 500 14px/20px var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
+.bk-res-row__party { font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); text-align: right; white-space: nowrap; }
+.bk-res-row .bk-row__status { justify-self: start; }
+@media (hover: hover) and (pointer: fine) {
+  .bk-res-row:hover { background: var(--bg-hover); }
+}
+
+/* ---------- list: the evening on a time axis ----------
+   Seats down a fixed 200px column, hours across on 1px hour lines, the text
+   status in a fixed trailing column. The axis, the hour lines and every row
+   share one grid so a bar, its hour line and its tick sit on one x. */
+.bk-timeline {
+  --bk-id: 200px;
+  --bk-status: 112px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.bk-axis, .bk-gridlines, .bk-row__btn {
+  display: grid;
+  grid-template-columns: var(--bk-id) minmax(0, 1fr) var(--bk-status);
+  column-gap: var(--s-4);
+  padding: 0 var(--s-4);
+}
+.bk-axis { align-items: end; height: 36px; border-bottom: 1px solid var(--line); font: var(--type-caption); color: var(--text-3); }
+.bk-axis__id, .bk-axis__status { padding-bottom: var(--s-2); }
+.bk-axis__track { position: relative; height: 100%; }
+.bk-tick { position: absolute; bottom: var(--s-2); left: calc(var(--bk-x, 0) * 100%); font-variant-numeric: tabular-nums; white-space: nowrap; transform: translateX(-50%); }
+.bk-tick:first-child { transform: none; }
+.bk-tick.bk-tick--end { transform: translateX(-100%); }
+.bk-timeline__body { position: relative; }
+.bk-gridlines { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.bk-gridlines__track { position: relative; }
+.bk-hourline { position: absolute; top: 0; bottom: 0; left: calc(var(--bk-x, 0) * 100%); width: 1px; background: var(--line-subtle); }
+.bk-now { position: absolute; top: 0; bottom: 0; left: calc(var(--bk-x, 0) * 100%); z-index: 2; width: 1px; background: var(--accent-brand); }
+.bk-now__label { position: absolute; top: var(--s-3); left: var(--s-1); padding: 0 var(--s-1); border-radius: var(--r-xs); background: var(--surface); font: 500 12px/16px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--accent-text); }
+.bk-lane + .bk-lane .bk-lane__title { border-top: 1px solid var(--line); }
+.bk-lane__title { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: var(--s-4) var(--s-4) var(--s-2); background: var(--surface); font: var(--type-heading); color: var(--text); }
+.bk-lane__meta { margin-left: var(--s-1); font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.bk-row { display: block; min-height: 0; padding: 0; }
+.bk-row__btn {
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color var(--dur-1) ease;
+}
 .bk-row__btn:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
-.bk-row__status { margin-left: auto; flex: none; }
+.bk-row__btn:active { background: var(--bg-muted); transition-duration: 0ms; }
+.bk-row__id { display: grid; min-width: 0; }
+.bk-row__label { overflow: hidden; font: 500 14px/20px var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
+.bk-row__meta { overflow: hidden; font: var(--type-caption); color: var(--text-3); text-overflow: ellipsis; white-space: nowrap; }
+.bk-row__who { display: none; overflow: hidden; font: var(--type-caption); font-variant-numeric: tabular-nums; color: var(--text-2); text-overflow: ellipsis; white-space: nowrap; }
+.bk-track { position: relative; z-index: 1; height: 24px; }
+.bk-row__status { justify-self: start; flex: none; }
+.bk-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--bk-x, 0) * 100%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: calc(var(--bk-w, 0) * 100%);
+  min-width: 6px;
+  padding: 0 var(--s-2);
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  font: var(--type-caption);
+  color: var(--text);
+  white-space: nowrap;
+}
+.bk-bar__time { flex: none; font-weight: 500; font-variant-numeric: tabular-nums; }
+.bk-bar__text { overflow: hidden; text-overflow: ellipsis; }
+.bk-bar--booked, .bk-bar--arrived { color: var(--accent-text); }
+.bk-bar--seated { color: var(--positive-ink); }
+.bk-bar--held { color: var(--warning); }
+.bk-timeline__empty { margin: 0; padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--line); font: var(--type-meta); color: var(--text-2); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-row__btn:hover { background: var(--bg-hover); }
+}
+
+/* ---------- the marks: tiles, time bars and legend keys share them ----------
+   After the tile and bar base rules, so a mark's edge wins over the base. */
+.bk-table--free, .bk-key--free { --bk-dot: transparent; border-color: var(--line-strong); background: var(--surface); }
+.bk-table--free .bk-table__status::before { box-shadow: inset 0 0 0 1px var(--text-3); }
+.bk-table--booked, .bk-bar--booked, .bk-key--booked { --bk-dot: var(--accent-brand); border-color: color-mix(in srgb, var(--accent-brand) 28%, var(--accent-soft)); background: var(--accent-soft); }
+.bk-table--arrived, .bk-bar--arrived, .bk-key--arrived { --bk-dot: var(--accent-brand); border-color: var(--accent-brand); background: var(--accent-soft); }
+.bk-table--seated, .bk-bar--seated, .bk-key--seated { --bk-dot: var(--positive); border-color: color-mix(in srgb, var(--positive) 32%, var(--positive-soft)); background: var(--positive-soft); }
+.bk-table--held, .bk-bar--held, .bk-key--held { --bk-dot: var(--warning-icon); border: 1px dashed var(--warning-icon); background: var(--warning-soft); }
+.bk-table--unavailable, .bk-key--unavailable { --bk-dot: var(--line-strong); border-color: var(--line); background: var(--bg-subtle); }
+.bk-table--booked .bk-table__status, .bk-table--arrived .bk-table__status { color: var(--accent-text); }
+.bk-table--seated .bk-table__status { color: var(--positive-ink); }
+.bk-table--held .bk-table__status { color: var(--warning); }
+.bk-table--unavailable :is(.bk-table__label, .bk-table__status) { color: var(--text-3); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-table:hover { border-color: var(--line-hover); }
+  .bk-table--free:hover { background: var(--bg-hover); }
+  .bk-table--held:hover { border-color: var(--warning); }
+}
+
 
 /* ---------- reservation detail ---------- */
-.bk-detail__body { display: grid; gap: var(--s-4); }
+.bk-detail__desc { font-variant-numeric: tabular-nums; }
+.bk-ref { font: 400 13px/18px var(--font-mono); color: var(--text-2); }
 .bk-detail__status { display: flex; align-items: center; gap: var(--s-2); margin: 0; }
 .bk-detail__requested { font: var(--type-meta); color: var(--warning); }
-.bk-detail__facts { display: grid; gap: var(--s-3); margin: 0; }
-.bk-detail__facts > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--s-3); }
-.bk-detail__facts dt { margin: 0; font: var(--type-label); color: var(--text-3); }
+.bk-keyfacts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.bk-keyfacts > div { min-width: 0; padding: var(--s-3) var(--s-4); }
+.bk-keyfacts > div + div { border-left: 1px solid var(--line); }
+.bk-keyfacts dt { margin: 0; font: var(--type-label); color: var(--text-2); }
+.bk-keyfacts dd { margin: var(--s-1) 0 0; font: 500 16px/24px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); overflow-wrap: anywhere; }
+.bk-keyfacts dd.bk-dash { font-weight: 400; color: var(--text-3); }
+.bk-detail__facts { display: grid; margin: 0; }
+.bk-detail__facts > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--s-3); padding: 10px 0; }
+.bk-detail__facts > div + div { border-top: 1px solid var(--line-subtle); }
+.bk-detail__facts dt { margin: 0; font: var(--type-meta); color: var(--text-2); }
 .bk-detail__facts dd { margin: 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
-.bk-detail__assign { display: grid; gap: var(--s-2); padding-top: var(--s-3); border-top: 1px solid var(--line); }
-.bk-detail__assign-label { font: var(--type-label); color: var(--text-2); }
+.bk-detail__line { display: block; }
+.bk-detail__assign { display: grid; gap: var(--s-3); padding-top: var(--s-5); border-top: 1px solid var(--line); }
+/* A floated legend stops being the fieldset's border legend and becomes a
+   normal grid item, so it sits under the rule and takes the grid gap. */
+.bk-detail__assign-label, .bk-seats__legend { float: left; width: 100%; }
+.bk-detail__assign-label { font: var(--type-heading); color: var(--text); }
+.bk-detail__assign-sub { display: block; margin-top: 2px; font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); }
 .bk-detail__assign-row { display: flex; gap: var(--s-2); align-items: center; }
-.bk-detail__assign-row .atlas-select { flex: 1 1 auto; min-width: 0; }
-.bk-detail__foot { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.bk-detail__foot { justify-content: flex-end; }
+.bk-detail__ending { display: flex; gap: var(--s-2); margin-right: auto; }
 
 /* ---------- seat picker (add booking + move) ---------- */
-.bk-seats { display: grid; gap: var(--s-2); min-width: 0; margin: 0; padding: 0; border: 0; }
-.bk-seats__legend { padding: 0; font: var(--type-label); color: var(--text-2); }
-.bk-seats__modes { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); }
-.bk-seats__mode { min-height: var(--touch); }
-.bk-seats__picker { display: grid; gap: var(--s-3); }
-.bk-seats__section { display: grid; gap: var(--s-1); }
-.bk-seats__section-name { margin: 0; font: var(--type-label); color: var(--text-3); }
-.bk-seats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--s-2); }
-.bk-seat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--s-2); min-height: var(--touch); padding: var(--s-1) var(--s-2); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); cursor: pointer; }
+.bk-seats { display: grid; gap: var(--s-3); min-width: 0; margin: 0; padding: 0; border: 0; }
+.bk-seats__picker { display: grid; gap: var(--s-4); }
+.bk-seats__section { display: grid; gap: var(--s-2); }
+.bk-seats__section-name { margin: 0; font: var(--type-label); color: var(--text-2); }
+.bk-seats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: var(--s-2); }
+.bk-seats__error { margin: 0; }
+.bk-seat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  min-height: 52px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--motion-press) var(--ease-out), border-color var(--dur-1) ease, background-color var(--dur-1) ease;
+}
+.bk-seat:active:not(.is-unavailable) { transform: scale(var(--press-scale)); }
 .bk-seat .atlas-check { grid-row: span 2; }
-.bk-seat__label { font: var(--type-body); color: var(--text); }
-.bk-seat__state { font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; }
-.bk-seat:has(.atlas-check:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.bk-seat:has(.atlas-check:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.bk-seat.is-unavailable { cursor: not-allowed; background: var(--surface-2, var(--surface)); }
-.bk-seat.is-unavailable .bk-seat__label { color: var(--text-3); }
+.bk-seat__label { font: 500 14px/20px var(--font-sans); color: var(--text); }
+.bk-seat__state { font: var(--type-caption); font-variant-numeric: tabular-nums; color: var(--text-2); overflow-wrap: anywhere; }
+.bk-seat:has(.atlas-check:checked) { border-color: var(--accent-brand); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-brand); }
+.bk-seat:has(.atlas-check:focus-visible) { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.bk-seat.is-unavailable { border-color: var(--line); background: var(--bg-subtle); cursor: not-allowed; }
+.bk-seat.is-unavailable :is(.bk-seat__label, .bk-seat__state) { color: var(--text-3); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-seat:not(.is-unavailable):hover { border-color: var(--line-hover); }
+}
 
-/* ---------- config ---------- */
-.bk-config { max-width: var(--reading-max); }
-.bk-cfg-section { margin-top: var(--s-8); }
-.bk-cfg-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
+/* ---------- add booking: three groups ---------- */
+.bk-add__form { gap: var(--s-6); }
+.bk-form__group { display: grid; gap: var(--s-4); min-width: 0; margin: 0; padding: 0; border: 0; }
+.bk-form__group + .bk-form__group { padding-top: var(--s-6); border-top: 1px solid var(--line); }
+.bk-form__title { margin: 0; font: var(--type-heading); color: var(--text); }
+.bk-seats__modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+.bk-seats__mode {
+  align-items: flex-start;
+  min-height: 56px;
+  padding: 10px var(--s-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: border-color var(--dur-1) ease, background-color var(--dur-1) ease;
+}
+.bk-seats__mode > .atlas-radio { margin-top: 2px; }
+.bk-seats__mode:has(:checked) { border-color: var(--accent-brand); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-brand); }
+.bk-seats__mode:has(:focus-visible) { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.bk-seats__mode-text { display: grid; min-width: 0; }
+.bk-seats__mode-title { font: 500 14px/20px var(--font-sans); color: var(--text); }
+.bk-seats__mode-help { font: var(--type-caption); color: var(--text-2); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-seats__mode:not(:has(:checked)):hover { border-color: var(--line-hover); }
+}
+
+/* ---------- loading: the final layout as flat bars ---------- */
+.bk-skel { display: grid; gap: var(--s-3); }
+.bk-skel__head { width: 160px; height: 24px; }
+.bk-skel__tiles { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--s-2); }
+.bk-skel__tile { height: 76px; border-radius: var(--r-lg); }
+.bk-skel--config { gap: 0; margin-top: var(--s-8); overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.bk-skel__row { height: 52px; border-radius: 0; background: var(--bg-subtle); }
+.bk-skel__row + .bk-skel__row { border-top: 1px solid var(--line); }
+
+/* ---------- configuration: label column beside its panel ---------- */
+.bk-config { max-width: 1040px; }
+.bk-config > .bk-alert { margin-top: var(--s-5); }
+.bk-cfg-section { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--s-4) var(--s-12); padding: var(--s-8) 0; }
+.bk-cfg-section:first-of-type { margin-top: var(--s-4); }
+.bk-cfg-section + .bk-cfg-section { border-top: 1px solid var(--line); }
+.bk-cfg-head { display: grid; align-content: start; justify-items: start; gap: var(--s-2); }
 .bk-cfg-title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
-.bk-cfg-list { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
-.bk-cfg-row { display: flex; align-items: center; gap: var(--s-3); min-height: 60px; padding: var(--s-3) var(--s-4); }
-.bk-settings { display: grid; gap: var(--s-4); }
-.bk-settings__foot { display: flex; justify-content: flex-end; padding-top: var(--s-2); }
-.bk-combo-members { display: grid; gap: var(--s-2); }
+.bk-cfg-desc { margin: 0; font: var(--type-body); color: var(--text-2); }
+.bk-cfg-head > .atlas-btn { margin-top: var(--s-2); }
+.bk-cfg-panel { min-width: 0; }
+.bk-cfg-list { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.bk-cfg-row { min-height: 52px; padding: var(--s-2) var(--s-3) var(--s-2) var(--s-4); }
+.bk-cfg-row__flags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-1); }
+.bk-cfg-row__num { flex: none; min-width: 64px; font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text-2); text-align: right; white-space: nowrap; }
+.bk-cfg-row__end { display: flex; flex: none; }
+.bk-settings { display: grid; gap: var(--s-6); }
+.bk-settings__group { display: grid; gap: var(--s-4); }
+.bk-settings__group + .bk-settings__group { padding-top: var(--s-6); border-top: 1px solid var(--line-subtle); }
+.bk-unit { position: relative; }
+.bk-unit > .atlas-input { padding-right: 64px; }
+.bk-unit__suffix { position: absolute; top: 50%; right: var(--s-3); font: var(--type-meta); color: var(--text-3); pointer-events: none; transform: translateY(-50%); }
+.bk-settings__foot { display: flex; justify-content: flex-end; padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
+
+/* ---------- tablet: the counter narrows, the timeline id column too ---------- */
+@media (max-width: 1100px) {
+  .bk-counter { margin: var(--s-2); padding: var(--s-4); }
+  .bk-timeline { --bk-id: 148px; --bk-status: 104px; }
+}
+@media (max-width: 1023px) {
+  .bk-cfg-section { grid-template-columns: 1fr; gap: var(--s-4); padding: var(--s-6) 0; }
+}
 
 /* ---------- phone ---------- */
 @media (max-width: 767px) {
   .bk-body { margin-top: var(--s-4); }
-  .bk-controls { gap: var(--s-3); }
-  .bk-date { max-width: none; flex: 1 1 100%; }
-  .bk-viewtoggle { margin-left: 0; width: 100%; }
-  .bk-area__tables { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-  /* Let the stool grid scroll inside its area instead of widening the page. */
-  .bk-body, .bk-day, .bk-area { min-width: 0; }
-  .bk-floor-grid { grid-template-columns: repeat(4, minmax(120px, 1fr)); grid-template-rows: none; overflow-x: auto; }
-  .bk-floor-grid .bk-table { grid-column: auto; grid-row: auto; }
-  .bk-table { min-height: var(--touch); }
-  .bk-row__btn { min-height: var(--touch); }
-  .bk-detail__facts > div { grid-template-columns: 1fr; gap: 2px; }
-  .bk-config { max-width: none; }
-  .bk-seats__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-}
+  .bk-day { gap: var(--s-6); }
+  /* The one primary keeps its width; Configure folds to its icon. */
+  .page-head__actions > .bk-config-link { flex: none; width: var(--touch); padding: 0; }
+  .bk-config-link__text { display: none; }
+  .bk-config-link > svg { margin: 0; }
+  /* Two rows of controls: the day pager with its date, then the view. */
+  .bk-controls { flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+  .bk-date { flex: 1 1 100%; gap: var(--s-2); }
+  .bk-date__anchor { margin-left: auto; }
+  .bk-date__pick { height: var(--touch); font: var(--type-body-lg); font-weight: 600; }
+  .bk-date__long { display: none; }
+  .bk-date__short { display: inline; }
+  .bk-date__rel { display: none; }
+  .bk-cal { right: 0; left: auto; --atlas-origin: top right; }
+  .bk-viewtoggle { flex: 1 1 100%; }
+  .bk-viewtoggle > button { flex: 1 1 0; min-height: var(--touch); }
+  .bk-viewtoggle > button > svg { display: none; }
 
-/* Requests waiting (website requests have no seats until confirmed) */
-.bk-requests { margin: 0 0 var(--space-4, 16px); }
-.bk-request-row { width: 100%; text-align: left; }
-.bk-request-row__note { display: block; white-space: pre-line; }
+  .bk-req { grid-template-columns: minmax(0, 1fr) auto; }
+  .bk-req__open { grid-template-columns: 48px minmax(0, 1fr); column-gap: var(--s-3); padding-left: 14px; }
+  .bk-req__action { padding-right: 14px; }
+  /* Contact details take their own lines instead of breaking inside a number. */
+  .bk-req__contact { display: grid; }
+  .bk-req__contact > span { overflow: hidden; text-overflow: ellipsis; }
+  .bk-req__contact > span::before { content: none; }
+
+  /* The ring folds to three columns in seat order; the counter's key is on
+     every tile already (A · 1 seat). */
+  .bk-area__tables { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bk-floor-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: none; }
+  .bk-floor-grid .bk-table { grid-column: auto; grid-row: auto; }
+  .bk-counter { display: none; }
+  .bk-table { min-height: 72px; padding: var(--s-2) 10px; }
+  .bk-legend { margin-top: var(--s-3); gap: var(--s-2) var(--s-4); }
+
+  .bk-res-row { grid-template-columns: 48px minmax(0, 1fr) auto; column-gap: var(--s-3); min-height: var(--touch); padding: var(--s-2) 14px; }
+  .bk-res-row__party { display: none; }
+
+  /* Timeline rows become two lines: the seat and its status, then the bar
+     across the full width on a stone lane. The axis keeps every other hour. */
+  .bk-axis, .bk-gridlines, .bk-row__btn { grid-template-columns: minmax(0, 1fr) auto; padding: 0 14px; }
+  .bk-axis { grid-template-columns: minmax(0, 1fr); height: 32px; }
+  .bk-axis__id, .bk-axis__status, .bk-gridlines, .bk-tick--odd { display: none; }
+  .bk-row__btn { grid-template-areas: "id status" "track track"; row-gap: var(--s-2); min-height: var(--touch); padding-top: var(--s-2); padding-bottom: 10px; }
+  .bk-row__id { grid-area: id; }
+  .bk-row__status { grid-area: status; }
+  /* The bar keeps its place on the evening as a thin 8px lane; the guest and
+     time move into the seat's second line, where they can be read. */
+  .bk-track { grid-area: track; height: 8px; border-radius: var(--r-pill); background: var(--bg-subtle); }
+  .bk-track > .bk-bar { padding: 0; border-radius: var(--r-pill); }
+  .bk-track > .bk-bar > span { display: none; }
+  .bk-row__meta--seat { display: none; }
+  .bk-row__who { display: block; }
+  .bk-lane__title { padding: var(--s-3) 14px var(--s-1); }
+
+  .bk-keyfacts > div { padding: 10px var(--s-3); }
+  .bk-detail__facts > div { grid-template-columns: 96px minmax(0, 1fr); }
+  .bk-detail__ending { order: 2; flex: 1 1 100%; }
+  .bk-detail__ending > .atlas-btn { flex: 1 1 0; }
+  .bk-seats__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bk-seat { padding: 6px var(--s-2); column-gap: var(--s-2); }
+
+  .bk-skel__tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bk-config { max-width: none; }
+  .bk-cfg-section:first-of-type { margin-top: 0; }
+  .bk-cfg-row--table { flex-wrap: wrap; }
+  .bk-cfg-row__flags { order: 4; flex: 1 1 100%; justify-content: flex-start; }
+}
+}

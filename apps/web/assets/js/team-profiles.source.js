@@ -94,19 +94,65 @@
     return Boolean(state.staff?.can_manage_team) || MANAGER_ROLES.includes(role());
   }
 
-  function avatarTint(key) {
+  // A person keeps one hue across Team and Shifts: the index Shifts gives the
+  // roster person (roster ids sorted, twelve --person-color hues), else a hash
+  // of the profile id. The avatar is a pale tint of that hue with its own ink.
+  const PERSON_HUES = 12;
+  function personHue(profile) {
+    const person = profile ? rosterPersonFor(profile) : null;
+    const index = person ? state.roster.map((entry) => entry.id).filter(Boolean).sort().indexOf(person.id) : -1;
+    if (index >= 0) return `atlas-person--${index % PERSON_HUES}`;
     let hash = 0;
-    for (const character of String(key || 'x')) hash = ((hash * 31) + character.charCodeAt(0)) >>> 0;
-    return `atlas-avatar--${'abcd'[hash % 4]}`;
+    for (const character of String(profile?.id || 'x')) hash = ((hash * 31) + character.charCodeAt(0)) >>> 0;
+    return `atlas-person--${hash % PERSON_HUES}`;
   }
 
   function avatar(profile, size = '') {
     const photo = profile && !profile.schedule_only ? window.AtlasTeamProfilePhotos?.photoFor?.(profile.id) : null;
-    return `<span class="atlas-avatar ${size} ${avatarTint(profile?.id)} team-profile-avatar${photo?.signed_url ? ' has-profile-photo' : ''}" aria-hidden="true">${photo?.signed_url ? `<img src="${escapeHtml(photo.signed_url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : escapeHtml(initials(profile?.name))}</span>`;
+    return `<span class="atlas-avatar ${size} team-avatar ${personHue(profile)} team-profile-avatar${photo?.signed_url ? ' has-profile-photo' : ''}" aria-hidden="true">${photo?.signed_url ? `<img src="${escapeHtml(photo.signed_url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : escapeHtml(initials(profile?.name))}</span>`;
   }
 
   function pill(label, tone = 'neutral') {
     return `<span class="atlas-pill atlas-pill--${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
+  }
+
+  // A quiet status word with a 6 px dot (warning ink), for a second fact in a
+  // row that already carries a pill: one loud mark per row.
+  function flag(label) {
+    return `<span class="team-flag">${escapeHtml(label)}</span>`;
+  }
+
+  // Progress at the true ratio. Up to 12 steps draw one segment each (the
+  // steps are countable); more draw one bar whose fill is set from data-ratio
+  // after paint (a transform, so no style markup).
+  function meter(done, total, extra = '') {
+    const count = Math.max(0, Number(total) || 0);
+    const filled = Math.max(0, Math.min(count, Number(done) || 0));
+    if (count && count <= 12) {
+      return `<span class="team-meter${extra ? ` ${extra}` : ''}" aria-hidden="true">${Array(count).fill('').map((_, index) => `<i${index < filled ? ' class="is-on"' : ''}></i>`).join('')}</span>`;
+    }
+    return `<span class="team-meter team-meter--bar${extra ? ` ${extra}` : ''}" aria-hidden="true"><i data-team-ratio="${count ? filled / count : 0}"></i></span>`;
+  }
+
+  // Applies data-team-ratio (bar fills) and data-team-span (a shift on the
+  // evening axis) after paint, through the CSSOM.
+  function applyGeometry(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-team-ratio]').forEach((fill) => {
+      fill.style.transform = `scaleX(${Math.max(0, Math.min(1, Number(fill.dataset.teamRatio) || 0))})`;
+    });
+    // The axis ends are named over the shift column's bar lane (header text
+    // stays "On shift today"): custom properties read by ::before/::after.
+    root.querySelectorAll('[data-team-axis]').forEach((wrap) => {
+      const [from, to] = String(wrap.dataset.teamAxis).split(',');
+      wrap.style.setProperty('--team-axis-from', JSON.stringify(from || ''));
+      wrap.style.setProperty('--team-axis-to', JSON.stringify(to || ''));
+    });
+    root.querySelectorAll('[data-team-span]').forEach((span) => {
+      const [from, to] = String(span.dataset.teamSpan).split(',').map(Number);
+      span.style.setProperty('--team-from', String(Math.max(0, Math.min(1, from || 0))));
+      span.style.setProperty('--team-to', String(Math.max(0, Math.min(1, to || 0))));
+    });
   }
 
   // ---------- API ----------
@@ -223,6 +269,33 @@
     return `${String(shift.starts_local).slice(11, 16)}–${String(shift.ends_local).slice(11, 16)}`;
   }
 
+  // Minutes from the start of the shift's business day; an end at or before
+  // the start runs past midnight.
+  function shiftMinutes(shift) {
+    const clock = (value) => {
+      const [hours, minutes] = String(value || '').slice(11, 16).split(':').map(Number);
+      return (hours || 0) * 60 + (minutes || 0);
+    };
+    const start = clock(shift.starts_local);
+    let end = clock(shift.ends_local);
+    if (end <= start) end += 24 * 60;
+    return [start, end];
+  }
+
+  // Tonight's axis: from the earliest start to the latest end among today's
+  // shifts in the list, on whole hours, so every row's bar is comparable.
+  function shiftAxis(rows) {
+    const spans = rows.map(todayShift).filter(Boolean).map(shiftMinutes);
+    if (!spans.length) return null;
+    const from = Math.floor(Math.min(...spans.map((span) => span[0])) / 60) * 60;
+    const to = Math.ceil(Math.max(...spans.map((span) => span[1])) / 60) * 60;
+    return to > from ? { from, to } : null;
+  }
+
+  function clockLabel(minutes) {
+    return `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  }
+
   function filteredProfiles() {
     const query = state.search.trim().toLowerCase();
     return profiles().filter((profile) => {
@@ -271,36 +344,47 @@
     const roles = [...new Set(profiles().map((profile) => profile.role))];
     return `<div class="atlas-toolbar team-toolbar">
       <label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" placeholder="Search people" aria-label="Search people" value="${escapeHtml(state.search)}" data-team-search autocomplete="off"></label>
+      <div class="team-filters">
       ${manager ? `<div class="atlas-segmented" role="group" aria-label="Status">${['active', 'all', 'inactive'].map((key) => `<button type="button" data-team-profiles-filter="${key}" aria-pressed="${state.filter === key}">${humanize(key)}</button>`).join('')}</div>` : ''}
       ${roles.length > 1 ? `<label class="sr-only" for="team-role-filter">Role</label><select class="atlas-select team-toolbar__role" id="team-role-filter" data-team-role-filter><option value="all">All roles</option>${roles.map((key) => `<option value="${escapeHtml(key)}" ${state.roleFilter === key ? 'selected' : ''}>${escapeHtml(roleLabel(key))}</option>`).join('')}</select>` : ''}
       ${manager ? `<button type="button" class="atlas-chip" aria-pressed="${state.trainingDue}" data-team-chip="training">Training due</button><button type="button" class="atlas-chip" aria-pressed="${state.contactMissing}" data-team-chip="contact">Contact missing</button>` : ''}
+      </div>
       <div class="atlas-toolbar__end" data-team-count>${state.workspace ? `${filteredProfiles().length} shown` : ''}</div>
     </div>`;
   }
 
+  // The steps done in ink, the total in grey ("2 of 3"), a segment per step.
   function trainingCell(profile) {
     const t = training(profile);
     if (t.private) return '<span class="team-muted">—</span>';
     const total = Number(t.total_required || 0);
     if (!total) return '<span class="team-muted">No tasks</span>';
-    return `<span class="num">${Number(t.completed_required || 0)} of ${total}</span>${trainingDue(profile) ? ` ${pill('Due', 'warning')}` : ''}`;
+    const done = Number(t.completed_required || 0);
+    return `<span class="team-progress">${meter(done, total)}<span class="num">${done}<span class="team-muted"> of ${total}</span></span>${trainingDue(profile) ? ` ${flag('Due')}` : ''}</span>`;
   }
 
   function contactCell(profile) {
     if (profile.schedule_only) return '<span class="team-muted" title="No Alcedo account">—</span>';
     return Number(profile.emergency_contact_count || 0) > 0
       ? `<span class="team-ok">${icon('check')}<span>Saved</span></span>`
-      : pill('Missing', 'warning');
+      : flag('Missing');
   }
 
-  function shiftCell(profile) {
+  // Today's shift as its time and as a bar on tonight's shared axis, so the
+  // column reads as the evening's line-up (who opens, who closes).
+  function shiftCell(profile, axis) {
     const shift = todayShift(profile);
-    return shift ? `<span class="num">${escapeHtml(shiftTime(shift))}</span>` : '<span class="team-muted">—</span>';
+    if (!shift) return '<span class="team-muted">—</span>';
+    const span = axis ? shiftMinutes(shift) : null;
+    const range = axis ? axis.to - axis.from : 0;
+    const bar = span && range ? `<span class="team-shift__track" aria-hidden="true"><i data-team-span="${((span[0] - axis.from) / range).toFixed(4)},${((span[1] - axis.from) / range).toFixed(4)}"></i></span>` : '';
+    return `<span class="team-shift"><span class="num">${escapeHtml(shiftTime(shift))}</span>${bar}</span>`;
   }
 
   function tableMarkup(rows) {
     const manager = isManager();
-    return `<div class="atlas-table-wrap">
+    const axis = shiftAxis(rows);
+    return `<div class="atlas-table-wrap team-table-wrap"${axis ? ` data-team-axis="${clockLabel(axis.from)},${clockLabel(axis.to)}"` : ''}>
       <table class="atlas-table team-table">
         <thead><tr>
           <th scope="col">Person</th>
@@ -311,27 +395,44 @@
         </tr></thead>
         <tbody>${rows.map((profile) => `<tr class="team-table__row${profile.active ? '' : ' is-inactive'}" data-team-profile-select="${escapeHtml(profile.id)}">
           <td><a class="team-person" href="#team/${encodeURIComponent(profile.id)}" data-team-profile-open="${escapeHtml(profile.id)}">${avatar(profile)}<span class="team-person__text"><span class="cell-primary" data-team-profile-name>${escapeHtml(profile.name)}</span><span class="cell-sub">${escapeHtml([profile.job_title, manager ? profile.email : null].filter(Boolean).join(' · ') || roleLabel(profile.role))}</span></span></a></td>
-          <td>${pill(roleLabel(profile.role))}${profile.active ? '' : ` ${pill('Inactive')}`}</td>
-          <td>${shiftCell(profile)}</td>
+          <td><span class="team-role">${escapeHtml(roleLabel(profile.role))}</span>${profile.active ? '' : ` ${pill('Inactive')}`}</td>
+          <td>${shiftCell(profile, axis)}</td>
           ${manager ? `<td data-priority="2">${trainingCell(profile)}</td><td data-priority="3">${contactCell(profile)}</td>` : ''}
           <td class="col-actions"><span class="team-chevron">${icon('chevron-right')}</span></td>
         </tr>`).join('')}</tbody>
       </table>
-    </div>`;
+    </div>${lineupMarkup(rows, axis)}`;
+  }
+
+  // Under the table: today's line-up in one sentence, from the same shifts the
+  // bars draw ("3 of 4 on shift today, first in 16:00, last out 01:30").
+  function lineupMarkup(rows, axis) {
+    const spans = rows.map(todayShift).filter(Boolean).map(shiftMinutes);
+    if (!axis || !spans.length) return '';
+    const first = Math.min(...spans.map((span) => span[0]));
+    const last = Math.max(...spans.map((span) => span[1]));
+    return `<p class="atlas-table-foot team-lineup"><span>${spans.length} of ${rows.length} on shift today</span><span class="team-lineup__times">First in <span class="num">${clockLabel(first)}</span> · last out <span class="num">${clockLabel(last)}</span></span></p>`;
   }
 
   function phoneListMarkup(rows) {
     return `<ul class="atlas-table-list team-list">${rows.map((profile) => {
       const shift = todayShift(profile);
       const meta = [roleLabel(profile.role), shift ? `today ${shiftTime(shift)}` : null, profile.active ? null : 'Inactive'].filter(Boolean).join(' · ');
-      return `<li><a class="atlas-table-list__row team-list__row" href="#team/${encodeURIComponent(profile.id)}" data-team-profile-open="${escapeHtml(profile.id)}" data-team-profile-select="${escapeHtml(profile.id)}">${avatar(profile, 'atlas-avatar--lg')}<div class="atlas-table-list__body"><div class="atlas-table-list__title" data-team-profile-name>${escapeHtml(profile.name)}</div><div class="atlas-table-list__meta">${escapeHtml(meta)}</div></div><span class="team-chevron">${icon('chevron-right')}</span></a></li>`;
+      const due = isManager() && trainingDue(profile);
+      return `<li><a class="atlas-table-list__row team-list__row" href="#team/${encodeURIComponent(profile.id)}" data-team-profile-open="${escapeHtml(profile.id)}" data-team-profile-select="${escapeHtml(profile.id)}">${avatar(profile, 'atlas-avatar--lg')}<div class="atlas-table-list__body"><div class="atlas-table-list__title" data-team-profile-name>${escapeHtml(profile.name)}</div><div class="atlas-table-list__meta">${escapeHtml(meta)}</div></div>${due ? flag('Training due') : ''}<span class="team-chevron">${icon('chevron-right')}</span></a></li>`;
     }).join('')}</ul>`;
+  }
+
+  // Loading: the directory's own rows at their real size (avatar, name and
+  // detail lines), so nothing moves when the people arrive.
+  function skeletonRows(count) {
+    return Array(count).fill('<div class="team-skel__row"><span class="atlas-skel atlas-skel--circle team-skel__avatar"></span><span class="team-skel__text"><span class="atlas-skel team-skel__name"></span><span class="atlas-skel team-skel__sub"></span></span><span class="atlas-skel team-skel__cell"></span></div>').join('');
   }
 
   function directoryMarkup() {
     if (!state.workspace) {
       if (state.error) return '';
-      return `<div class="team-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(6)}<span class="sr-only">Loading the team</span></div>`;
+      return `<div class="team-skel" aria-busy="true">${skeletonRows(5)}<span class="sr-only">Loading the team</span></div>`;
     }
     const rows = filteredProfiles();
     if (!profiles().length) {
@@ -371,9 +472,15 @@
     const t = training(profile);
     const shifts = shiftsFor(profile);
     const titleId = options.titleId || 'team-detail-title';
+    // Under the name: what they do and where they stand today, in one grey line.
+    const shiftToday = todayShift(profile);
+    const facts = [
+      shiftToday ? `On shift today ${shiftTime(shiftToday)}` : null,
+      profile.can_view_sensitive && profile.start_date ? `Since ${formatDate(profile.start_date)}` : null
+    ].filter(Boolean);
     const head = `<div class="team-detail__head" data-team-profile-detail="${escapeHtml(profile.id)}" ${profile.schedule_only ? 'data-schedule-only' : ''}>
       <span class="team-profile-detail-avatar">${avatar(profile, 'atlas-avatar--xl')}</span>
-      <div class="team-detail__who"><h2 class="team-detail__name" id="${titleId}">${escapeHtml(profile.name)}</h2><p class="team-detail__role">${escapeHtml([profile.job_title, roleLabel(profile.role)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · '))}</p>${profile.active ? '' : pill('Inactive')}</div>
+      <div class="team-detail__who"><h2 class="team-detail__name" id="${titleId}">${escapeHtml(profile.name)}</h2><p class="team-detail__role">${escapeHtml([profile.job_title, roleLabel(profile.role)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · '))}</p>${facts.length ? `<p class="team-detail__facts">${facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join('')}</p>` : ''}${profile.active ? '' : pill('Inactive')}</div>
       <div class="team-profile-detail-actions team-detail__actions">${profile.can_edit_profile ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-profile-edit="${escapeHtml(profile.id)}">${icon('pencil')}Edit profile</button>` : ''}</div>
     </div>`;
     if (profile.schedule_only) {
@@ -403,8 +510,12 @@
   function shiftsSection(profile, shifts) {
     if (!state.roster.length && !shifts.length) return '';
     const vcs = vc();
+    const todayKey = today();
     return `<section class="team-detail__section"><h3 class="team-detail__title">Shifts this week</h3>${shifts.length
-      ? `<ul class="team-shifts">${shifts.map((shift) => `<li><span>${escapeHtml(vcs ? vcs.formatDate(String(shift.starts_local).slice(0, 10)) : String(shift.starts_local).slice(0, 10))}</span><span class="num">${escapeHtml(shiftTime(shift))}</span><span class="team-muted">${escapeHtml(shift.role_name || '')}</span></li>`).join('')}</ul>`
+      ? `<ul class="team-shifts">${shifts.map((shift) => {
+        const isToday = businessDateOf(shift) === todayKey;
+        return `<li${isToday ? ' class="is-today"' : ''}><span class="team-shifts__day">${escapeHtml(vcs ? vcs.formatDate(String(shift.starts_local).slice(0, 10)) : String(shift.starts_local).slice(0, 10))}${isToday ? '<span class="team-shifts__today">Today</span>' : ''}</span><span class="num">${escapeHtml(shiftTime(shift))}</span><span class="team-muted">${escapeHtml(shift.role_name || '')}</span></li>`;
+      }).join('')}</ul>`
       : `<p class="team-detail__text">No ${isManager() ? '' : 'published '}shifts this week.</p>`}</section>`;
   }
 
@@ -415,7 +526,7 @@
     const total = Number(t.total_required || 0);
     const done = Number(t.completed_required || 0);
     return `<section class="team-detail__section"><div class="team-detail__title-row"><h3 class="team-detail__title">Onboarding</h3><span class="team-muted num">${done} of ${total} required</span></div>
-      <div class="atlas-progress atlas-progress--thin" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}" aria-label="Onboarding progress"><i style="width:${total ? Math.round((done / total) * 100) : 0}%"></i></div>
+      ${total ? `<div class="team-onboarding__meter" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}" aria-label="Onboarding progress">${meter(done, total, 'team-meter--wide')}</div>` : ''}
       <ul class="team-tasks">${tasks.map((task) => `<li><button type="button" class="team-task${task.completed ? ' is-done' : ''}" data-team-profile-task="${escapeHtml(task.id)}" data-team-profile-task-completed="${task.completed ? 'true' : 'false'}" data-profile-id="${escapeHtml(profile.id)}" ${canToggle ? '' : 'disabled'} aria-pressed="${task.completed ? 'true' : 'false'}">
         <span class="team-task__mark">${icon(task.completed ? 'circle-check' : 'circle')}</span>
         <span class="team-task__body"><span class="team-task__title">${escapeHtml(task.title)}</span><span class="team-task__meta">${escapeHtml([task.required ? 'Required' : 'Optional', task.completed_at ? `Done ${formatDate(task.completed_at)}` : null].filter(Boolean).join(' · '))}</span></span>
@@ -434,14 +545,14 @@
     const resetMfa = !self && !adminLocked ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-member-reset-mfa="${escapeHtml(profile.id)}">${icon('shield')}Reset two-factor</button>` : '';
     if (!liveWrites || !profile.can_manage_access || adminLocked || self) {
       const reason = self ? 'You can’t change your own role or turn off your own access.' : adminLocked ? 'Only an administrator can change an administrator.' : 'Access can’t be changed here right now.';
-      return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3><dl class="team-detail__list">${row('Role', escapeHtml(roleLabel(profile.role)))}${row('Alcedo access', profile.active ? 'On' : 'Off')}</dl><p class="team-detail__hint">${escapeHtml(reason)}</p>${renew}${resetMfa}</section>`;
+      return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3><dl class="team-detail__list">${row('Role', escapeHtml(roleLabel(profile.role)))}${row('Alcedo access', profile.active ? 'On' : 'Off')}</dl><p class="team-detail__hint">${escapeHtml(reason)}</p>${renew || resetMfa ? `<div class="team-access__tools">${renew}${resetMfa}</div>` : ''}</section>`;
     }
     return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3>
       <form class="atlas-form team-access" data-team-profile-access-form data-profile-id="${escapeHtml(profile.id)}" novalidate>
         <div class="atlas-field"><label for="team-access-role">Role</label><select class="atlas-select" id="team-access-role" name="role">${['admin', 'manager', 'bartender', 'viewer'].map((key) => `<option value="${key}" ${profile.role === key ? 'selected' : ''}>${escapeHtml(roleLabel(key))}</option>`).join('')}</select></div>
         <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="team-access-active-label">Alcedo access</p><p class="atlas-toggle-row__help">When off, they’re signed out on their next action.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${profile.active ? 'true' : 'false'}" aria-labelledby="team-access-active-label" data-team-access-active></button></div>
-        <div class="atlas-form-foot">${renew}${resetMfa}<button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--sm">Save access</button></div>
-      </form></section>`;
+        <div class="atlas-form-foot"><button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--sm">Save access</button></div>
+      </form>${renew || resetMfa ? `<div class="team-access__tools">${renew}${resetMfa}</div>` : ''}</section>`;
   }
 
   function historySection(profile) {
@@ -477,6 +588,7 @@
   function openLayer({ id, panel, onClose, initialFocus }) {
     const root = window.AtlasModal.layer({ id, panel, className: 'team-layer', onClose, initialFocus });
     paintIcons();
+    applyGeometry(root);
     window.AtlasShell?.emit?.('team-profiles:rendered', { host: root });
     return root;
   }
@@ -499,6 +611,7 @@
     if (existing && existing.dataset.profileId === profile?.id) {
       existing.querySelector('.atlas-sheet__body').innerHTML = detailMarkup(profile, { titleId: 'team-sheet-title' });
       paintIcons();
+      applyGeometry(existing);
       window.AtlasShell?.emit?.('team-profiles:rendered', { host: existing });
       return;
     }
@@ -932,6 +1045,7 @@
       window.AtlasChrome?.setTopBar?.({});
     }
     paintIcons();
+    applyGeometry(view);
     if (focusId === 'team-search') {
       const input = view.querySelector('[data-team-search]');
       input?.focus({ preventScroll: true });
@@ -1087,7 +1201,7 @@
     if (target?.matches?.('[data-team-search]') && host()?.contains(target)) {
       state.search = target.value;
       const body = host().querySelector('.team-body');
-      if (body) { body.innerHTML = directoryMarkup(); paintIcons(); }
+      if (body) { body.innerHTML = directoryMarkup(); paintIcons(); applyGeometry(body); }
       const count = host().querySelector('[data-team-count]');
       if (count) count.textContent = `${filteredProfiles().length} shown`;
     }

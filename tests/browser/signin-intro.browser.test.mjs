@@ -14,7 +14,7 @@ import { harnessAvailable, launchAtlas, ROOT, settle } from './harness.mjs';
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 // The shipped sign-in lockup (the served brand asset). Compared byte for byte
 // against what the <img> fetches, so the sign-in always shows the real file.
-const LOCKUP_SVG = readFileSync(path.join(ROOT, 'apps/web/assets/brand/Atlas_Primary_Stacked_Midnight.svg'), 'utf8');
+const LOCKUP_SVG = readFileSync(path.join(ROOT, 'apps/web/assets/brand/alcedo/logo-black.svg'), 'utf8');
 
 const signIn = (options = {}) => launchAtlas({ signedIn: false, waitReady: false, ...options });
 const intro = (page) => page.evaluate(() => {
@@ -50,7 +50,7 @@ test('sign-in shows the static kit lockup (the video intro was removed); no <vid
     assert.equal(state.state, 'static', 'it settles straight to the static lockup');
     assert.equal(state.lockupOpacity, 1, 'the static lockup is visible');
     assert.equal(state.lockupAlt, 'Alcedo');
-    assert.equal(state.lockupSrc, 'assets/brand/Atlas_Primary_Stacked_Midnight.svg');
+    assert.equal(state.lockupSrc, 'assets/brand/alcedo/logo-black.svg');
     assert.equal(await page.evaluate(async (src) => (await fetch(src)).text(), state.lockupSrc), LOCKUP_SVG, 'the static logo is the shipped brand file, byte for byte');
     assert.equal(await page.evaluate(() => document.activeElement.id), 'email', 'the sign-in never steals focus');
     // Same browser session, second visit: still static, still no video.

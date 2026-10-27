@@ -1,0 +1,452 @@
+{
+  "apps/web/assets/atlas-bot/alcedo-mascot-head-glass.png": {
+    "keys": [
+      "20260930-glb2"
+    ],
+    "sha256": "5e9b0ebb70deb9838f625032c26daccec2f4abc55c6f72a3b61a664ad5ca12da"
+  },
+  "apps/web/assets/atlas-bot/alcedo-mascot-head.png": {
+    "keys": [
+      "20260930-glb2"
+    ],
+    "sha256": "c474c9f9dfd052868828d5aa85356206578f5d6b449b0786b04d2d601422cbee"
+  },
+  "apps/web/assets/atlas-bot/alcedo-mascot-poster.png": {
+    "keys": [
+      "20260930-glb2"
+    ],
+    "sha256": "2c791f1652baee86bd4d0e7eb968e98dfd888b3a7e72e9bd3be3a24f9b30ce09"
+  },
+  "apps/web/assets/atlas-bot/atlas-mascot-scene.js": {
+    "keys": [
+      "20260930-glb2"
+    ],
+    "sha256": "33d5686caac4aa9a12db79c2d231f149e9743efc3d0dfb584611acb248c29a38"
+  },
+  "apps/web/assets/css/atlas-ai.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "52e449d33d065c71b2a0ee246e8bb20752c2018c9e5e65d6ad02cc63b1895bd0"
+  },
+  "apps/web/assets/css/atlas-base.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "be97e245d3aa2ab62bdbe3b600c4db9bca250962090574d30b097e5d3369cc03"
+  },
+  "apps/web/assets/css/atlas-components.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "1fa3e5c63bc45a368653c1c4f665bc0d929df833fdc9d3a1bbae009b2e905719"
+  },
+  "apps/web/assets/css/atlas-shell.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "14465eb39e38749cb53685866bb2780a7f44e85d31f82714d4572ba5481afe78"
+  },
+  "apps/web/assets/css/atlas-tokens.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "1ef2d056f7fc9af8dcabae7b384054630c568ea1975a712ad2b6f34d570f3f2c"
+  },
+  "apps/web/assets/css/bookings-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "0ed583b4b0e8ffba61348c0615c241bc20ecfb9343eaeb425f4f80ed4e3e1c6c"
+  },
+  "apps/web/assets/css/data-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "1e4c0cc70a932e720f44d8adfe9c5e5b3bb64d833c3c1041b7adfbbdb46276a7"
+  },
+  "apps/web/assets/css/finance-pricing-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "66577b355cac75097e380a99c3aceeef88292b4d5d257c37fd2d384970d10a37"
+  },
+  "apps/web/assets/css/home.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "44c19453454b34d8a8999cc83a337b6fac67ee0eb174e8a5ca692e1c4f25f54d"
+  },
+  "apps/web/assets/css/inventory.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "bf7ee01fb079342ea173ac72b128f564d05218a4b6aa0bae63887e9e8c853531"
+  },
+  "apps/web/assets/css/knowledge-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "d34f47bec406bcd71d4212259f1e1438ff887e151c30eda73c125045142bc125"
+  },
+  "apps/web/assets/css/marketing-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "aa631de2bf86c2fec03b18b0374d8bf9f20375b12b1871934cd9b8d489c31822"
+  },
+  "apps/web/assets/css/operations.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "7da7d6c4419ac38564568826474c154ce8e12b35df2a2a79b05dfa9e67f9f5b2"
+  },
+  "apps/web/assets/css/purchasing.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "44fd9368b32c77b46c481e829ad38b77b42e1fd54f8f670c53626435129dcde0"
+  },
+  "apps/web/assets/css/recipes.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "091cbca3a2bd318ed804e5b9b9af84ee58196f54cf47b0987bb086f980224bf5"
+  },
+  "apps/web/assets/css/reports-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "9e4d39486aab50f44f6c7d7fa8f0de29a186b407d4b76e0f2c0e902f20893222"
+  },
+  "apps/web/assets/css/settings-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "6faa5b002032edf62ee832a2590eebae7c5e47734df841d5c3bcb160ebd1fae0"
+  },
+  "apps/web/assets/css/shifts-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "0434335e110b60297a3b9d38ccf241ddfa8f698e4ea9f110c4ae96cfb1a744ed"
+  },
+  "apps/web/assets/css/team-messages.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "c6cb932ded841ad1430fd416574d46f3b6b7368f3c7f88e5718c083d6d1db3d9"
+  },
+  "apps/web/assets/css/training-workspace.css": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "8e7211c1fa91e688a1d1a2d8ac206e829d9130803218fbd84f7392e459872149"
+  },
+  "apps/web/assets/js/account-invitation.js": {
+    "keys": [
+      "20261016-s99"
+    ],
+    "sha256": "63f9e2403d41d4eb1e2f0b863d4d9307369dd9483c0aec134fb59cec3a35a36e"
+  },
+  "apps/web/assets/js/accounting-workspace.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "fc2a22c9dcfc1d034db146fc5ffa7de00c9f3abac8d8959cf644b87beeec6e0d"
+  },
+  "apps/web/assets/js/alcedo-icons.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "d975c312b49a5b9fb974295001c491f8845b80a48ecc9026e9aea790f129c2f7"
+  },
+  "apps/web/assets/js/atlas-ai-voice.js": {
+    "keys": [
+      "20260926-s91c"
+    ],
+    "sha256": "59790a9224814dd678c19ccf7f13303b703bbed0687bd8f421b8f64b65f02fb2"
+  },
+  "apps/web/assets/js/atlas-ai.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "d9c83a48327f9c08091647a0746e3a8b50f239b6f6daf84d45777ecce095f39f"
+  },
+  "apps/web/assets/js/atlas-api.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "b3d38c835a9afde83770bb7cd2dbfea2b9b360f18256809a1898e715a0ccd6c5"
+  },
+  "apps/web/assets/js/atlas-app.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "aa9c908198c1b1a74b5f0a4f975090a9e2c50e02b183e302eec44b31ea4981d5"
+  },
+  "apps/web/assets/js/atlas-bot.js": {
+    "keys": [
+      "20261027-swgl"
+    ],
+    "sha256": "82f936ee6bd0e752d248604239e9221b665e72ff1a7e275ac66ce6d67e2516ab"
+  },
+  "apps/web/assets/js/atlas-calculations.js": {
+    "keys": [
+      "20260929-s90p"
+    ],
+    "sha256": "c45ea16e7ac5ed2097a9bad431acaf510b107e990a83219bc2eec26e16f05dd2"
+  },
+  "apps/web/assets/js/atlas-capture.js": {
+    "keys": [
+      "20260929-s90u"
+    ],
+    "sha256": "289b345b0ef759606f5f0512b888ca7f85b8eacf648df5935a9189d500b1bc98"
+  },
+  "apps/web/assets/js/atlas-chrome.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "e153cc865db5670bc4a8f6e374371fbd97be4adf57e6d2108e2d270c7ffab88a"
+  },
+  "apps/web/assets/js/atlas-inventory.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "141bd69e4662a0f93ce9e0c984a4eee1075db0a8cdb54a2560134cc4dda0e7bd"
+  },
+  "apps/web/assets/js/atlas-mfa-enroll.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "e129fefb638301d1685ffe466976f70ae4c94f8ffa3dd8c13b3f45e91989c822"
+  },
+  "apps/web/assets/js/atlas-palette.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "45b8c37cbcd0c0eb4355e3bc9f9e95746345d1495b414e63297efdca65e43497"
+  },
+  "apps/web/assets/js/atlas-purchasing.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "9b2191361bf64ee5552e740405d39bb7bafa51d37a3d088b4f3801aabb8e7919"
+  },
+  "apps/web/assets/js/atlas-search.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "e162abb97941c24baeea033032eb61c990c557253d73cb8b7feca9ab05b68fff"
+  },
+  "apps/web/assets/js/atlas-shell.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "828be3ad730b8d06db9b0ab914a5694d216f16c3cdf90537c3d89f31ecf215f3"
+  },
+  "apps/web/assets/js/atlas-signin-intro.js": {
+    "keys": [
+      "20260924-brand1"
+    ],
+    "sha256": "c611421a53a1f9c33006f25f6f6e278e9e20488546effb08ed1777ce95697385"
+  },
+  "apps/web/assets/js/atlas-stock-truth.js": {
+    "keys": [
+      "20260930-alcedo2"
+    ],
+    "sha256": "4ef69a673ca7fafe25da0a4ffa492c171457163beacf48e9744c94985131932d"
+  },
+  "apps/web/assets/js/atlas-venue-clock.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "16d47d31227f645b133be360a9277cadbd892f947fe7248765c7800ca3b11163"
+  },
+  "apps/web/assets/js/bookings-notifications.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "6a2511ffb67f065998c56f30d09a34f63f9a0b9bbcf46c93f012ab9169dd35ab"
+  },
+  "apps/web/assets/js/bookings-workspace.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "ee3517fb3b5bc7ad4d0f3fc9959a5644e97bdd28f7d0c0af66666b35f4bda7dd"
+  },
+  "apps/web/assets/js/data-workspace.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "674370b537ad597fb9be657671c8d53b719024ff68be37c5d59d909832996c1b"
+  },
+  "apps/web/assets/js/finance-pricing-workspace.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "873b905dea044bdb64eb13821d413c4eada195b88c5a4114e58acf8c8f9a6e46"
+  },
+  "apps/web/assets/js/flavor-map.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "4e6e32b92215f1acc0299844e61993e136c16d2d6a343225129c5cccbfb87b24"
+  },
+  "apps/web/assets/js/home.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "8c649d556c9631337f497ceee3fa922342c3484454a8b5e706869210cdec8290"
+  },
+  "apps/web/assets/js/kanel-pricing-engine.js": {
+    "keys": [
+      "20261017-kanel1"
+    ],
+    "sha256": "1ca2da45641c22158c632b32ef6df0b2b01e1cf2ebada012e15a43356ba18b64"
+  },
+  "apps/web/assets/js/knowledge-workspace.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "f67764387a5430a2eb2dec5e60b75e350effa8bddc8c90eac11c812e2800b72d"
+  },
+  "apps/web/assets/js/marketing-media.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "5c70fd8202ffdefebbd368396009cfd7227ba3137435b1bd15e765043fb5d2c2"
+  },
+  "apps/web/assets/js/marketing-platform-rules.js": {
+    "keys": [
+      "20261004-s94b"
+    ],
+    "sha256": "baf6457eaf65c6cf0aa880d30dd3438ca3e70f52b0424865f68c7b346d36c516"
+  },
+  "apps/web/assets/js/marketing-workspace.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "25bf89c68da9c0c3c0a00fda7b632e7697187d1005d57e5dca64fa3e6afba77b"
+  },
+  "apps/web/assets/js/modal.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "8224a653d5baa0ec906c861bc418fb0bc041f6743a239b57314e3633e994b279"
+  },
+  "apps/web/assets/js/operations.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "43d0c32949386cbe2927b0287129a98e2e66765b2f02caf47be0c491febc6f4a"
+  },
+  "apps/web/assets/js/public-menu.js": {
+    "keys": [
+      "20261027-l10n"
+    ],
+    "sha256": "cd5a0165d93442f0f7aac11401d0194631b385c4fed419da5e84e748399889d7"
+  },
+  "apps/web/assets/js/pwa.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "24f1ebd547719f92fe88f1f73797678b63cb4da2eb31a2c6805998e33241cf00"
+  },
+  "apps/web/assets/js/recipes.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "6f07cc4146fe383289abaca026daab430790f01a866ec52efa8c99efb8673690"
+  },
+  "apps/web/assets/js/rehearsal-boundary.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "33a3f02dde5ac1141d0b076bc9121d9d3b292956c77f211a5a8536f5c98b8d26"
+  },
+  "apps/web/assets/js/reports-overview.js": {
+    "keys": [
+      "20260930-s90g"
+    ],
+    "sha256": "d81f9498b65ee1e0a298c0662fc42b38bd5c0f2861eb0d01fc6ad25aaac09a07"
+  },
+  "apps/web/assets/js/reports-workspace.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "e187f83674840eb8a704a9b9cfafa2429900330707819e445cc6110530939b72"
+  },
+  "apps/web/assets/js/runtime-module-guard.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "6e8ebffbcec022da41d5aff0508b2d4eaec13834086ba298a2b7c6c3a5830461"
+  },
+  "apps/web/assets/js/s38-app-remediation.js": {
+    "keys": [
+      "20260929-s90f"
+    ],
+    "sha256": "cab36e460a4d9e5d283521502f810ad6db38ecbf20a454d51d99e50b46d7789c"
+  },
+  "apps/web/assets/js/settings-workspace.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "50d5c52b9d95eab28f89dba6c7187e5a2b8c7c9afafef9c7b6e37f3802db84eb"
+  },
+  "apps/web/assets/js/shifts-workspace.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "aa4f60d63ba1ad4bb6bb9acb040827ae05c41c2c92ce821ea906e1c13633da1f"
+  },
+  "apps/web/assets/js/stock-count-workspace.js": {
+    "keys": [
+      "20261027-audit"
+    ],
+    "sha256": "eed220f26dd3f5ac1e43d5ce3fe622dec262e289213ae512054d6833a49609aa"
+  },
+  "apps/web/assets/js/system-workspace.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "6343568257f06fe0862f6977457798b6ec364ecd3b0b2f7d9a75273d95f07f6f"
+  },
+  "apps/web/assets/js/team-messages.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "78f0243781c6135d36b39ffed263abfefc9c8523e12596b0b3bcaee8e8f917e8"
+  },
+  "apps/web/assets/js/team-profile-photos.js": {
+    "keys": [
+      "20261002-s93r"
+    ],
+    "sha256": "81e990675c7e595fe8ea89749660b7b7674037f7f14e68fb1a7ecac1ceea78e9"
+  },
+  "apps/web/assets/js/team-profiles-bootstrap.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "9a382d6855b41f4707d862e3e4914a8f4e0a07c2baa2b0b184386dcdca6ed78b"
+  },
+  "apps/web/assets/js/team-profiles.source.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "6aebb22ea7611ac07964312f3ecbdc7f769163af61e251f4ef7280e93db4f88d"
+  },
+  "apps/web/assets/js/team-unread-badge.js": {
+    "keys": [
+      "20261027-poll"
+    ],
+    "sha256": "351fd305aec60583d2b5ae7e6bd3833656e22a4a9cdd2b156a8fcfb349560ead"
+  },
+  "apps/web/assets/js/training-workspace.js": {
+    "keys": [
+      "20261026-redesign"
+    ],
+    "sha256": "4eca14bfe25b9d777993b6be0d218222cf7754dc96a8f2786c2cd45bbeea326b"
+  }
+}

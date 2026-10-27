@@ -3,6 +3,9 @@
 // clock so that dates and relative labels are identical between runs.
 import { USERS } from '../harness.mjs';
 import { emptyFunctions, settingsWorkspace } from '../fixtures.mjs';
+import { bookingsBackend } from '../bookings-fixtures.mjs';
+import { teamBackend } from '../people-fixtures.mjs';
+import { atlasAiBackend, decisionsBackend } from '../atlas-ai-fixtures.mjs';
 
 export const FROZEN_NOW = Date.parse('2026-09-24T12:00:00Z');
 const iso = (days) => new Date(FROZEN_NOW + days * 86400000).toISOString();
@@ -64,9 +67,9 @@ function teamMessages(user) {
     { id: 'm2', sender_id: USERS.admin.id, sender_label: 'Imad El Moubarik', sender_role: 'admin', body: 'Ordered from Mata.', message_type: 'user', created_at: iso(-0.1), is_own: user.id === USERS.admin.id }
   ];
   return () => ({
-    snapshot: { channels: [{ key: 'general', name: 'General', unread_count: 0 }], messages, selected_channel_key: 'general', summary: { total_unread: 0, active_members: 2 } },
+    snapshot: { channels: [{ key: 'general', name: 'General', unread_count: 0, can_post: true, last_message: messages[messages.length - 1] }], messages, selected_channel_key: 'general', summary: { total_unread: 0, active_members: 2 } },
     members,
-    staff: { id: user.id, label: user.display_name, role: user.role }
+    staff: { id: user.id, label: user.display_name, role: user.role, can_post: true }
   });
 }
 
@@ -79,7 +82,14 @@ export function captureFixtures(user = USERS.admin) {
       'atlas-knowledge': { workspace: { articles: [{ id: 'k1', title: 'Opening checklist', category_name: 'Checklists', summary: 'Before doors open' }] } },
       'atlas-shifts': shifts(user),
       'atlas-team-messages': teamMessages(user),
-      'atlas-settings': () => ({ workspace: settingsWorkspace(), staff: { id: user.id, label: user.display_name, role: user.role, active: true } })
+      'atlas-settings': () => ({ workspace: settingsWorkspace(), staff: { id: user.id, label: user.display_name, role: user.role, active: true } }),
+      // Populated rather than empty, so the review captures show these
+      // modules with data (their own test fixtures, reused as-is).
+      'atlas-bookings': bookingsBackend().handler,
+      'atlas-team-profiles': teamBackend({ user }).handler,
+      'atlas-team-profile-photos': { photos: [], staff: { id: user.id, can_manage_team: user.role === 'admin' } },
+      'atlas-ai': atlasAiBackend().handler,
+      'atlas-phase3-brain': decisionsBackend()
     }
   };
 }

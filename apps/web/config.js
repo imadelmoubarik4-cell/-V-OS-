@@ -78,8 +78,9 @@ window.VABAR_CONFIG = {
   BOOKING_NOTIFICATIONS_REFRESH_SECONDS: 60,
 };
 
-// Several Atlas modules add Lucide placeholders while observing the application
-// shell. Lucide-generated SVGs can otherwise retrigger those observers forever.
+// Several Atlas modules add icon placeholders (<i data-lucide>, rendered by the
+// ALCEDO icon set in assets/js/alcedo-icons.js) while observing the application
+// shell. Rendered SVGs could otherwise retrigger those observers forever.
 // Render icons only when unresolved source placeholders exist and block re-entry.
 (function installAtlasLucideStabilityGuard() {
   const install = () => {
@@ -109,8 +110,18 @@ window.VABAR_CONFIG = {
   window.setTimeout(() => window.clearInterval(timer), 10000);
 })();
 
+// A stylesheet counts as present when any linked sheet is the same file,
+// whatever its ?v= cache key (L26): index.html links every runtime module
+// sheet, and a second copy under another key would be appended last and win
+// the cascade with stale rules.
+function atlasStylesheetPresent(stylesheetPath) {
+  const pathOf = (href) => { try { return new URL(href, document.baseURI).pathname; } catch (_) { return String(href).split('?')[0]; } };
+  const wanted = pathOf(stylesheetPath);
+  return [...document.querySelectorAll('link[rel~="stylesheet"][href]')].some((link) => pathOf(link.getAttribute('href')) === wanted);
+}
+
 function loadAtlasAssetOnce({ stylesheetPath, scriptPath, globalName, dataAttribute }) {
-  if (stylesheetPath && !document.querySelector(`link[href="${stylesheetPath}"]`)) {
+  if (stylesheetPath && !atlasStylesheetPresent(stylesheetPath)) {
     const stylesheet = document.createElement('link');
     stylesheet.rel = 'stylesheet';
     stylesheet.href = stylesheetPath;
@@ -151,14 +162,14 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93r',
-  scriptPath: 'assets/js/team-messages.js?v=20261002-s93r',
+  stylesheetPath: 'assets/css/team-messages.css?v=20261026-redesign',
+  scriptPath: 'assets/js/team-messages.js?v=20261026-redesign',
   globalName: 'AtlasTeamMessages',
   dataAttribute: 'atlasTeamMessages',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-unread-badge.js?v=20261002-s93r',
+  scriptPath: 'assets/js/team-unread-badge.js?v=20261027-poll',
   globalName: 'AtlasTeamUnreadBadge',
   dataAttribute: 'atlasTeamUnreadBadge',
 }));
@@ -168,14 +179,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // the server-side booking inbox; independent of web-push delivery. Loads after
 // window load so it never delays startup.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/bookings-notifications.js?v=20261025-s110b',
+  scriptPath: 'assets/js/bookings-notifications.js?v=20261027-audit',
   globalName: 'AtlasBookingsNotifications',
   dataAttribute: 'atlasBookingsNotifications',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94b',
+  stylesheetPath: 'assets/css/marketing-workspace.css?v=20261026-redesign',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20261027-audit',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -183,7 +194,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // S92 Accounting (administrators only): invoices, receipts, reimbursements
 // and the accountant's monthly export, through the atlas-accounting gateway.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/accounting-workspace.js?v=20261001-s92k',
+  scriptPath: 'assets/js/accounting-workspace.js?v=20261026-redesign',
   globalName: 'AtlasAccounting',
   dataAttribute: 'atlasAccounting',
 }));
@@ -197,7 +208,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94c',
+  scriptPath: 'assets/js/marketing-media.js?v=20261026-redesign',
   globalName: 'AtlasMarketingMedia',
   dataAttribute: 'atlasMarketingMedia',
 }));
@@ -206,7 +217,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // bootstrap uses browser-native gzip decompression, then installs the Atlas CSS
 // and JavaScript through Blob URLs without inline eval.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-profiles-bootstrap.js?v=20260929-s90f',
+  scriptPath: 'assets/js/team-profiles-bootstrap.js?v=20261026-redesign',
   globalName: 'AtlasTeamProfilesBootstrap',
   dataAttribute: 'atlasTeamProfilesBootstrap',
 }));
@@ -224,8 +235,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Checkpoint F replaces the Shifts placeholder with a private weekly planner,
 // availability, time-off, publishing and confirmation workspace.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-workspace.css',
-  scriptPath: 'assets/js/shifts-workspace.js?v=20261002-s103',
+  stylesheetPath: 'assets/css/shifts-workspace.css?v=20261026-redesign',
+  scriptPath: 'assets/js/shifts-workspace.js?v=20261026-redesign',
   globalName: 'AtlasShifts',
   dataAttribute: 'atlasShifts',
 }));
@@ -234,8 +245,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // role-aware library. Drafts remain manager-only, while staff receive only
 // published versions and their version-specific acknowledgement state.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/knowledge-workspace.css',
-  scriptPath: 'assets/js/knowledge-workspace.js?v=20261003-bot1',
+  stylesheetPath: 'assets/css/knowledge-workspace.css?v=20261026-redesign',
+  scriptPath: 'assets/js/knowledge-workspace.js?v=20261026-redesign',
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
 }));
@@ -244,16 +255,16 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // and explicit completion. Registers the shell view 'training' for #knowledge/training
 // and #knowledge/training/<lesson>.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/training-workspace.css?v=20261015-s98',
-  scriptPath: 'assets/js/training-workspace.js?v=20261015-s98',
+  stylesheetPath: 'assets/css/training-workspace.css?v=20261026-redesign',
+  scriptPath: 'assets/js/training-workspace.js?v=20261026-redesign',
   globalName: 'AtlasTraining',
   dataAttribute: 'atlasTraining',
 }));
 
 // Bookings: staff day view + manager room/rules configuration.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
-  scriptPath: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
+  stylesheetPath: 'assets/css/bookings-workspace.css?v=20261026-redesign',
+  scriptPath: 'assets/js/bookings-workspace.js?v=20261027-audit',
   globalName: 'AtlasBookings',
   dataAttribute: 'atlasBookings',
 }));
@@ -270,8 +281,8 @@ if (window.VABAR_CONFIG && window.VABAR_CONFIG.KANEL_PRICING_ENABLED) {
     dataAttribute: 'kanelPricingEngine',
   }));
   loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-    stylesheetPath: 'assets/css/finance-pricing-workspace.css?v=20261017-kanel1',
-    scriptPath: 'assets/js/finance-pricing-workspace.js?v=20261017-kanel1',
+    stylesheetPath: 'assets/css/finance-pricing-workspace.css?v=20261026-redesign',
+    scriptPath: 'assets/js/finance-pricing-workspace.js?v=20261027-audit',
     globalName: 'AtlasFinancePricing',
     dataAttribute: 'atlasFinancePricing',
   }));
@@ -281,8 +292,8 @@ if (window.VABAR_CONFIG && window.VABAR_CONFIG.KANEL_PRICING_ENABLED) {
 // read-only analysis workspace. It pulls live source records through the
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/reports-workspace.css?v=20260929-s90f',
-  scriptPath: 'assets/js/reports-workspace.js?v=20261003-bot1',
+  stylesheetPath: 'assets/css/reports-workspace.css?v=20261026-redesign',
+  scriptPath: 'assets/js/reports-workspace.js?v=20261027-audit',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));
@@ -290,7 +301,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Settings › System health (administrators): read-only application health,
 // environments, data freshness, jobs, incidents and recovery references.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/system-workspace.js?v=20260929-s90f',
+  scriptPath: 'assets/js/system-workspace.js?v=20261026-redesign',
   globalName: 'AtlasSystem',
   dataAttribute: 'atlasSystem',
 }));
@@ -298,8 +309,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Checkpoint J replaces the Settings placeholder with a versioned, role-aware
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94',
-  scriptPath: 'assets/js/settings-workspace.js?v=20261016-s99',
+  stylesheetPath: 'assets/css/settings-workspace.css?v=20261026-redesign',
+  scriptPath: 'assets/js/settings-workspace.js?v=20261027-audit',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));

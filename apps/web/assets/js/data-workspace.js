@@ -439,10 +439,15 @@
       return;
     }
     state.root.innerHTML = `<div class="atlas-page data-page${state.tab === 'import' ? ' is-detail' : ''}">
-      ${root.AtlasShell.pageHead({ title: 'Data', sub: headSub(), actions: [{ label: 'Import a file', icon: 'upload', variant: 'primary', attrs: { 'data-data-upload': '' } }] })}
+      ${root.AtlasShell.pageHead({ title: 'Data', sub: headSub(), actions: [{ label: uploadLabel(), icon: 'upload', variant: 'primary', attrs: { 'data-data-upload': '' } }] })}
       ${tabsMarkup()}
       <div class="data-body">${bodyMarkup()}</div>
     </div>`;
+    // A sideways row of issue types (phones) keeps the chosen type in view
+    // without moving the page.
+    const nav = state.root.querySelector('.data-issue-nav');
+    const chosen = nav?.querySelector('.is-active');
+    if (nav && chosen && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, chosen.offsetLeft - nav.offsetLeft - 16);
     if (focusKey) {
       const target = state.root.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
       if (target) {
@@ -466,6 +471,18 @@
   function workerEndpoint() {
     const target = String(cfg.SUPABASE_URL || '').replace(/\/$/, '');
     return cfg.SUPABASE_URL === target && cfg.IMPORT_WORKER_API === `${target}/functions/v1/atlas-import-worker` ? cfg.IMPORT_WORKER_API : '';
+  }
+  // Audit L41: while the worker is off (production today) an upload is only
+  // stored: nothing reads it, so the copy says "Store a file" and the page
+  // promises no Review or Import step. The gate above is unchanged.
+  function readingOn() {
+    return Boolean(workerEndpoint());
+  }
+  function uploadLabel() {
+    return readingOn() ? 'Import a file' : 'Store a file';
+  }
+  function readingOffNotice() {
+    return readingOn() ? '' : alertMarkup({ tone: 'info', title: 'File reading is off.', body: 'Uploaded files are stored privately for managers. Alcedo doesn\'t read or import them yet, so your live records never change from an upload.' });
   }
   function workerStatus(batch) {
     return batch?.record_counts?.worker === 'atlas-csv-1' ? batch.record_counts.processing_status : null;
@@ -511,6 +528,14 @@
     return `${(value / (1024 ** index)).toFixed(index ? 1 : 0)} ${units[index]}`;
   }
 
+  // One plain grey glyph per file type, in a fixed slot before the name.
+  function fileIcon(batch) {
+    const ext = String(batch.file_extension || extensionOf(sourceName(batch))).toLowerCase();
+    if (['csv', 'xlsx', 'xls'].includes(ext)) return 'file-spreadsheet';
+    if (['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(ext)) return 'image';
+    return 'file-text';
+  }
+
   function filteredImports() {
     const query = state.imports.query.trim().toLowerCase();
     return state.imports.rows
@@ -530,7 +555,8 @@
     }
     if (!imports.loaded || (imports.loading && !imports.rows.length)) return skeletonRows();
     if (!imports.rows.length) {
-      return emptyMarkup({ icon: 'file-up', title: 'No imports yet', text: 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.', action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-upload><i data-lucide="upload"></i>Import a file</button>' });
+      const text = readingOn() ? 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.' : 'Store a spreadsheet, invoice or stock count privately for managers. Alcedo doesn\'t read uploaded files yet, so nothing is imported.';
+      return emptyMarkup({ icon: 'file-up', title: readingOn() ? 'No imports yet' : 'No files yet', text, action: `<button type="button" class="atlas-btn atlas-btn--secondary" data-data-upload><i data-lucide="upload"></i>${uploadLabel()}</button>` });
     }
     const rows = filteredImports();
     const segmented = [['all', 'All'], ['attention', 'Needs attention'], ['imported', 'Imported']]
@@ -541,20 +567,21 @@
           const [label, tone] = importStatus(batch);
           const records = recordCount(batch);
           const by = uploadedBy(batch);
-          return `<tr><td><a class="cell-primary" href="#data/import/${attr(encodeURIComponent(batch.id))}">${escapeHtml(sourceName(batch))}</a><span class="cell-sub">${escapeHtml(formatBytes(batch.file_size))}</span></td>
+          return `<tr><td><span class="data-file"><i data-lucide="${fileIcon(batch)}"></i><span class="data-file__text"><a class="cell-primary" href="#data/import/${attr(encodeURIComponent(batch.id))}">${escapeHtml(sourceName(batch))}</a><span class="cell-sub">${escapeHtml(formatBytes(batch.file_size))}</span></span></span></td>
             <td data-priority="2">${escapeHtml(scopeLabel(batch.entity_scope))}</td>
             <td>${pill(label, tone)}</td>
             <td class="is-num" data-priority="3">${records === null ? '<span title="Not read yet">—</span>' : escapeHtml(records)}</td>
             <td data-priority="3">${by ? escapeHtml(by) : '<span title="Uploader name is not loaded on this page">—</span>'}</td>
-            <td>${escapeHtml(formatRelative(batch.created_at))}</td></tr>`;
+            <td class="data-when">${escapeHtml(formatRelative(batch.created_at))}</td></tr>`;
         }).join('')}</tbody></table></div>
       <ul class="atlas-table-list">${rows.map((batch) => {
         const [label, tone] = importStatus(batch);
         return `<li><a class="atlas-table-list__row" href="#data/import/${attr(encodeURIComponent(batch.id))}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${escapeHtml(sourceName(batch))}</div><div class="atlas-table-list__meta">${escapeHtml(scopeLabel(batch.entity_scope))} · ${escapeHtml(formatRelative(batch.created_at))}</div></div><div class="atlas-table-list__value">${pill(label, tone)}</div></a></li>`;
       }).join('')}</ul>
-      <div class="atlas-table-foot"><span>${plural(rows.length, 'file', 'files')}</span><span>Files stay private to managers. Nothing changes live records until you review it.</span></div>`
+      <div class="atlas-table-foot"><span>${plural(rows.length, 'file', 'files')}</span><span>${readingOn() ? 'Files stay private to managers. Nothing changes live records until you review it.' : 'Files stay private to managers. Alcedo doesn\'t read them yet.'}</span></div>`
       : emptyMarkup({ icon: 'search-x', title: `No files match “${state.imports.query || 'this filter'}”`, action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-clear-imports>Clear filters</button>' });
     return `${imports.error ? alertMarkup({ tone: 'warning', title: 'The list couldn\'t be refreshed.', body: 'Showing the last loaded files.' }) : ''}
+      ${readingOffNotice()}
       <div class="atlas-toolbar">
         <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" placeholder="Search files" aria-label="Search files" value="${attr(state.imports.query)}" data-data-import-search data-focus-key="import-search"></label>
         <div class="atlas-segmented" role="group" aria-label="Show">${segmented}</div>
@@ -579,13 +606,16 @@
     const uploaded = !['prepared', 'uploading'].includes(stage);
     const reviewed = COMPLETE.has(batch.status);
     const step = (done, current, n, text) => `<li class="${done ? 'is-done' : current ? 'is-current' : ''}"${current ? ' aria-current="step"' : ''}><span class="n">${done ? '<i data-lucide="check"></i>' : n}</span>${text}</li>`;
-    const steps = `<ol class="atlas-steps" aria-label="Import progress">
+    const workerOn = readingOn();
+    // With reading off, a file that was only stored has no Review or Import
+    // ahead of it; files something already read (or failed) keep their steps.
+    const storedOnly = !workerOn && !worker && !reviewed && !['ready', 'failed'].includes(batch.status) && !['reading', 'extracting', 'matching', 'importing'].includes(stage);
+    const steps = storedOnly ? '' : `<ol class="atlas-steps" aria-label="Import progress">
         ${step(uploaded, !uploaded, 1, 'Upload')}<li class="sep" aria-hidden="true"></li>
         ${step(reviewed, uploaded && !reviewed, 2, 'Review')}<li class="sep" aria-hidden="true"></li>
         ${step(reviewed, false, 3, 'Import')}
       </ol>`;
     const actions = [];
-    const workerOn = Boolean(workerEndpoint());
     if (workerOn && !worker && batch.status === 'uploaded' && batch.entity_scope === 'inventory' && String(batch.file_extension || '').toLowerCase() === 'csv') actions.push(['stage', 'play', 'Read this file', 'primary']);
     if (workerOn && worker === 'claimed') actions.push(['stage', 'play', 'Continue reading', 'primary']);
     if (worker === 'staged' || batch.status === 'ready') actions.push(['review', 'list-checks', 'Review rows', worker === 'staged' ? 'secondary' : 'primary']);
@@ -593,27 +623,41 @@
     if (workerOn && ['staged', 'claimed'].includes(worker)) actions.push(['discard', 'undo-2', 'Discard reading', 'ghost']);
     if (!worker && (batch.status === 'failed' || batch.status === 'cancelled')) actions.push(['retry', 'rotate-ccw', 'Try again', 'secondary']);
     if (batch.storage_bucket && batch.storage_path) actions.push(['source', 'download', 'Download file', 'ghost']);
-    if (!worker && !TERMINAL.has(batch.status) && batch.status !== 'ready') actions.push(['cancel', 'circle-x', 'Cancel import', 'ghost']);
-    if (!worker) actions.push(['delete', 'trash-2', 'Delete import', 'danger']);
+    // Nothing is reading a stored-only file, so there is no import to cancel.
+    if (!worker && !storedOnly && !TERMINAL.has(batch.status) && batch.status !== 'ready') actions.push(['cancel', 'circle-x', 'Cancel import', 'ghost']);
+    if (!worker) actions.push(['delete', 'trash-2', storedOnly ? 'Delete file' : 'Delete import', 'danger']);
     const buttons = actions.map(([action, icon, text, variant]) => `<button type="button" class="atlas-btn atlas-btn--${variant}" data-data-batch-action="${action}" data-batch-id="${attr(batch.id)}"${busy ? ' disabled aria-busy="true"' : ''}><i data-lucide="${icon}"></i>${text}</button>`).join('');
     const records = recordCount(batch);
     const failure = batch.status === 'failed'
       ? alertMarkup({ title: 'Alcedo couldn\'t read this file.', body: 'Your live records were not changed. Try again, or upload a corrected file — spreadsheets work best as CSV with one product per row.', action: '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-data-upload>Upload a corrected file</button>' })
       : '';
+    // What happened and what comes next, in one sentence under the steps.
+    const where = batch.status === 'failed' ? ''
+      : stage === 'cancelled' ? 'Cancelled. The file is kept so you can try again or delete it.'
+      : stage === 'complete' ? 'Imported. The rows you approved are in your live records.'
+      : worker === 'staged' || batch.status === 'ready' ? `Alcedo read ${records === null ? 'this file' : plural(records, 'row', 'rows')}. Review ${records === 1 ? 'it' : 'every row'} before anything is imported.`
+      : label === 'Reading' ? 'Alcedo is reading this file. This page updates by itself.'
+      : storedOnly ? (uploaded ? 'Stored privately for managers. File reading is off, so Alcedo won\'t read or import this file; nothing has changed in your live records.' : 'This file hasn\'t finished uploading. Nothing has changed in your live records.')
+      : 'Uploaded. Alcedo hasn\'t read this file yet; nothing has changed in your live records.';
     return `${back}
-      <section class="atlas-section data-import-detail" aria-labelledby="data-import-title">
-        <div class="atlas-section__head"><h2 class="atlas-section__title" id="data-import-title">${escapeHtml(sourceName(batch))}</h2>${pill(label, tone)}</div>
-        ${steps}
-        ${failure}
-        <dl class="data-facts">
-          <div><dt>Contains</dt><dd>${escapeHtml(scopeLabel(batch.entity_scope))}</dd></div>
-          <div><dt>Size</dt><dd>${escapeHtml(formatBytes(batch.file_size))}</dd></div>
-          <div><dt>Records</dt><dd>${records === null ? 'Not read yet' : escapeHtml(records)}</dd></div>
-          <div><dt>Uploaded</dt><dd>${escapeHtml(formatDateTime(batch.created_at))}</dd></div>
-          <div><dt>Last change</dt><dd>${escapeHtml(formatDateTime(batch.updated_at || batch.created_at))}</dd></div>
-        </dl>
-        ${worker === 'staged' ? alertMarkup({ tone: 'info', body: 'Review every row before importing. Only approved new items are added; their quantities are added once.' }) : ''}
-        <div class="atlas-btn-group data-actions">${buttons}</div>
+      <section class="data-import-detail" aria-labelledby="data-import-title">
+        <header class="data-import-detail__head"><i data-lucide="${fileIcon(batch)}"></i><div class="data-import-detail__name"><h2 class="data-import-detail__title" id="data-import-title">${escapeHtml(sourceName(batch))}</h2><p class="data-import-detail__sub">${escapeHtml(scopeLabel(batch.entity_scope))} · ${escapeHtml(formatBytes(batch.file_size))} · uploaded ${escapeHtml(formatRelative(batch.created_at))}</p></div>${pill(label, tone)}</header>
+        <div class="data-import-detail__grid">
+          <div class="atlas-card data-import-detail__main">
+            ${steps}
+            ${failure}
+            ${where ? `<p class="data-import-detail__state">${escapeHtml(where)}</p>` : ''}
+            ${worker === 'staged' ? alertMarkup({ tone: 'info', body: 'Review every row before importing. Only approved new items are added; their quantities are added once.' }) : ''}
+            ${buttons ? `<div class="atlas-btn-group data-actions">${buttons}</div>` : ''}
+          </div>
+          <dl class="data-facts data-facts--well" aria-label="About this file">
+            <div><dt>Contains</dt><dd>${escapeHtml(scopeLabel(batch.entity_scope))}</dd></div>
+            <div><dt>Size</dt><dd class="num">${escapeHtml(formatBytes(batch.file_size))}</dd></div>
+            <div><dt>Records</dt><dd class="num">${records === null ? 'Not read yet' : escapeHtml(records)}</dd></div>
+            <div><dt>Uploaded</dt><dd>${escapeHtml(formatDateTime(batch.created_at))}</dd></div>
+            <div><dt>Last change</dt><dd>${escapeHtml(formatDateTime(batch.updated_at || batch.created_at))}</dd></div>
+          </dl>
+        </div>
       </section>`;
   }
 
@@ -687,7 +731,7 @@
   function openUpload() {
     const modal = ensureModal('data-upload-modal');
     modal.innerHTML = `<section class="atlas-dialog atlas-dialog--form" data-modal-panel aria-labelledby="data-upload-title">
-        <h2 class="atlas-dialog__title" id="data-upload-title">Import a file</h2>
+        <h2 class="atlas-dialog__title" id="data-upload-title">${uploadLabel()}</h2>
         <form class="atlas-dialog__body atlas-form" data-data-upload-form>
           <div class="atlas-field">
             <label for="data-upload-scope">What does this file contain?</label>
@@ -698,7 +742,7 @@
             <span class="atlas-upload__body"><span class="atlas-upload__title" data-data-file-name>Choose a file or drop it here</span><span class="atlas-upload__help" id="data-upload-help">CSV, Excel, PDF, JSON, text or a photo, up to 50 MB.</span></span>
             <input class="sr-only" type="file" name="file" multiple aria-label="Choose a file" aria-describedby="data-upload-help" accept=".pdf,.xlsx,.xls,.csv,.json,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif">
           </label>
-          <p class="data-upload-note">Nothing changes live records until you review the file.</p>
+          <p class="data-upload-note">${readingOn() ? 'Nothing changes live records until you review the file.' : 'File reading is off: the file is stored privately for managers and isn\'t read or imported.'}</p>
           <p class="error" data-data-upload-error hidden></p>
           <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary">Upload</button></div>
         </form>
@@ -856,24 +900,39 @@
       root.setTimeout(loadIssueRows, 0);
     }
     const current = issues.find((entry) => entry.code === state.issues.code);
-    const chips = issues.map((entry) => `<button type="button" class="atlas-chip${entry.code === state.issues.code ? ' is-active' : ''}" aria-pressed="${entry.code === state.issues.code}" data-data-issue="${attr(entry.code)}">${escapeHtml(entry.label)} <span class="atlas-badge atlas-badge--muted">${Number(entry.count)}</span></button>`).join('');
+    // A review queue: the issue types on the left (in the summary's order, each
+    // with its count), the records of the chosen type on the right. On phones
+    // the types become one sideways row of chips above the list.
+    const nav = issues.map((entry) => {
+      const active = entry.code === state.issues.code;
+      return `<button type="button" class="data-issue-nav__item${active ? ' is-active' : ''}" aria-pressed="${active}" data-data-issue="${attr(entry.code)}"><span class="data-issue-nav__label">${escapeHtml(entry.label)}</span><span class="data-issue-nav__count num">${Number(entry.count)}</span></button>`;
+    }).join('');
+    const noun = current.entity_type === 'inventory_item' ? ['item', 'items'] : current.entity_type === 'catalog_change_request' ? ['request', 'requests'] : ['recipe', 'recipes'];
     let table;
     if (state.issues.error) table = alertMarkup({ title: `${current.label} couldn't be loaded.`, body: 'Your records are safe. Try again.', action: retryButton('issue-rows') });
-    else if (state.issues.loading && !state.issues.rows.length) table = skeletonRows(5);
+    else if (state.issues.loading && !state.issues.rows.length) table = skeletonRows(Math.min(5, Number(current.count) || 3));
     else if (!state.issues.rows.length) table = emptyMarkup({ icon: 'circle-check', title: 'Nothing left here', text: 'This issue was fixed since the count was loaded.' });
     else {
       const end = state.issues.offset + state.issues.rows.length;
       table = `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table">
           <thead><tr><th>${current.entity_type === 'inventory_item' ? 'Item' : current.entity_type === 'catalog_change_request' ? 'Request' : 'Recipe'}</th><th data-priority="2">Category</th><th>What's missing</th><th class="col-actions"><span class="sr-only">Fix</span></th></tr></thead>
-          <tbody>${state.issues.rows.map((row) => `<tr><td><span class="cell-primary">${escapeHtml(row.name || 'Unnamed')}</span></td><td data-priority="2">${escapeHtml(row.category || '—')}</td><td>${escapeHtml(issueDetail(current.code, row))}</td><td class="col-actions">${fixAction(current.code, row)}</td></tr>`).join('')}</tbody>
+          <tbody>${state.issues.rows.map((row) => `<tr><td><span class="cell-primary">${escapeHtml(row.name || 'Unnamed')}</span></td><td data-priority="2">${row.category ? escapeHtml(row.category) : '<span class="data-dash" title="No category">—</span>'}</td><td class="data-missing">${escapeHtml(issueDetail(current.code, row))}</td><td class="col-actions">${fixAction(current.code, row)}</td></tr>`).join('')}</tbody>
         </table></div>
         <ul class="atlas-table-list">${state.issues.rows.map((row) => `<li class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${escapeHtml(row.name || 'Unnamed')}</div><div class="atlas-table-list__meta">${escapeHtml(issueDetail(current.code, row))}</div></div><div class="atlas-table-list__value">${fixAction(current.code, row)}</div></li>`).join('')}</ul>
-        <div class="atlas-table-foot"><span>${state.issues.offset + 1}–${end} of ${state.issues.total}</span><span class="atlas-btn-group">${state.issues.offset > 0 ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-issue-page="-1">Previous</button>' : ''}${end < state.issues.total ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-issue-page="1">Next</button>' : ''}</span></div>`;
+        ${state.issues.total > PAGE || state.issues.offset > 0 ? `<div class="atlas-table-foot"><span>${state.issues.offset + 1}–${end} of ${state.issues.total}</span><span class="atlas-btn-group">${state.issues.offset > 0 ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-issue-page="-1">Previous</button>' : ''}${end < state.issues.total ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-issue-page="1">Next</button>' : ''}</span></div>` : ''}`;
     }
-    return `<div class="atlas-chips data-issue-chips" role="group" aria-label="Issue types">${chips}</div>
-      <p class="data-caption">Counts refresh when you come back after fixing a record.</p>
-      ${waitingNote}
-      ${table}`;
+    const total = Number(current.count) || 0;
+    return `<div class="data-issues">
+        <div class="data-issue-side">
+          <div class="data-issue-nav data-issue-chips" role="group" aria-label="Issue types">${nav}</div>
+          <p class="data-caption data-issue-side__note">Counts refresh when you come back after fixing a record.</p>
+          ${waitingNote}
+        </div>
+        <section class="data-issue-pane" aria-labelledby="data-issue-title">
+          <header class="data-pane-head"><h2 class="data-pane-head__title" id="data-issue-title">${escapeHtml(current.label)}</h2><span class="data-pane-head__meta num">${plural(total, noun[0], noun[1])}</span></header>
+          ${table}
+        </section>
+      </div>`;
   }
 
   // Duplicate resolution (inventory.possible_duplicate): a manager decision,
@@ -912,6 +971,10 @@
       form.querySelectorAll('[data-show-mode]').forEach((element) => { element.hidden = element.dataset.showMode !== mode; });
     };
     form.addEventListener('change', sync);
+    // One request id per decision sheet (audit L15): a retry after a lost
+    // answer replays the same decision; a changed decision gets a new id
+    // (the server replays by id alone).
+    const attempt = { id: null, signature: null };
     modal.querySelector('[data-data-dup-save]').addEventListener('click', async (event) => {
       const button = event.currentTarget;
       const errorLine = form.querySelector('[data-data-dup-error]');
@@ -925,12 +988,17 @@
         if (size === null || size <= 0) { errorLine.hidden = false; errorLine.textContent = 'Enter the pack size of the other item.'; return; }
         resolution.values = { unit_size_quantity: size, unit_size_base: form.elements.base.value };
       }
+      const signature = JSON.stringify([keep, retire, mode, resolution]);
+      const decisionRequestId = () => {
+        if (!attempt.id || attempt.signature !== signature) { attempt.id = requestId('dup'); attempt.signature = signature; }
+        return attempt.id;
+      };
       button.disabled = true;
       button.classList.add('is-loading');
       try {
         const payload = await edge(cfg.ITEM_MASTER_API, 'catalog-request', {
           method: 'POST',
-          body: { kind: 'duplicate_resolution', subject_item_id: keep, source: 'data_review', self_approve: true, request_id: requestId('dup'), payload: { keep_item_id: keep, retire_item_id: retire, mode, reason: reason || null, resolution } }
+          body: { kind: 'duplicate_resolution', subject_item_id: keep, source: 'data_review', self_approve: true, request_id: decisionRequestId(), payload: { keep_item_id: keep, retire_item_id: retire, mode, reason: reason || null, resolution } }
         });
         const status = payload?.request?.status;
         root.AtlasModal.close(modal, 'saved');
@@ -988,6 +1056,16 @@
     });
   }
 
+  // An edited par that differs from the saved one carries a mark until saved.
+  function isChangedPar(row, value) {
+    const next = number(String(value ?? '').trim().replace(',', '.'));
+    return next !== null && next >= 0 && next !== number(row?.par_level);
+  }
+  function markParInput(input) {
+    const row = (state.pars.items || []).find((entry) => String(entry.item_id) === String(input?.dataset?.dataParInput));
+    input?.toggleAttribute('data-changed', isChangedPar(row, input.value));
+  }
+
   function pendingParChanges() {
     const items = new Map((state.pars.items || []).map((row) => [String(row.item_id), row]));
     const changes = [];
@@ -1039,6 +1117,7 @@
           const suggestion = row.suggestion && number(row.suggestion.par_level) !== null ? row.suggestion : null;
           const edit = pars.edits.has(id) ? pars.edits.get(id) : '';
           const conflict = pars.conflicts?.some((entry) => String(entry.item_id) === id);
+          const changed = isChangedPar(row, edit);
           const suggestionCell = suggestion
             ? `<span class="data-suggestion"><span class="num">${escapeHtml(formatQuantity(suggestion.par_level))}</span>${suggestion.cases ? ` <span class="cell-sub">${plural(Number(suggestion.cases), 'case', 'cases')}</span>` : ''}<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-par-use="${attr(id)}" data-value="${attr(suggestion.par_level)}">Use</button></span><span class="cell-sub">${escapeHtml(evidenceText(row))}</span>`
             : `<span class="cell-sub">${row.eligible && !suggestionsOn ? 'Enter days of cover to see a suggestion' : escapeHtml(evidenceText(row))}</span>`;
@@ -1046,11 +1125,11 @@
             <td class="is-num" data-priority="2">${stock.known ? escapeHtml(stock.text) : `<span class="atlas-pill">${escapeHtml(stock.text)}</span>`}</td>
             <td class="is-num">${row.par_level === null || row.par_level === undefined ? '<span title="No par level set">—</span>' : escapeHtml(formatQuantity(row.par_level))}</td>
             <td data-priority="2">${suggestionCell}</td>
-            <td class="is-num"><input class="atlas-input data-par-input" type="text" inputmode="decimal" aria-label="New par for ${attr(row.name)}" value="${attr(edit)}" data-data-par-input="${attr(id)}" data-focus-key="par-${attr(id)}"${conflict ? ' aria-invalid="true"' : ''}></td></tr>`;
+            <td class="is-num"><input class="atlas-input data-par-input" type="text" inputmode="decimal" aria-label="New par for ${attr(row.name)}" value="${attr(edit)}" data-data-par-input="${attr(id)}" data-focus-key="par-${attr(id)}"${conflict ? ' aria-invalid="true"' : ''}${changed ? ' data-changed' : ''}>${suggestion ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm data-par-quick" data-data-par-use="${attr(id)}" data-value="${attr(suggestion.par_level)}">Use ${escapeHtml(formatQuantity(suggestion.par_level))}</button>` : ''}</td></tr>`;
         }).join('')}</tbody></table></div>`
       : emptyMarkup({ icon: 'search-x', title: 'No items match these filters', action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-par-clear>Clear filters</button>' });
     return `${conflicts}${saveError}
-      <div class="atlas-toolbar">
+      <div class="atlas-toolbar data-par-toolbar">
         <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" placeholder="Search items" aria-label="Search items" value="${attr(pars.query)}" data-data-par-search data-focus-key="par-search"></label>
         <select class="atlas-select data-filter" aria-label="Category" data-data-par-category><option value="">All categories</option>${categories.map((name) => `<option${pars.category === name ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select>
         ${supplierNames.length ? `<select class="atlas-select data-filter" aria-label="Supplier" data-data-par-supplier><option value="">All suppliers</option>${supplierNames.map((name) => `<option${pars.supplier === name ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select>` : ''}
@@ -1121,7 +1200,7 @@
 
   function reviewMarkup() {
     const review = state.review;
-    const caption = alertMarkup({ tone: 'info', body: 'Nothing here changes live records until you approve it.' });
+    const caption = '<p class="data-note"><i data-lucide="shield-check"></i>Nothing here changes live records until you approve it.</p>';
     const batchNote = review.batch ? `<p class="data-caption">Showing rows from one import. <a href="#data/import-review">Show all imports</a></p>` : '';
     let body;
     if (review.error && !review.rows.length) body = alertMarkup({ title: 'Import review couldn\'t be loaded.', body: friendlyError(review.error, 'Nothing was changed. Try again.'), action: retryButton('review') });
@@ -1136,10 +1215,10 @@
             const source = [row.source_file, row.source_page ? `page ${row.source_page}` : null].filter(Boolean).join(' · ');
             return `<tr><td><button type="button" class="data-link cell-primary" data-data-review-open="${attr(row.row_kind)}" data-id="${attr(row.row_id)}">${escapeHtml(row.display_name || 'Record')}</button>${source ? `<span class="cell-sub">${escapeHtml(source)}</span>` : ''}</td>
               <td data-priority="2">${escapeHtml(humanKey(row.entity_scope))}</td><td data-priority="3">${escapeHtml(humanKey(row.proposed_action))}</td>
-              <td class="is-num" data-priority="2">${issues}</td><td>${reviewStatusPill(row.review_status)}</td></tr>`;
+              <td class="is-num${issues ? ' data-issues-count' : ' data-zero'}" data-priority="2">${issues}</td><td>${reviewStatusPill(row.review_status)}</td></tr>`;
           }).join('')}</tbody></table></div>
         <ul class="atlas-table-list">${review.rows.map((row) => `<li><button type="button" class="atlas-table-list__row data-link" data-data-review-open="${attr(row.row_kind)}" data-id="${attr(row.row_id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${escapeHtml(row.display_name || 'Record')}</div><div class="atlas-table-list__meta">${escapeHtml(humanKey(row.entity_scope))} · ${escapeHtml(humanKey(row.proposed_action))}</div></div><div class="atlas-table-list__value">${reviewStatusPill(row.review_status)}</div></button></li>`).join('')}</ul>
-        <div class="atlas-table-foot"><span>${review.offset + 1}–${end} of ${review.total}</span><span class="atlas-btn-group">${review.offset > 0 ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-review-page="-1">Previous</button>' : ''}${end < review.total ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-review-page="1">Next</button>' : ''}</span></div>`;
+        ${review.offset > 0 || end < review.total ? `<div class="atlas-table-foot"><span>${review.offset + 1}–${end} of ${review.total}</span><span class="atlas-btn-group">${review.offset > 0 ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-review-page="-1">Previous</button>' : ''}${end < review.total ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-review-page="1">Next</button>' : ''}</span></div>` : ''}`;
     }
     return `${caption}${batchNote}
       <div class="atlas-toolbar">
@@ -1295,9 +1374,9 @@
     } else if (!queue.loaded || (queue.loading && !queue.rows.length)) body = skeletonRows(4);
     else if (!queue.rows.length) body = emptyMarkup({ icon: 'badge-check', title: queue.status === 'pending' ? 'Nothing waiting for approval' : 'No decisions yet', text: 'New names, barcodes, items and duplicate reports from scans, imports and Alcedo AI wait here until a manager decides.' });
     else {
-      body = `<ul class="atlas-list data-queue">${queue.rows.map((request) => `<li class="atlas-row atlas-row--link"><span class="atlas-row__icon"><i data-lucide="${request.kind === 'new_item' ? 'package-plus' : request.kind === 'duplicate_resolution' ? 'copy' : request.kind === 'wrong_match_report' ? 'flag' : request.kind === 'code' ? 'barcode' : 'tag'}"></i></span>
-          <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(requestTitle(request))}</p><p class="atlas-row__meta">${escapeHtml(requestMeta(request))}</p></div>
-          <div class="atlas-row__end">${requestStatus(request)}<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-data-request="${attr(request.id)}">${request.status === 'pending' ? 'Review' : 'View'}</button></div></li>`).join('')}</ul>`;
+      body = `<ul class="atlas-list atlas-card data-queue">${queue.rows.map((request) => `<li class="atlas-row"><span class="atlas-row__icon"><i data-lucide="${request.kind === 'new_item' ? 'package-plus' : request.kind === 'duplicate_resolution' ? 'copy' : request.kind === 'wrong_match_report' ? 'flag' : request.kind === 'code' ? 'barcode' : 'tag'}"></i></span>
+          <div class="atlas-row__body"><button type="button" class="atlas-row__link" data-data-request="${attr(request.id)}">${escapeHtml(requestTitle(request))}</button><p class="atlas-row__meta">${escapeHtml(requestMeta(request))}</p></div>
+          <div class="atlas-row__end">${requestStatus(request)}<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-data-request="${attr(request.id)}" tabindex="-1" aria-hidden="true">${request.status === 'pending' ? 'Review' : 'View'}</button><i data-lucide="chevron-right" class="atlas-row__chevron" aria-hidden="true"></i></div></li>`).join('')}</ul>`;
     }
     return `${counts.length && queue.status === 'pending' ? `<p class="data-caption">${counts.map(([kind, n]) => `${n} ${escapeHtml((KIND_LABELS[kind] || kind).toLowerCase())}`).join(' · ')}</p>` : ''}${toolbar}${body}`;
   }
@@ -1482,7 +1561,7 @@
     if (use) {
       state.pars.edits.set(use.dataset.dataParUse, String(use.dataset.value));
       const input = state.root.querySelector(`[data-data-par-input="${CSS.escape(use.dataset.dataParUse)}"]`);
-      if (input) input.value = use.dataset.value;
+      if (input) { input.value = use.dataset.value; markParInput(input); }
       syncParFooter();
       return;
     }
@@ -1512,6 +1591,7 @@
       else state.pars.edits.set(id, target.value);
       const next = number(target.value.trim().replace(',', '.'));
       target.setAttribute('aria-invalid', String(target.value.trim() !== '' && (next === null || next < 0)));
+      markParInput(target);
       syncParFooter();
       return;
     }

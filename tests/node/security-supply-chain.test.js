@@ -10,15 +10,32 @@ const netlify = readFileSync('netlify.toml', 'utf8');
 const browser = index + menu + config;
 
 const SUPABASE_SRI = 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug';
-const LUCIDE_SRI = 'sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT';
 
 test('browser dependencies are pinned with reviewed integrity hashes', () => {
   assert.doesNotMatch(browser, /@latest|supabase-js@2(?:[/'\"])/i);
-  assert.match(index, /lucide@0\.454\.0/);
   assert.match(index + menu, /supabase-js@2\.45\.4/g);
-  for (const hash of [SUPABASE_SRI, LUCIDE_SRI]) assert.ok(browser.includes(hash), `Missing reviewed SRI hash ${hash}`);
+  for (const hash of [SUPABASE_SRI]) assert.ok(browser.includes(hash), `Missing reviewed SRI hash ${hash}`);
   assert.match(index, /script\.integrity\s*=\s*SUPABASE_SRI/);
   assert.match(browser, /crossorigin="anonymous"/i);
+});
+
+// Redesign 2026: icons are self-hosted. The ALCEDO icon set
+// (assets/js/alcedo-icons.js, Phosphor-based, MIT) replaced lucide@0.454.0 from
+// unpkg, so no third-party script draws icons and the CSP no longer allows it.
+test('icons load from this origin only: no third-party icon script, no CDN entry in the CSP', () => {
+  const html = readFileSync('apps/web/index.html', 'utf8');
+  assert.match(html, /<script src="assets\/js\/alcedo-icons\.js\?v=[\w-]+"><\/script>/);
+  assert.ok(html.indexOf('assets/js/alcedo-icons.js') < html.indexOf('assets/js/atlas-shell.js'), 'icons load before the shell renders');
+  for (const [name, page] of [['index.html', html], ['menu.html', menu], ['recovery.html', readFileSync('apps/web/recovery.html', 'utf8')], ['invitation.html', readFileSync('apps/web/invitation.html', 'utf8')]]) {
+    assert.doesNotMatch(page, /lucide(?:@|\.min\.js)|unpkg\.com\/lucide/i, `${name} loads no icon library from a CDN`);
+  }
+  assert.doesNotMatch(netlify, /lucide/i, 'the CSP no longer names an icon CDN file');
+  const icons = readFileSync('apps/web/assets/js/alcedo-icons.js', 'utf8');
+  assert.doesNotMatch(icons, /\bfetch\(|XMLHttpRequest|import\(|https?:\/\/(?!www\.w3\.org\/2000\/svg)/, 'path data is inlined: no network access');
+  assert.match(icons, /Phosphor Icons 2\.1\.1[\s\S]*MIT/);
+  assert.match(readFileSync('apps/web/assets/icons/LICENSE-phosphor.txt', 'utf8'), /MIT License[\s\S]*Phosphor Icons/);
+  const precached = readFileSync('apps/web/service-worker.js', 'utf8').match(/'\.\/(assets\/js\/alcedo-icons\.js[^']*)'/);
+  assert.ok(precached && html.includes(`src="${precached[1]}"`), 'the service worker precaches the exact icon file index.html loads');
 });
 
 // Security review S88b G6: the unused SheetJS 0.18.5 (known CVEs) is no longer

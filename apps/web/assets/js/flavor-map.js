@@ -55,7 +55,10 @@
   const IDEAS_MESSAGES = {
     ...MAP_MESSAGES,
     invalid: 'Alcedo couldn’t use that brief. Check the ingredients and try again.',
-    forbidden: 'Only managers and administrators can create draft recipes.'
+    forbidden: 'Only managers and administrators can create draft recipes.',
+    // Ideas and drafts are POSTs that save nothing to Recipes, so a lost
+    // answer (timeout, 502/503/504) keeps the outage copy (audit M5).
+    outcome_unknown: 'The flavour library isn’t available right now. Try again shortly.'
   };
   const COMPOSE_MESSAGES = {
     ...IDEAS_MESSAGES,
@@ -69,7 +72,9 @@
     rate_limited: 'Too many requests just now. Wait a moment, then try again. Nothing was saved.',
     unavailable: 'Alcedo couldn’t save the draft right now. Nothing was saved. Try again shortly.',
     timeout: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.',
-    network: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.'
+    network: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.',
+    // Approving writes a recipe: a lost answer may have saved it (audit M5).
+    outcome_unknown: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.'
   };
   const RESULT_MESSAGES = {
     name_taken: 'A recipe with this name already exists, so nothing was saved. Choose another name and prepare the draft again.',
@@ -220,6 +225,7 @@
     state.data = null;
     state.error = null;
     state.selected = null;
+    state.ringKey = '';
     state.previousCenter = null;
     state.filters = { use: '', inStock: false, evidence: [] };
     state.search = { query: '', results: [], open: false, timer: 0, seq: state.search.seq + 1, error: null, active: -1 };
@@ -351,6 +357,16 @@
     </section>`;
   }
 
+  // A list row carries one status mark: the ring's own stock dot before the
+  // name. In stock is the quiet state (the dot alone, its words for screen
+  // readers); any other state also says so in words.
+  function rowStock(status) {
+    const info = stockInfo(status);
+    return status === 'available'
+      ? `<span class="sr-only">${escape(info.label)}</span>`
+      : `<span class="flavor-map__row-stock flavor-map__row-stock--${escape(info.tone)}">${escape(info.label)}</span>`;
+  }
+
   function listMarkup() {
     const data = state.data;
     const edges = data.edges || [];
@@ -363,8 +379,8 @@
         const selected = edge.target === state.selected;
         return `<li class="flavor-map__row${selected ? ' is-selected' : ''}">
           <button type="button" class="flavor-map__row-main" data-flavor-select="${escape(node.slug)}" aria-pressed="${selected}" aria-controls="flavor-detail">
-            <span class="flavor-map__row-name">${escape(node.name)}</span>
-            <span class="flavor-map__row-meta"><span class="flavor-meter" aria-hidden="true"><span style="--flavor-weight:${Math.max(0, Math.min(1, Number(edge.strength) || 0)).toFixed(2)}"></span></span><span class="num">${percent(edge.strength)}</span>${evidencePill(edge.evidence_type)}${stockPill(node.stock_status)}</span>
+            <span class="flavor-map__row-name" data-stock="${escape(node.stock_status || 'unknown')}"><span class="flavor-map__dot" aria-hidden="true"></span><span class="flavor-map__row-label">${escape(node.name)}</span></span>
+            <span class="flavor-map__row-meta">${rowStock(node.stock_status)}${EVIDENCE[edge.evidence_type] ? `<span class="flavor-map__row-evidence">${escape(EVIDENCE[edge.evidence_type].label)}</span>` : ''}<span class="flavor-meter" aria-hidden="true"><span style="--flavor-weight:${Math.max(0, Math.min(1, Number(edge.strength) || 0)).toFixed(2)}"></span></span><span class="num flavor-map__row-strength">${percent(edge.strength)}</span></span>
           </button>
           <button type="button" class="atlas-icon-btn flavor-map__row-centre" data-flavor-center="${escape(node.slug)}" aria-label="Centre the map on ${escape(node.name)}" title="Centre the map on ${escape(node.name)}"><i data-lucide="locate-fixed"></i></button>
         </li>`;
@@ -447,8 +463,13 @@
       body = `<div class="atlas-alert atlas-alert--warning" role="alert"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__body">${escape(state.error.text)}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-flavor-retry>Try again</button></div></div>`;
     } else if (state.data) {
       const empty = !(state.data.edges || []).length;
+      // The ring's entrance plays once per new centre or result set, never
+      // when the same ring is rebuilt for a selection, keystroke or arrow key.
+      const ringKey = `${state.data.center?.slug || ''}|${(state.data.edges || []).map((edge) => edge.target).join(',')}`;
+      const entering = !state.loading && !empty && ringKey !== state.ringKey;
+      if (!state.loading) state.ringKey = ringKey;
       body = `${filtersMarkup()}
-        <div class="flavor-map${state.loading ? ' is-loading' : ''}${empty ? ' flavor-map--empty' : ''}" aria-busy="${state.loading}">
+        <div class="flavor-map${state.loading ? ' is-loading' : ''}${empty ? ' flavor-map--empty' : ''}${entering ? ' is-entering' : ''}" aria-busy="${state.loading}">
           ${empty ? `<div class="atlas-empty flavor-map__empty"><div class="atlas-empty__icon"><i data-lucide="orbit"></i></div><h3 class="atlas-empty__title">No pairings match these filters</h3><p class="atlas-empty__text">${escape(state.data.center.name)} has no recorded pairings with these filters.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-flavor-clear>Clear filters</button></div></div>` : `${ringMarkup()}${detailMarkup()}${listMarkup()}`}
         </div>
         <p class="recipe-muted flavor-map__basis">Pairings are Alcedo-curated culinary knowledge and ingredients used together in your recipes, not laboratory data. Stock shows only verified current counts; unknown is never counted as zero.</p>`;
@@ -798,7 +819,7 @@
     const risk = inventory.low_stock_risk || {};
     const ingredients = (candidate.ingredients || []).map((part) => `<li class="flavor-idea__ingredient"><span class="flavor-idea__role">${escape(ROLE_LABELS[part.role] || part.role || '')}</span><span class="flavor-idea__name">${escape(part.name)}${part.preparation ? ` <span class="recipe-muted">(${escape(part.preparation.name || part.preparation)})</span>` : ''}${part.item?.name ? `<span class="recipe-muted"> · ${escape(part.item.name)}</span>` : ''}</span>${part.to_buy ? '<span class="atlas-pill atlas-pill--warning">To buy</span>' : stockPill(part.stock_status)}</li>`).join('');
     const lines = (candidate.lines || []).map((line) => `<li>${escape(line.display || `${line.quantity} ${line.unit} ${line.item_name}`)}${line.to_buy ? ' <span class="atlas-pill atlas-pill--warning">To buy</span>' : ''}</li>`).join('');
-    const toBuy = Array.isArray(candidate.to_buy) && candidate.to_buy.length ? `<p class="flavor-idea__buy"><i data-lucide="shopping-cart"></i>To buy: ${escape(candidate.to_buy.map((entry) => (typeof entry === 'string' ? entry : entry?.name || '')).filter(Boolean).join(', '))}. Nothing is ordered.</p>` : '';
+    const toBuy = Array.isArray(candidate.to_buy) && candidate.to_buy.length ? `<p class="flavor-idea__buy"><i data-lucide="truck"></i>To buy: ${escape(candidate.to_buy.map((entry) => (typeof entry === 'string' ? entry : entry?.name || '')).filter(Boolean).join(', '))}. Nothing is ordered.</p>` : '';
     const economy = economics ? `<div class="flavor-idea__group"><h4>Economics <span class="recipe-muted">(theoretical)</span></h4><dl>
         ${scoreRow('Cost per serve', economics.cost_per_serve == null ? '—' : money(economics.cost_per_serve), economics.cost_per_serve == null && economics.missing ? String(economics.missing.reason || economics.missing) : '')}
         ${scoreRow('Margin', economics.margin_at_price == null ? '—' : `${Math.round(economics.margin_at_price)}%`, economics.price_support?.reference_price ? `at ${money(economics.price_support.reference_price)}` : '')}

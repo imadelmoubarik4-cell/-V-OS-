@@ -113,6 +113,19 @@
   const clock = () => window.AtlasVenueClock;
   const humanize = (value) => { const text = String(value || '').replace(/[_-]+/g, ' ').trim(); return text ? text.charAt(0).toUpperCase() + text.slice(1) : ''; };
   const requestId = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `marketing-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  // One client_request_id per composer and action (audit L15): a retry after
+  // a lost answer replays the same create on the server instead of making a
+  // second post. The server replays by id alone, so a changed request gets a
+  // new id.
+  function composerRequestId(composer, action, request) {
+    composer.requestIds = composer.requestIds || {};
+    const signature = JSON.stringify(request);
+    const entry = composer.requestIds[action];
+    if (entry && entry.signature === signature) return entry.id;
+    const id = requestId();
+    composer.requestIds[action] = { id, signature };
+    return id;
+  }
   const venueToday = () => state.workspace?.venue_date || clock()?.venueDate?.() || new Date().toISOString().slice(0, 10);
   const venueKey = (value) => (value ? clock()?.venueDate?.(value) || String(value).slice(0, 10) : null);
   const dateTime = (value, fallback = 'Not scheduled') => (value ? clock()?.formatDateTime?.(value, {}, fallback) || fallback : fallback);
@@ -122,6 +135,17 @@
   const fromInput = (value) => (value ? clock()?.fromLocalInput?.(value) || null : null);
   const number = (value) => Number(value || 0).toLocaleString('en-GB');
   const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  // A venue day ('YYYY-MM-DD') as the date gutter shows it: weekday over day number.
+  const dayParts = (key) => ({ dow: clock()?.weekday ? WEEKDAYS[clock().weekday(key)] || '' : '', day: Number(String(key).slice(8, 10)) || '' });
+  // The time where a row's date already shows in the date gutter: the full
+  // date stays in the text (screen readers, search) but only the time is drawn.
+  function timeWithHiddenDate(value) {
+    const full = dateTime(value, '');
+    const time = timeOnly(value);
+    if (!full || !time || !full.endsWith(time)) return escapeHtml(full || time);
+    return `<span class="sr-only">${escapeHtml(full.slice(0, -time.length))}</span>${escapeHtml(time)}`;
+  }
   const listText = (names) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
 
   function profile() { return window.AtlasShell?.profile?.() || window.atlasCurrentProfile || null; }
@@ -269,11 +293,12 @@
   function newPostButton(label = 'New post', variant = 'primary') {
     return state.staff?.can_create === false ? '' : `<button type="button" class="atlas-btn atlas-btn--${variant}" data-mk-new><i data-lucide="plus"></i>${label}</button>`;
   }
-  function thumbMarkup(item, className = 'mk-thumb') {
+  function thumbMarkup(item, className = 'mk-thumb', extra = '') {
     const cover = mediaOf(item)[0];
-    if (cover?.thumb_url) return `<span class="${className}"><img src="${escapeHtml(cover.thumb_url)}" alt="${escapeHtml(cover.alt_text || `Cover of ${item.title}`)}" loading="lazy"></span>`;
-    const icon = item.content_type === 'reel' ? 'clapperboard' : item.content_type === 'story' ? 'gallery-vertical-end' : item.content_type === 'campaign_task' ? 'list-checks' : 'image';
-    return `<span class="${className} ${className}--empty" aria-hidden="true"><i data-lucide="${icon}"></i></span>`;
+    const classes = `${className}${extra ? ` ${extra}` : ''}`;
+    if (cover?.thumb_url) return `<span class="${classes}"><img src="${escapeHtml(cover.thumb_url)}" alt="${escapeHtml(cover.alt_text || `Cover of ${item.title}`)}" loading="lazy">${cover.kind === 'video' ? '<span class="mk-thumb__play" aria-hidden="true"><i data-lucide="play"></i></span>' : ''}</span>`;
+    const icon = item.content_type === 'reel' ? 'clapperboard' : item.content_type === 'story' ? 'gallery-vertical-end' : item.content_type === 'campaign_task' ? 'list-checks' : item.content_type === 'content_idea' ? 'lightbulb' : 'image';
+    return `<span class="${classes} ${className}--empty" aria-hidden="true"><i data-lucide="${icon}"></i></span>`;
   }
 
   // Channel-level status (UX spec §5.10): never by colour alone — every dot
@@ -314,10 +339,44 @@
     }).join('')}</span>`;
   }
 
+  // The post's title is the row's link: the whole row opens the post.
+  const titleLink = (item) => `<p class="atlas-row__title"><button type="button" class="atlas-link atlas-row__link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p>`;
+  const campaignName = (item) => campaigns().find((campaign) => campaign.id === item.campaign_id)?.name || '';
+
+  // Posts ledger (Posts tab): Post · When · Channels · Status. On phones the
+  // when and channel cells fold under the title (two-line rows).
+  function ledgerHead(columns) {
+    return `<div class="mk-ledger__head" aria-hidden="true">${columns.map((label) => `<span>${escapeHtml(label)}</span>`).join('')}</div>`;
+  }
   function postRow(item, { linked = false } = {}) {
-    return `<li class="atlas-row atlas-row--link${linked ? ' is-linked-target' : ''}" data-mk-row="${escapeHtml(item.id)}">${thumbMarkup(item)}
-        <div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([TYPES[item.content_type] || humanize(item.content_type), dateTime(item.scheduled_for)].join(' · '))}</p>${dotsMarkup(item)}</div>
+    const at = item.scheduled_for || item.reminder_at;
+    const when = at ? `<span class="mk-ledger__date">${escapeHtml(dateOnly(at))}</span><span class="mk-ledger__time">${escapeHtml(timeOnly(at))}</span>` : `<span class="mk-dash">${item.metadata?.publish_asap === true ? 'When approved' : 'No time yet'}</span>`;
+    const campaign = campaignName(item);
+    return `<li class="atlas-row atlas-row--link mk-ledger__row${linked ? ' is-linked-target' : ''}" data-mk-row="${escapeHtml(item.id)}">${thumbMarkup(item)}
+        <div class="atlas-row__body">${titleLink(item)}<p class="atlas-row__meta">${escapeHtml(TYPES[item.content_type] || humanize(item.content_type))}</p></div>
+        <p class="mk-ledger__campaign">${campaign ? escapeHtml(campaign) : '<span class="mk-dash">—</span>'}</p>
+        <p class="mk-ledger__when num">${when}</p>
+        <div class="mk-ledger__chans">${dotsMarkup(item) || '<span class="mk-dash" aria-label="No channel">—</span>'}</div>
         <div class="atlas-row__end">${postPill(item)}</div></li>`;
+  }
+
+  // Coming up (Overview): a dated run. The date gutter shows the venue day
+  // once per day; the rows of the same day hang under it.
+  function upcomingRows(list) {
+    const today = venueToday();
+    let previous = null;
+    return list.map((item) => {
+      const at = item.scheduled_for || item.reminder_at;
+      const key = venueKey(at);
+      const first = key !== previous;
+      previous = key;
+      const { dow, day } = dayParts(key);
+      const date = first ? `<span class="mk-run__dow">${escapeHtml(key === today ? 'Today' : dow)}</span><span class="mk-run__day num">${escapeHtml(day)}</span>` : '';
+      return `<li class="atlas-row atlas-row--link mk-run__row${first ? ' is-first' : ''}${key === today ? ' is-today' : ''}" data-mk-row="${escapeHtml(item.id)}">
+          <span class="mk-run__date" aria-hidden="true">${date}</span>${thumbMarkup(item, 'mk-thumb', 'mk-thumb--lg')}
+          <div class="atlas-row__body">${titleLink(item)}<p class="atlas-row__meta"><span class="num">${timeWithHiddenDate(at)}</span> · ${escapeHtml([TYPES[item.content_type] || humanize(item.content_type), campaignName(item)].filter(Boolean).join(' · '))}</p></div>
+          <div class="atlas-row__end mk-run__end">${dotsMarkup(item)}${postPill(item)}</div></li>`;
+    }).join('');
   }
 
   function attentionItems() {
@@ -349,16 +408,53 @@
       .filter((item) => { const key = venueKey(item.scheduled_for); return key && key >= today && key <= monthAhead; })
       .filter((item) => (item.platforms || []).some((p) => reconnect.some((t) => t.provider_key === p))) : [];
     const attention = problems.length || reconnect.length
-      ? `<section class="atlas-section" aria-labelledby="mk-attention"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-attention">Needs attention</h2><span class="atlas-section__meta">${plural(problems.length + reconnect.length, 'item')}</span></div><ul class="atlas-list">
+      ? `<section class="atlas-section mk-attention" aria-labelledby="mk-attention"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-attention">Needs attention</h2><span class="atlas-section__meta num">${plural(problems.length + reconnect.length, 'item')}</span></div><ul class="atlas-list mk-box">
           ${problems.map(({ item, title, text }) => `<li class="atlas-row"><span class="atlas-row__icon atlas-row__icon--danger"><i data-lucide="circle-alert"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(title)} · ${escapeHtml(item.title)}</p><p class="atlas-row__meta">${escapeHtml(text)}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" href="#marketing/history?post=${encodeURIComponent(item.id)}">Open in History</a></div></li>`).join('')}
           ${reconnect.map((target) => { const name = CHANNELS[target.provider_key] || humanize(target.provider_key); return `<li class="atlas-row"><span class="atlas-row__icon atlas-row__icon--warning"><i data-lucide="plug"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(target.reason === 'no_resource_selected' ? `${name}: choose where to post` : target.reason === 'publishing_permission_missing' ? `${name} can't publish yet` : `${name} needs reconnecting`)}</p><p class="atlas-row__meta">${escapeHtml(blocked.length ? `${plural(blocked.length, 'post')} in the next 30 days can't be published there until this is fixed.` : 'Scheduled posts won’t publish there until this is fixed.')}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" href="#settings/integrations?provider=${encodeURIComponent(target.provider_key)}">Fix in Settings</a></div></li>`; }).join('')}
         </ul></section>` : '';
-    return `${attention}<section class="atlas-section" aria-labelledby="mk-coming"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-coming">Coming up</h2><span class="atlas-section__meta">Next 14 days</span></div>
-        ${coming.length ? `<ul class="atlas-list">${coming.map((item) => postRow(item)).join('')}</ul>` : emptyMarkup('calendar', 'Nothing planned yet', 'Plan a post, story or campaign task and it shows here two weeks ahead.', newPostButton('New post', 'secondary'))}</section>
-      <section class="atlas-section" aria-labelledby="mk-waiting"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-waiting">Waiting for approval</h2></div>
-        ${waiting.length ? `<ul class="atlas-list">${waiting.map((item) => `<li class="atlas-row">${thumbMarkup(item)}<div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([item.created_by_label, dateTime(item.scheduled_for)].filter(Boolean).join(' · '))}</p>${dotsMarkup(item)}</div><div class="atlas-row__end">${item.can_approve ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-open="${escapeHtml(item.id)}">Review</button>` : pill(item.status)}</div></li>`).join('')}</ul>` : '<p class="mk-muted">Nothing is waiting for approval.</p>'}</section>
-      ${ideas.length ? `<section class="atlas-section" aria-labelledby="mk-ideas"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-ideas">Suggestions</h2><span class="atlas-section__meta">From your venue's routines. Suggestions are never posted without approval.</span></div>
-        <ul class="atlas-list">${ideas.map((entry) => `<li class="atlas-row${state.focusSuggestion && String(entry.id) === state.focusSuggestion ? ' is-linked-target' : ''}" data-mk-suggestion="${escapeHtml(entry.id)}"${state.focusSuggestion && String(entry.id) === state.focusSuggestion ? ' aria-current="true"' : ''}><span class="atlas-row__icon"><i data-lucide="lightbulb"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(entry.title)} <span class="atlas-pill">Suggestion</span></p><p class="atlas-row__meta">${escapeHtml(entry.summary || '')}</p></div><div class="atlas-row__end">${entry.is_due_today && state.staff?.can_create !== false ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-plan="${escapeHtml(entry.id)}">Plan this</button>` : ''}</div></li>`).join('')}</ul></section>` : ''}`;
+    // Campaigns that run today, with the posts planned for each (counted from the rows).
+    const running = campaigns().filter((campaign) => !['completed', 'cancelled', 'archived'].includes(campaign.status) && (!campaign.start_date || campaign.start_date <= horizon) && (!campaign.end_date || campaign.end_date >= today));
+    const comingBlock = `<section class="atlas-section mk-overview__main" aria-labelledby="mk-coming"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-coming">Coming up</h2><span class="atlas-section__meta">Next 14 days${coming.length ? ` · <span class="num">${plural(coming.length, 'post')}</span>` : ''}</span></div>
+        ${coming.length ? `<ul class="atlas-list mk-box mk-run">${upcomingRows(coming)}</ul>` : `<div class="mk-box mk-box--empty">${emptyMarkup('calendar', 'Nothing planned yet', 'Plan a post, story or campaign task and it shows here two weeks ahead.', newPostButton('New post', 'secondary'))}</div>`}</section>`;
+    const waitingBlock = `<section class="atlas-section" aria-labelledby="mk-waiting"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-waiting">Waiting for approval</h2></div>
+        ${waiting.length ? `<ul class="atlas-list mk-box">${waiting.map((item) => `<li class="atlas-row mk-side-row">${thumbMarkup(item)}<div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([item.created_by_label, dateTime(item.scheduled_for)].filter(Boolean).join(' · '))}</p>${dotsMarkup(item)}${item.can_approve ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action mk-plan" data-mk-open="${escapeHtml(item.id)}">Review</button>` : ''}</div>${item.can_approve ? '' : `<div class="atlas-row__end">${pill(item.status)}</div>`}</li>`).join('')}</ul>` : '<p class="mk-muted mk-box mk-box--note">Nothing is waiting for approval.</p>'}</section>`;
+    const ideasBlock = ideas.length ? `<section class="atlas-section" aria-labelledby="mk-ideas"><div class="atlas-section__head mk-head--stack"><h2 class="atlas-section__title" id="mk-ideas">Suggestions</h2><span class="atlas-section__meta">From your venue's routines. Suggestions are never posted without approval.</span></div>
+        <ul class="atlas-list mk-box">${ideas.map((entry) => `<li class="atlas-row mk-side-row${state.focusSuggestion && String(entry.id) === state.focusSuggestion ? ' is-linked-target' : ''}" data-mk-suggestion="${escapeHtml(entry.id)}"${state.focusSuggestion && String(entry.id) === state.focusSuggestion ? ' aria-current="true"' : ''}><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(entry.title)} <span class="atlas-pill">Suggestion</span></p><p class="atlas-row__meta">${escapeHtml(entry.summary || '')}</p>${entry.is_due_today && state.staff?.can_create !== false ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm mk-plan" data-mk-plan="${escapeHtml(entry.id)}">Plan this</button>` : ''}</div></li>`).join('')}</ul></section>` : '';
+    const campaignsBlock = running.length ? `<section class="atlas-section" aria-labelledby="mk-running"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-running">Campaigns</h2><a class="atlas-section__link" href="#marketing/campaigns">View all</a></div>
+        <ul class="atlas-list mk-box">${running.map((campaign) => { const count = items().filter((item) => item.campaign_id === campaign.id && item.status !== 'cancelled').length; return `<li class="atlas-row mk-side-row"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(campaign.name)}</p><p class="atlas-row__meta num">${escapeHtml(campaignSpan(campaign))}</p>${spanMarkup(campaign)}</div><div class="atlas-row__end"><span class="mk-count num">${escapeHtml(plural(count, 'post'))}</span></div></li>`; }).join('')}</ul></section>` : '';
+    return `${attention}<div class="mk-overview">${comingBlock}<div class="mk-overview__side">${waitingBlock}${ideasBlock}${campaignsBlock}</div></div>`;
+  }
+
+  const CAMPAIGN_STATUS = { active: ['Active', 'positive'], planned: ['Planned', 'info'], draft: ['Draft', 'neutral'], paused: ['Paused', 'warning'], completed: ['Finished', 'neutral'], cancelled: ['Cancelled', 'neutral'], archived: ['Archived', 'neutral'] };
+  function campaignPill(status) {
+    const entry = CAMPAIGN_STATUS[status];
+    return entry ? `<span class="atlas-pill atlas-pill--${entry[1]}">${escapeHtml(entry[0])}</span>` : pill(status);
+  }
+  // The campaign's run on a ten-week track (two weeks back, eight ahead) with
+  // today marked: positions are fractions, applied after render (no inline style).
+  const SPAN_BACK = 14;
+  const SPAN_DAYS = 70;
+  function spanMarkup(campaign) {
+    const day = (key) => Math.round(Date.parse(`${key}T00:00:00Z`) / 86400000);
+    const today = day(venueToday());
+    const origin = today - SPAN_BACK;
+    const clamp = (value) => Math.min(1, Math.max(0, value));
+    const from = campaign.start_date ? day(campaign.start_date) : origin;
+    const to = campaign.end_date ? day(campaign.end_date) + 1 : origin + SPAN_DAYS;
+    const left = clamp((from - origin) / SPAN_DAYS);
+    const right = clamp((to - origin) / SPAN_DAYS);
+    return `<span class="mk-span${campaign.end_date ? '' : ' is-open'}" aria-hidden="true"><span class="mk-span__bar" data-mk-span-left="${left.toFixed(4)}" data-mk-span-width="${Math.max(0, right - left).toFixed(4)}"></span><span class="mk-span__today" data-mk-span-left="${(SPAN_BACK / SPAN_DAYS).toFixed(4)}"></span></span>`;
+  }
+  function applySpans(element) {
+    element.querySelectorAll('[data-mk-span-left]').forEach((node) => {
+      node.style.left = `${Number(node.dataset.mkSpanLeft) * 100}%`;
+      if (node.dataset.mkSpanWidth !== undefined) node.style.width = `${Number(node.dataset.mkSpanWidth) * 100}%`;
+    });
+  }
+
+  function campaignSpan(campaign) {
+    if (!campaign.start_date && !campaign.end_date) return 'No dates';
+    return `${dateOnly(campaign.start_date, 'Open')} – ${dateOnly(campaign.end_date, 'open')}`;
   }
 
   function calendarEntries() {
@@ -399,9 +495,9 @@
     const filters = [['all', 'All'], ...CHANNEL_ORDER.map((key) => [key, CHANNEL_SHORT[key]])];
     const entry = (item) => `<button type="button" class="mk-day__item${entryClass(item)}" data-mk-open="${escapeHtml(item.id)}" aria-label="${escapeHtml(`${item.title}, ${item.scheduled_for ? timeOnly(item.scheduled_for) : 'no time'}, ${STATUS[item.status]?.[0] || ''}`)}">${thumbMarkup(item, 'mk-day__thumb')}<span class="mk-day__time num">${escapeHtml(item.scheduled_for ? timeOnly(item.scheduled_for) : '—')}</span><span class="mk-day__title">${escapeHtml(item.title)}</span>${dotsMarkup(item)}</button>`;
     const inMonth = [...byDay.entries()].filter(([key]) => key >= range.start && key <= range.end).sort(([a], [b]) => a.localeCompare(b));
-    return `<div class="atlas-toolbar mk-cal-toolbar"><div class="atlas-btn-group"><button type="button" class="atlas-icon-btn" data-mk-month="-1" aria-label="Previous month"><i data-lucide="chevron-left"></i></button><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-mk-month="0">This month</button><button type="button" class="atlas-icon-btn" data-mk-month="1" aria-label="Next month"><i data-lucide="chevron-right"></i></button></div><h2 class="mk-month">${escapeHtml(monthName)}</h2>
+    const planned = inMonth.reduce((n, [, list]) => n + list.length, 0);
+    return `<div class="atlas-toolbar mk-cal-toolbar"><div class="mk-cal-nav"><h2 class="mk-month">${escapeHtml(monthName)}</h2><div class="atlas-btn-group mk-cal-steps"><button type="button" class="atlas-icon-btn" data-mk-month="-1" aria-label="Previous month"><i data-lucide="chevron-left"></i></button><button type="button" class="atlas-btn atlas-btn--secondary" data-mk-month="0">This month</button><button type="button" class="atlas-icon-btn" data-mk-month="1" aria-label="Next month"><i data-lucide="chevron-right"></i></button></div><span class="mk-cal-count num">${escapeHtml(plural(planned, 'post'))}</span></div>
         <div class="atlas-chips mk-cal-filter" role="group" aria-label="Channel">${filters.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${state.channelFilter === key}" data-mk-channel-filter="${key}">${escapeHtml(label)}</button>`).join('')}</div></div>
-      <details class="mk-legend"><summary>What the dots mean</summary><ul class="mk-legend__list">${[['scheduled', 'Scheduled'], ['waiting_approval', 'Waiting for approval'], ['by_hand_due', 'Post by hand or not sent yet'], ['publishing', 'Publishing'], ['published', 'Published'], ['posted_by_hand', 'Posted by hand'], ['failed', 'Failed or needs attention'], ['skipped', 'Not posted']].map(([key, label]) => `<li><span class="mk-chan mk-chan--${key}" aria-hidden="true">I</span>${escapeHtml(label)}</li>`).join('')}</ul><p class="mk-muted">Letters are the channels: I Instagram, F Facebook, T TikTok, G Google Business Profile.</p></details>
       <div class="mk-calendar" role="grid" aria-label="${escapeHtml(monthName)}">
         <div class="mk-calendar__head" role="row">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => `<span role="columnheader">${d}</span>`).join('')}</div>
         <div class="mk-calendar__grid">${cells.map((key) => {
@@ -415,6 +511,7 @@
           </div>`;
         }).join('')}</div>
       </div>
+      <details class="mk-legend"><summary class="mk-disclosure"><i data-lucide="chevron-right" aria-hidden="true"></i>What the channel marks mean</summary><ul class="mk-legend__list">${[['scheduled', 'Scheduled'], ['waiting_approval', 'Waiting for approval'], ['by_hand_due', 'Post by hand or not sent yet'], ['publishing', 'Publishing'], ['published', 'Published'], ['posted_by_hand', 'Posted by hand'], ['failed', 'Failed or needs attention'], ['skipped', 'Not posted']].map(([key, label]) => `<li><span class="mk-chan mk-chan--${key}" aria-hidden="true">I</span>${escapeHtml(label)}</li>`).join('')}</ul><p class="mk-muted">Letters are the channels: I Instagram, F Facebook, T TikTok, G Google Business Profile.</p></details>
       ${agendaMarkup(inMonth, range, monthName)}`;
   }
 
@@ -424,28 +521,30 @@
     const c = clock();
     const tomorrow = c?.addDays ? c.addDays(today, 1) : null;
     const dayLabel = (key) => `${dateOnly(key)}${key === today ? ' · Today' : key === tomorrow ? ' · Tomorrow' : ''}`;
-    const row = (item) => `<li class="atlas-row atlas-row--link">${thumbMarkup(item)}<div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([item.scheduled_for ? timeOnly(item.scheduled_for) : 'No time', TYPES[item.content_type] || humanize(item.content_type)].join(' · '))}</p>${dotsMarkup(item)}</div><div class="atlas-row__end">${postPill(item)}</div></li>`;
-    const group = (key, list) => `<section class="mk-agenda__day"><h3 class="mk-agenda__head">${escapeHtml(dayLabel(key))}</h3>${list.length ? `<ul class="atlas-list">${list.map(row).join('')}</ul>` : '<p class="mk-muted">Nothing today.</p>'}</section>`;
+    const row = (item) => `<li class="atlas-row atlas-row--link mk-agenda__row">${thumbMarkup(item)}<div class="atlas-row__body">${titleLink(item)}<p class="atlas-row__meta">${escapeHtml([item.scheduled_for ? timeOnly(item.scheduled_for) : 'No time', TYPES[item.content_type] || humanize(item.content_type)].join(' · '))}</p>${dotsMarkup(item)}</div><div class="atlas-row__end">${postPill(item)}</div></li>`;
+    const group = (key, list) => `<section class="mk-agenda__day${key === today ? ' is-today' : ''}"><h3 class="mk-agenda__head">${escapeHtml(dayLabel(key))}</h3>${list.length ? `<ul class="atlas-list mk-box">${list.map(row).join('')}</ul>` : '<p class="mk-muted mk-box mk-box--note">Nothing today.</p>'}</section>`;
     const inRange = today >= range.start && today <= range.end;
     const earlier = inRange ? inMonth.filter(([key]) => key < today) : [];
     const later = inRange ? inMonth.filter(([key]) => key > today) : inMonth;
     const todayList = inRange ? (inMonth.find(([key]) => key === today)?.[1] || []) : null;
-    if (!inMonth.length && !inRange) return `<div class="mk-agenda">${emptyMarkup('calendar', `Nothing planned in ${monthName.split(' ')[0]}`, 'Plan a post and it shows here.', newPostButton('New post', 'secondary'))}</div>`;
-    return `<div class="mk-agenda">${earlier.length ? `<details class="mk-agenda__earlier"><summary>Earlier this month (${earlier.reduce((n, [, list]) => n + list.length, 0)})</summary>${earlier.map(([key, list]) => group(key, list)).join('')}</details>` : ''}${todayList ? group(today, todayList) : ''}${later.map(([key, list]) => group(key, list)).join('')}</div>`;
+    if (!inMonth.length && !inRange) return `<div class="mk-agenda"><div class="mk-box mk-box--empty">${emptyMarkup('calendar', `Nothing planned in ${monthName.split(' ')[0]}`, 'Plan a post and it shows here.', newPostButton('New post', 'secondary'))}</div></div>`;
+    return `<div class="mk-agenda">${earlier.length ? `<details class="mk-agenda__earlier"><summary class="mk-disclosure"><i data-lucide="chevron-right" aria-hidden="true"></i>Earlier this month (${earlier.reduce((n, [, list]) => n + list.length, 0)})</summary>${earlier.map(([key, list]) => group(key, list)).join('')}</details>` : ''}${todayList ? group(today, todayList) : ''}${later.map(([key, list]) => group(key, list)).join('')}</div>`;
   }
 
   function postsMarkup() {
     const waitingCount = items().filter((item) => item.status === 'pending_approval').length;
     const filter = state.postFilter || (waitingCount ? 'approval' : 'active');
     const filters = [['active', 'Active'], ['drafts', 'Drafts'], ['approval', 'Waiting'], ['approved', 'Approved']];
+    // In the order they go out; posts with no time yet last.
+    const when = (item) => item.scheduled_for || item.reminder_at || '9999';
     const list = items().filter((item) => {
       if (filter === 'drafts') return ['idea', 'draft', 'changes_requested'].includes(item.status);
       if (filter === 'approval') return item.status === 'pending_approval';
       if (filter === 'approved') return ['approved', 'scheduled'].includes(item.status);
       return !FINAL.has(item.status);
-    });
-    return `<div class="atlas-toolbar"><div class="atlas-segmented" role="group" aria-label="Show">${filters.map(([key, label]) => `<button type="button" aria-pressed="${filter === key}" data-mk-filter="${key}">${label}</button>`).join('')}</div><div class="atlas-toolbar__end">${plural(list.length, 'post')}</div></div>
-      ${list.length ? `<ul class="atlas-list">${list.map((item) => postRow(item)).join('')}</ul>` : emptyMarkup('file-pen-line', 'No posts here', 'Drafts, posts waiting for approval and approved posts appear here.', newPostButton('New post', 'secondary'))}`;
+    }).sort((a, b) => String(when(a)).localeCompare(String(when(b))));
+    return `<div class="atlas-toolbar mk-toolbar"><div class="atlas-segmented" role="group" aria-label="Show">${filters.map(([key, label]) => `<button type="button" aria-pressed="${filter === key}" data-mk-filter="${key}">${label}</button>`).join('')}</div><div class="atlas-toolbar__end">${plural(list.length, 'post')}</div></div>
+      ${list.length ? `<div class="mk-box mk-ledger mk-ledger--posts">${ledgerHead(['Post', 'Campaign', 'When', 'Channels', 'Status'])}<ul class="atlas-list">${list.map((item) => postRow(item)).join('')}</ul></div>` : `<div class="mk-box mk-box--empty">${emptyMarkup('file-pen-line', 'No posts here', 'Drafts, posts waiting for approval and approved posts appear here.', newPostButton('New post', 'secondary'))}</div>`}`;
   }
 
   function mediaMarkup() {
@@ -486,8 +585,14 @@
 
   function campaignsMarkup() {
     const list = campaigns();
-    return `<div class="atlas-toolbar"><div class="atlas-toolbar__end">${state.staff?.can_approve ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-mk-new-campaign><i data-lucide="plus"></i>New campaign</button>' : ''}</div></div>
-      ${list.length ? `<ul class="atlas-list">${list.map((campaign) => `<li class="atlas-row"><span class="atlas-row__icon"><i data-lucide="target"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(campaign.name)}</p><p class="atlas-row__meta">${escapeHtml([humanize(campaign.campaign_type), `${dateOnly(campaign.start_date)} – ${dateOnly(campaign.end_date)}`, channelText(campaign.platforms)].join(' · '))}</p>${campaign.description ? `<p class="atlas-row__meta">${escapeHtml(campaign.description)}</p>` : ''}</div><div class="atlas-row__end">${pill(campaign.status)}</div></li>`).join('')}</ul>` : emptyMarkup('target', 'No campaigns yet', 'Group posts and tasks around one goal, such as a menu launch or an event.', state.staff?.can_approve ? '<button type="button" class="atlas-btn atlas-btn--secondary" data-mk-new-campaign>New campaign</button>' : '')}`;
+    const count = (campaign) => items().filter((item) => item.campaign_id === campaign.id && item.status !== 'cancelled').length;
+    const row = (campaign) => `<li class="atlas-row mk-ledger__row">
+        <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(campaign.name)}</p><p class="atlas-row__meta">${escapeHtml([humanize(campaign.campaign_type), campaign.platforms?.length ? channelText(campaign.platforms) : ''].filter(Boolean).join(' · '))}</p>${campaign.description ? `<p class="atlas-row__meta mk-ledger__note">${escapeHtml(campaign.description)}</p>` : ''}</div>
+        <div class="mk-ledger__when num"><span>${escapeHtml(campaignSpan(campaign))}</span>${spanMarkup(campaign)}</div>
+        <p class="mk-ledger__count num">${count(campaign) ? escapeHtml(plural(count(campaign), 'post')) : '<span class="mk-dash">No posts yet</span>'}</p>
+        <div class="atlas-row__end">${campaignPill(campaign.status)}</div></li>`;
+    return `<div class="atlas-toolbar mk-toolbar"><p class="mk-toolbar__count num">${escapeHtml(plural(list.length, 'campaign'))}</p><div class="atlas-toolbar__end">${state.staff?.can_approve ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-mk-new-campaign><i data-lucide="plus"></i>New campaign</button>' : ''}</div></div>
+      ${list.length ? `<div class="mk-box mk-ledger mk-ledger--campaigns">${ledgerHead(['Campaign', 'Runs', 'Posts', 'Status'])}<ul class="atlas-list">${list.map(row).join('')}</ul></div><p class="mk-ledger__foot">Each track shows two weeks back and eight ahead; the line is today.</p>` : `<div class="mk-box mk-box--empty">${emptyMarkup('target', 'No campaigns yet', 'Group posts and tasks around one goal, such as a menu launch or an event.', state.staff?.can_approve ? '<button type="button" class="atlas-btn atlas-btn--secondary" data-mk-new-campaign>New campaign</button>' : '')}</div>`}`;
   }
 
   // One row per channel: status, time, link, and Retry on a failed channel only.
@@ -534,12 +639,12 @@
     list.forEach((item) => { const key = venueKey(item.scheduled_for || item.published_at || item.updated_at) || 'none'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(item); });
     const posts = [...groups.entries()].map(([key, group]) => `<section class="mk-agenda__day"><h3 class="mk-agenda__head">${escapeHtml(key === 'none' ? 'No date' : dateOnly(key))}</h3><ul class="atlas-list mk-history">${group.map((item) => {
       const linked = state.linkedPost === item.id;
-      return `<li class="mk-history__post${linked ? ' is-linked-target' : ''}" data-mk-history-post="${escapeHtml(item.id)}"><div class="atlas-row">${thumbMarkup(item)}<div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([dateTime(item.scheduled_for || item.published_at, 'No time'), TYPES[item.content_type] || humanize(item.content_type)].join(' · '))}</p></div><div class="atlas-row__end">${postPill(item)}<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-mk-history-details="${escapeHtml(item.id)}">Details</button></div></div>
+      return `<li class="mk-history__post${linked ? ' is-linked-target' : ''}" data-mk-history-post="${escapeHtml(item.id)}"${linked ? ' aria-current="true"' : ''}><div class="atlas-row mk-history__head">${thumbMarkup(item)}<div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([dateTime(item.scheduled_for || item.published_at, 'No time'), TYPES[item.content_type] || humanize(item.content_type)].join(' · '))}</p></div><div class="atlas-row__end">${postPill(item)}<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-mk-history-details="${escapeHtml(item.id)}">Details</button></div></div>
         <ul class="atlas-list mk-history__channels">${deliveryRows(item)}</ul></li>`;
     }).join('')}</ul></section>`).join('');
-    return `<div class="atlas-toolbar"><div class="atlas-chips" role="group" aria-label="Show">${filters.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${state.historyFilter === key}" data-mk-history-filter="${key}">${label}</button>`).join('')}</div></div>
-      ${list.length ? posts : emptyMarkup('history', state.historyFilter === 'all' ? 'Nothing published yet' : 'Nothing here', 'Posts appear here once they go out, with each channel’s result.')}
-      <details class="mk-activity"><summary>All activity</summary>${history().length ? `<ul class="atlas-list">${history().map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(HISTORY_LABELS[event.event_type] || humanize(event.event_type))}${event.payload?.provider_key ? ` · ${escapeHtml(CHANNELS[event.payload.provider_key] || '')}` : ''}${event.payload?.title ? ` · ${escapeHtml(event.payload.title)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Alcedo')} · ${escapeHtml(dateTime(event.created_at, '—'))}</p></div></li>`).join('')}</ul>` : '<p class="mk-muted">No marketing activity yet.</p>'}</details>`;
+    return `<div class="atlas-toolbar mk-toolbar"><div class="atlas-chips" role="group" aria-label="Show">${filters.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${state.historyFilter === key}" data-mk-history-filter="${key}">${label}</button>`).join('')}</div><div class="atlas-toolbar__end">${escapeHtml(plural(list.length, 'post'))}</div></div>
+      ${list.length ? posts : `<div class="mk-box mk-box--empty">${emptyMarkup('history', state.historyFilter === 'all' ? 'Nothing published yet' : 'Nothing here', 'Posts appear here once they go out, with each channel’s result.')}</div>`}
+      <details class="mk-activity"><summary class="mk-disclosure"><i data-lucide="chevron-right" aria-hidden="true"></i>All activity${history().length ? ` <span class="num">(${history().length})</span>` : ''}</summary>${history().length ? `<ul class="atlas-list mk-box mk-activity__list">${history().map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(HISTORY_LABELS[event.event_type] || humanize(event.event_type))}${event.payload?.provider_key ? ` · ${escapeHtml(CHANNELS[event.payload.provider_key] || '')}` : ''}${event.payload?.title ? ` · ${escapeHtml(event.payload.title)}` : ''}</p></div><p class="mk-activity__who">${escapeHtml(event.actor_label || 'Alcedo')}<span class="num">${escapeHtml(dateTime(event.created_at, '—'))}</span></p></li>`).join('')}</ul>` : '<p class="mk-muted">No marketing activity yet.</p>'}</details>`;
   }
 
   // Header caption from publishing capability (UX spec §3; architecture §0.2).
@@ -555,11 +660,21 @@
     const ready = CHANNEL_ORDER.filter((key) => targetFor(key)?.ready);
     const notReady = CHANNEL_ORDER.filter((key) => !ready.includes(key));
     let text;
+    let tone = 'manual';
     if (!ready.length) text = 'Alcedo can\'t publish yet, so you post by hand and mark it here. Connect accounts in Settings.';
     else if (!autoPublishing()) text = 'Automatic publishing is off, so Alcedo doesn\'t publish yet. Approved posts wait as “Ready, not sent”. An administrator can turn it on in Settings › Marketing.';
-    else if (notReady.length) text = `Alcedo publishes approved posts to ${listText(ready.map((key) => CHANNELS[key]))}. ${listText(notReady.map((key) => CHANNELS[key]))} ${notReady.length === 1 ? 'is' : 'are'} posted by hand.`;
-    else text = 'Alcedo publishes approved posts at their scheduled time.';
-    return `<p class="mk-caption">${escapeHtml(text)}${settings}</p>`;
+    else if (notReady.length) { tone = 'partial'; text = `Alcedo publishes approved posts to ${listText(ready.map((key) => CHANNELS[key]))}. ${listText(notReady.map((key) => CHANNELS[key]))} ${notReady.length === 1 ? 'is' : 'are'} posted by hand.`; }
+    else { tone = 'auto'; text = 'Alcedo publishes approved posts at their scheduled time.'; }
+    // One quiet status line: a dot (on when Alcedo publishes somewhere) and the sentence.
+    return `<p class="mk-caption is-${tone}">${escapeHtml(text)}${settings}</p>`;
+  }
+
+  // Loading: the final layout with flat grey bars at the real size of each
+  // row (date, cover, two text lines, status), labels drawn at once.
+  function loadingMarkup() {
+    const row = '<li class="mk-skel-row"><span class="atlas-skel mk-skel-row__date"></span><span class="atlas-skel mk-skel-row__thumb"></span><span class="mk-skel-row__text"><span class="atlas-skel mk-skel-row__line"></span><span class="atlas-skel mk-skel-row__line mk-skel-row__line--short"></span></span><span class="atlas-skel mk-skel-row__pill"></span></li>';
+    if (state.tab !== 'overview') return `<div class="mk-skeleton" aria-busy="true" aria-label="Loading marketing"><ul class="atlas-list mk-box">${row.repeat(6)}</ul></div>`;
+    return `<div class="mk-skeleton mk-overview" aria-busy="true" aria-label="Loading marketing"><section class="atlas-section mk-overview__main"><div class="atlas-section__head"><h2 class="atlas-section__title">Coming up</h2></div><ul class="atlas-list mk-box">${row.repeat(5)}</ul></section><div class="mk-overview__side"><section class="atlas-section"><div class="atlas-section__head"><h2 class="atlas-section__title">Waiting for approval</h2></div><ul class="atlas-list mk-box">${row.repeat(2)}</ul></section></div></div>`;
   }
 
   function headSub() {
@@ -587,7 +702,7 @@
     let body;
     if (state.error && !state.workspace) body = `<div class="atlas-alert atlas-alert--danger" role="alert"><i data-lucide="circle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Marketing couldn't be loaded.</p><p class="atlas-alert__body">${escapeHtml(errorText(state.error, 'Marketing'))}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-mk-retry>Try again</button></div></div>`;
     else if (state.tab === 'media') body = mediaMarkup();
-    else if (!state.workspace) body = `<div class="mk-skeleton" aria-busy="true" aria-label="Loading marketing">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}</div>`;
+    else if (!state.workspace) body = loadingMarkup();
     else body = ({ calendar: calendarMarkup, posts: postsMarkup, campaigns: campaignsMarkup, history: historyMarkup })[state.tab]?.() || overviewMarkup();
     element.innerHTML = `<div class="atlas-page mk-page">
         ${window.AtlasShell.pageHead({ title: 'Marketing', sub: headSub(), actions })}
@@ -596,6 +711,7 @@
         <div class="mk-body">${body}</div>
       </div>`;
     if (state.tab === 'media') attachMedia(element);
+    applySpans(element);
     window.lucide?.createIcons?.();
     // Six tabs overflow at 390 px: keep the active one in view.
     const tabs = element.querySelector('.atlas-tabs');
@@ -1025,7 +1141,7 @@
       const kinds = formatOptions(platform, draft);
       const kind = kindFor(platform, draft);
       const open = state.composer.openChannels?.has(platform);
-      return `<details class="mk-channel" data-mk-channel-section="${platform}"${open ? ' open' : ''}><summary><span class="mk-channel__name">${escapeHtml(name)}</span><span class="mk-channel__state" data-mk-channel-state="${platform}">${escapeHtml(channelSummary(platform, draft))}</span></summary>
+      return `<details class="mk-channel" data-mk-channel-section="${platform}"${open ? ' open' : ''}><summary><span class="mk-channel__name">${escapeHtml(name)}</span><span class="mk-channel__state" data-mk-channel-state="${platform}">${escapeHtml(channelSummary(platform, draft))}</span><i data-lucide="chevron-down" class="mk-channel__caret" aria-hidden="true"></i></summary>
         <div class="mk-channel__body atlas-stack">
           ${kinds.length > 1 ? `<div class="atlas-field"><span class="atlas-label" id="mk-format-${platform}">Format</span><div class="atlas-segmented" role="radiogroup" aria-labelledby="mk-format-${platform}">${kinds.map((key) => `<button type="button" role="radio" aria-checked="${kind === key}"${radioTab(kind === key)} data-mk-format="${platform}" data-mk-kind="${key}"${dis}>${escapeHtml(FORMAT_LABEL[key] || humanize(key))}</button>`).join('')}</div></div>` : kind ? `<p class="help">Format: ${escapeHtml(FORMAT_LABEL[kind] || humanize(kind))}${platform === 'instagram' && kind === 'ig_carousel' ? ' (more than one photo or video)' : ''}.</p>` : ''}
           <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="mk-ov-label-${platform}">Write a different caption for ${escapeHtml(name)}</p></div><button type="button" class="atlas-toggle" role="switch" aria-labelledby="mk-ov-label-${platform}" aria-checked="${custom}" data-mk-override-toggle="${platform}"${dis}></button></div>
@@ -1043,11 +1159,16 @@
     if (!at) return `Pick a date and time (${venueTimeLabel()}).`;
     let text = `Posts ${dateOnly(at)} at ${timeOnly(at)} ${venueTimeLabel()}.`;
     try {
+      // Compare wall clocks, not ICU strings: en-GB writes 'Sept' where the
+      // venue clock writes 'Sep', which added a false "your time" note to
+      // every September post (audit L35). Both sides use the venue clock.
       const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const local = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(at));
-      const localDay = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(at)).replace(',', '');
-      const venueDay = dateOnly(at);
-      if (local !== timeOnly(at) || localDay !== venueDay) {
+      const here = clock()?.parts?.(at, zone);
+      const there = clock()?.parts?.(at);
+      if (zone && here && there && (here.time !== there.time || here.dateKey !== there.dateKey)) {
+        const local = here.time;
+        const localDay = dateOnly(here.dateKey);
+        const venueDay = dateOnly(at);
         const city = String(zone || '').split('/').pop().replace(/_/g, ' ');
         text += ` That's ${localDay !== venueDay ? `${localDay}, ` : ''}${local} your time${city ? ` (${city})` : ''}.`;
       }
@@ -1055,42 +1176,81 @@
     return text;
   }
 
+  // Platform chrome in the previews draws only glyphs the icon set has (an
+  // unknown name would draw a placeholder), so a missing one is left out.
+  const glyph = (name) => (window.AlcedoIcons?.has && !window.AlcedoIcons.has(name) ? '' : `<i data-lucide="${name}" aria-hidden="true"></i>`);
+
+  // Previews (UX spec §5.7): each channel in the frame people will see it in,
+  // drawn from the draft. Approximate: the platform decides the final look.
   function previewMarkup(draft) {
     const channels = draft.platforms.slice().sort((a, b) => CHANNEL_ORDER.indexOf(a) - CHANNEL_ORDER.indexOf(b));
-    if (!channels.length) return '<p class="mk-muted">Choose a channel to see a preview.</p>';
+    if (!channels.length) return '<div class="mk-preview-stage mk-preview-stage--empty"><p class="mk-muted">Choose a channel to see a preview.</p></div>';
     const active = channels.includes(state.composer.preview) ? state.composer.preview : channels[0];
     const media = draft.media;
     const cover = media[0];
     const at = scheduledInstant(draft);
     const when = at ? dateTime(at) : 'No time yet';
     const account = (platform) => targetFor(platform)?.resource?.label || `Your ${CHANNELS[platform]} account`;
-    const frame = (ratio, item = cover) => `<div class="mk-preview__media mk-preview__media--${ratio}">${item?.thumb_url ? `<img src="${escapeHtml(item.thumb_url)}" alt="">` : '<span class="mk-preview__none"><i data-lucide="image" aria-hidden="true"></i>No media yet</span>'}</div>`;
-    const caption = (platform, lines) => `<p class="mk-preview__text mk-preview__text--${lines}">${escapeHtml(captionFor(platform, draft) || 'Your caption appears here.')}</p>`;
+    const initial = (label) => escapeHtml(String(label).replace(/^@/, '').charAt(0).toUpperCase());
+    const image = (item) => (item?.thumb_url ? `<img src="${escapeHtml(item.thumb_url)}" alt="">` : '');
+    const frame = (ratio, item = cover) => `<div class="mk-preview__media mk-preview__media--${ratio}">${item?.thumb_url ? image(item) : '<span class="mk-preview__none"><i data-lucide="image" aria-hidden="true"></i>No media yet</span>'}${item?.kind === 'video' && ratio !== 'vertical' ? `<span class="mk-preview__play" aria-hidden="true">${glyph('play')}</span>` : ''}</div>`;
+    const captionText = (platform) => escapeHtml(captionFor(platform, draft) || 'Your caption appears here.');
+    const caption = (platform, lines, lead = '') => `<p class="mk-preview__text mk-preview__text--${lines}">${lead}${captionText(platform)}</p>`;
+    // A vertical video frame (TikTok, Reels): the cover fills it, the account
+    // and caption sit over its foot, the actions run down its right edge.
+    const vertical = (platform, name, item) => `<div class="mk-vertical">${item?.thumb_url ? image(item) : '<span class="mk-preview__none"><i data-lucide="film" aria-hidden="true"></i>No video yet</span>'}
+        <span class="mk-vertical__rail" aria-hidden="true"><span class="mk-vertical__avatar">${initial(name)}</span>${glyph('heart')}${glyph('message-circle')}${glyph('bookmark')}${glyph('send')}</span>
+        <div class="mk-vertical__foot"><p class="mk-vertical__name">${escapeHtml(name)}</p>${caption(platform, 2)}</div></div>`;
     const kind = kindFor(active, draft);
     let card;
     if (active === 'instagram') {
-      const vertical = kind === 'ig_reel';
-      card = `<div class="mk-preview__head"><span class="atlas-avatar atlas-avatar--sm atlas-avatar--b" aria-hidden="true">${escapeHtml(account(active).charAt(0).toUpperCase())}</span><span>${escapeHtml(account(active))}</span></div>${frame(vertical ? 'vertical' : 'portrait')}${media.length > 1 ? `<p class="mk-preview__dots" aria-label="${media.length} items">${media.map((_, i) => `<span${i === 0 ? ' class="is-on"' : ''}></span>`).join('')}</p>` : ''}${caption(active, 2)}<p class="mk-preview__when" data-mk-preview-when>${escapeHtml(when)}</p>`;
+      const name = account(active);
+      if (kind === 'ig_reel') {
+        card = `${vertical(active, name, media.find((m) => m.kind === 'video') || cover)}<p class="mk-preview__when" data-mk-preview-when>Reel · ${escapeHtml(when)}</p>`;
+      } else {
+        const counter = media.length > 1 ? `<span class="mk-preview__count num" aria-hidden="true">1/${media.length}</span>` : '';
+        card = `<div class="mk-preview__head"><span class="mk-preview__avatar" aria-hidden="true">${initial(name)}</span><span class="mk-preview__name">${escapeHtml(name)}</span><span class="mk-preview__more">${glyph('ellipsis')}</span></div>
+          <div class="mk-preview__frame">${frame('portrait')}${counter}</div>
+          <div class="mk-preview__actions" aria-hidden="true">${glyph('heart')}${glyph('message-circle')}${glyph('send')}<span class="mk-preview__spacer"></span>${glyph('bookmark')}</div>
+          ${media.length > 1 ? `<p class="mk-preview__dots" aria-label="${media.length} items">${media.map((_, i) => `<span${i === 0 ? ' class="is-on"' : ''}></span>`).join('')}</p>` : ''}
+          ${caption(active, 2, `<strong>${escapeHtml(name)}</strong> `)}<p class="mk-preview__when" data-mk-preview-when>${escapeHtml(when)}</p>`;
+      }
     } else if (active === 'facebook') {
-      card = `<div class="mk-preview__head"><span class="atlas-avatar atlas-avatar--sm atlas-avatar--c" aria-hidden="true">${escapeHtml(account(active).charAt(0).toUpperCase())}</span><span>${escapeHtml(account(active))}<span class="mk-preview__sub" data-mk-preview-when>${escapeHtml(when)}</span></span></div>${caption(active, 5)}${media.length ? `<div class="mk-preview__grid mk-preview__grid--${Math.min(media.length, 4)}">${media.slice(0, 4).map((m, i) => `<span class="mk-preview__cell">${m.thumb_url ? `<img src="${escapeHtml(m.thumb_url)}" alt="">` : ''}${i === 3 && media.length > 4 ? `<span class="mk-preview__more">+${media.length - 4}</span>` : ''}</span>`).join('')}</div>` : ''}`;
+      const name = account(active);
+      const video = media.find((m) => m.kind === 'video');
+      const body = kind === 'fb_reel' ? vertical(active, name, video || cover)
+        : video && media.length === 1 ? frame('landscape', video)
+          : media.length ? `<div class="mk-preview__grid mk-preview__grid--${Math.min(media.length, 4)}">${media.slice(0, 4).map((m, i) => `<span class="mk-preview__cell">${image(m)}${i === 3 && media.length > 4 ? `<span class="mk-preview__more-count num">+${media.length - 4}</span>` : ''}</span>`).join('')}</div>` : '';
+      card = `<div class="mk-preview__head"><span class="mk-preview__avatar mk-preview__avatar--lg" aria-hidden="true">${initial(name)}</span><span class="mk-preview__who"><span class="mk-preview__name">${escapeHtml(name)}</span><span class="mk-preview__sub" data-mk-preview-when>${escapeHtml(when)}</span></span><span class="mk-preview__more">${glyph('ellipsis')}</span></div>
+        ${kind === 'fb_reel' ? '' : caption(active, 5)}${body}
+        <div class="mk-preview__bar" aria-hidden="true"><span>${glyph('thumbs-up')}Like</span><span>${glyph('message-circle')}Comment</span><span>${glyph('share')}Share</span></div>`;
     } else if (active === 'tiktok') {
       const privacy = draft.tiktok.privacy_level ? `Visible to: ${TIKTOK_PRIVACY[draft.tiktok.privacy_level] || humanize(draft.tiktok.privacy_level)}` : kind === 'tiktok_video' ? 'Choose who can see it' : 'Finished in the TikTok app';
-      card = `${frame('vertical', media.find((m) => m.kind === 'video') || cover)}${caption(active, 2)}<p class="mk-preview__when">${escapeHtml(privacy)} · <span data-mk-preview-when>${escapeHtml(when)}</span></p>`;
+      const name = account(active);
+      card = `${vertical(active, name.startsWith('@') ? name : `@${name}`, media.find((m) => m.kind === 'video') || cover)}<p class="mk-preview__when">${escapeHtml(privacy)} · <span data-mk-preview-when>${escapeHtml(when)}</span></p>`;
     } else {
       const g = draft.gbp;
       const button = GBP_BUTTONS.find(([key]) => key === g.cta)?.[1];
-      card = `<div class="mk-preview__head"><span class="atlas-avatar atlas-avatar--sm atlas-avatar--d" aria-hidden="true">G</span><span>${escapeHtml(targetFor(active)?.resource?.label || 'Your Business Profile')}</span></div>${frame('landscape', media.find((m) => m.kind !== 'video'))}${g.topic !== 'STANDARD' && g.event_title ? `<p class="mk-preview__title">${escapeHtml(g.event_title)}</p>` : ''}${g.topic !== 'STANDARD' && fromInput(g.event_start) ? `<p class="mk-preview__sub">${escapeHtml(`${dateTime(fromInput(g.event_start))} – ${dateTime(fromInput(g.event_end), '')}`)}</p>` : ''}${caption(active, 4)}${g.topic === 'OFFER' ? '<p class="mk-preview__cta">View offer</p>' : button && g.cta ? `<p class="mk-preview__cta">${escapeHtml(button)}</p>` : ''}<p class="mk-preview__when" data-mk-preview-when>${escapeHtml(when)}</p>`;
+      const name = targetFor(active)?.resource?.label || 'Your Business Profile';
+      const topic = GBP_TOPICS.find(([key]) => key === g.topic)?.[1] || 'Update';
+      card = `<div class="mk-preview__head"><span class="mk-preview__avatar mk-preview__avatar--lg" aria-hidden="true">${initial(name)}</span><span class="mk-preview__who"><span class="mk-preview__name">${escapeHtml(name)}</span><span class="mk-preview__sub" data-mk-preview-when>${escapeHtml(`${topic} · ${when}`)}</span></span></div>
+        ${frame('landscape', media.find((m) => m.kind !== 'video'))}
+        <div class="mk-preview__pad">${g.topic !== 'STANDARD' && g.event_title ? `<p class="mk-preview__title">${escapeHtml(g.event_title)}</p>` : ''}${g.topic !== 'STANDARD' && fromInput(g.event_start) ? `<p class="mk-preview__sub num">${escapeHtml(`${dateTime(fromInput(g.event_start))} – ${dateTime(fromInput(g.event_end), '')}`)}</p>` : ''}${caption(active, 4)}${g.topic === 'OFFER' ? '<p class="mk-preview__cta">View offer</p>' : button && g.cta ? `<p class="mk-preview__cta">${escapeHtml(button)}</p>` : ''}</div>`;
     }
+    const tone = active === 'google-business-profile' ? 'google' : active;
+    const isVertical = active === 'tiktok' || (active === 'instagram' && kind === 'ig_reel');
     return `${channels.length > 1 ? `<div class="atlas-segmented mk-preview-switch" role="group" aria-label="Preview channel">${channels.map((key) => `<button type="button" aria-pressed="${key === active}" data-mk-preview-channel="${key}">${escapeHtml(CHANNEL_SHORT[key])}</button>`).join('')}</div>` : ''}
-      <div class="mk-preview__card mk-preview--${active === 'google-business-profile' ? 'google' : active}" aria-label="${escapeHtml(CHANNELS[active])} preview (approximate)">${card}</div>`;
+      <div class="mk-preview-stage"><div class="mk-preview__card mk-preview--${tone}${isVertical ? ' mk-preview__card--vertical' : ''}" aria-label="${escapeHtml(CHANNELS[active])} preview (approximate)">${card}</div></div>`;
   }
 
   function checksMarkup(checks) {
     if (!checks.must.length && !checks.worth.length) {
       const names = state.composer.draft.platforms.map((p) => CHANNELS[p]);
-      return `<p class="help mk-checks__ok"><i data-lucide="circle-check" aria-hidden="true"></i>${escapeHtml(names.length ? `Ready for ${listText(names)}.` : 'Nothing to fix.')}</p>`;
+      return `<div class="mk-ready mk-ready--ok"><p class="mk-ready__title mk-checks__ok"><i data-lucide="circle-check" aria-hidden="true"></i>${escapeHtml(names.length ? `Ready for ${listText(names)}.` : 'Nothing to fix.')}</p></div>`;
     }
-    const block = (list, tone, title) => `<div class="atlas-alert atlas-alert--${tone}"><i data-lucide="${tone === 'danger' ? 'circle-alert' : 'triangle-alert'}"></i><div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(title)}</p><ul class="mk-checks__list">${list.map((entry) => `<li><button type="button" class="atlas-link" data-mk-check-field="${escapeHtml(entry.field || '')}" data-mk-check-platform="${escapeHtml(entry.platform || '')}">${escapeHtml(entry.message)}</button></li>`).join('')}</ul></div></div>`;
+    // A checklist, not a banner: the tone lives on the glyph and the item marks;
+    // each item is a link to the field it is about.
+    const block = (list, tone, title) => `<div class="mk-ready mk-ready--${tone}"><p class="mk-ready__title"><i data-lucide="${tone === 'danger' ? 'circle-alert' : 'triangle-alert'}" aria-hidden="true"></i>${escapeHtml(title)}</p><ul class="mk-checks__list">${list.map((entry) => `<li><button type="button" class="atlas-link mk-ready__item" data-mk-check-field="${escapeHtml(entry.field || '')}" data-mk-check-platform="${escapeHtml(entry.platform || '')}">${escapeHtml(entry.message)}</button></li>`).join('')}</ul></div>`;
     return `${checks.must.length ? block(checks.must, 'danger', `${plural(checks.must.length, 'thing')} to fix before this can be approved`) : ''}${checks.worth.length ? block(checks.worth, 'warning', `${plural(checks.worth.length, 'thing')} worth checking`) : ''}`;
   }
 
@@ -1110,7 +1270,7 @@
 
   function publishingSection(item) {
     if (!item || !deliveriesOf(item).length) return '';
-    return `<section class="atlas-stack atlas-stack--sm mk-publishing" aria-labelledby="mk-publishing-title"><p class="atlas-label" id="mk-publishing-title">Publishing</p><ul class="atlas-list">${deliveryRows(item, { compact: true })}</ul></section>`;
+    return `<section class="atlas-stack atlas-stack--sm mk-form-block mk-publishing" aria-labelledby="mk-publishing-title"><p class="atlas-label" id="mk-publishing-title">Publishing</p><ul class="atlas-list mk-box">${deliveryRows(item, { compact: true })}</ul></section>`;
   }
 
   // Footer per state (UX spec §5.9): one primary per state.
@@ -1163,25 +1323,31 @@
     const approvals = Array.isArray(item?.approval_history) ? item.approval_history : [];
     const counter = counterText(draft);
     const minNow = inputValue(new Date().toISOString());
+    // Grouped in blocks on hairlines: the post, where it goes, what it shows,
+    // what it says (and per channel), when, and the note.
     return `<form class="atlas-form mk-composer__form" data-mk-form novalidate>
+      <div class="mk-form-block">
       <div class="atlas-field"><label for="mk-title">Title</label><input class="atlas-input" id="mk-title" name="title" maxlength="180" required value="${escapeHtml(draft.title)}" data-mk-field="title"${dis}><p class="help">Only your team sees this.</p></div>
       <div class="atlas-grid-2">
         <div class="atlas-field"><label for="mk-type">Type</label><select class="atlas-select" id="mk-type" name="content_type" data-mk-field="content_type"${item ? ' disabled' : ''}>${typeOptions.map((key) => `<option value="${key}"${draft.content_type === key ? ' selected' : ''}>${TYPES[key]}</option>`).join('')}</select></div>
         <div class="atlas-field"><label for="mk-campaign">Campaign <span class="optional">(optional)</span></label><select class="atlas-select" id="mk-campaign" name="campaign_id" data-mk-field="campaign_id"${dis}><option value="">None</option>${campaigns().map((campaign) => `<option value="${escapeHtml(campaign.id)}"${draft.campaign_id === campaign.id ? ' selected' : ''}>${escapeHtml(campaign.name)}</option>`).join('')}</select></div>
       </div>
-      <fieldset class="atlas-form-group mk-channels" id="mk-channels"><legend class="atlas-label">Channels</legend><div class="atlas-chips">${CHANNEL_ORDER.map((key) => `<button type="button" class="atlas-chip" aria-pressed="${draft.platforms.includes(key)}" data-mk-channel="${key}"${dis}>${CHANNELS[key]}</button>`).join('')}</div><p class="help" data-mk-readiness>${escapeHtml(readinessNote(draft))} <a href="#settings/integrations">Integrations in Settings</a></p></fieldset>
-      <fieldset class="atlas-form-group" id="mk-media"><legend class="atlas-label">Photos and videos</legend><div class="mk-strip-host" data-mk-strip>${stripMarkup(draft, editable)}</div></fieldset>
-      <div class="atlas-field"><label for="mk-caption">Caption</label><textarea class="atlas-textarea" id="mk-caption" name="caption_draft" rows="6" maxlength="10000" data-mk-field="caption"${dis}>${escapeHtml(draft.caption)}</textarea><p class="help mk-counter${counter.over ? ' is-over' : ''}" data-mk-counter>${escapeHtml(counter.text)}</p><p class="help" data-mk-hashtags${hashtags(draft.caption) ? '' : ' hidden'}>${escapeHtml(plural(hashtags(draft.caption), 'hashtag'))}</p>${editable ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm mk-ask-caption" data-mk-ask-caption><i data-lucide="sparkles"></i>Suggest a caption</button>' : ''}</div>
+      </div>
+      <fieldset class="atlas-form-group mk-form-block mk-channels" id="mk-channels"><legend class="atlas-label">Channels</legend><div class="atlas-chips">${CHANNEL_ORDER.map((key) => `<button type="button" class="atlas-chip" aria-pressed="${draft.platforms.includes(key)}" data-mk-channel="${key}"${dis}>${CHANNELS[key]}</button>`).join('')}</div><p class="help" data-mk-readiness>${escapeHtml(readinessNote(draft))} <a href="#settings/integrations">Integrations in Settings</a></p></fieldset>
+      <fieldset class="atlas-form-group mk-form-block" id="mk-media"><legend class="atlas-label">Photos and videos</legend><div class="mk-strip-host" data-mk-strip>${stripMarkup(draft, editable)}</div></fieldset>
+      <div class="mk-form-block">
+      <div class="atlas-field mk-caption-field"><div class="mk-caption-field__head"><label for="mk-caption">Caption</label>${editable ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm mk-ask-caption" data-mk-ask-caption><i data-lucide="atlas-bot" aria-hidden="true"></i>Suggest a caption</button>' : ''}</div><textarea class="atlas-textarea" id="mk-caption" name="caption_draft" rows="6" maxlength="10000" data-mk-field="caption"${dis}>${escapeHtml(draft.caption)}</textarea><div class="mk-caption-field__foot"><p class="help" data-mk-hashtags${hashtags(draft.caption) ? '' : ' hidden'}>${escapeHtml(plural(hashtags(draft.caption), 'hashtag'))}</p><p class="help mk-counter num${counter.over ? ' is-over' : ''}" data-mk-counter>${escapeHtml(counter.text)}</p></div></div>
       <div class="mk-channel-list" data-mk-channel-list>${channelSections(draft, editable)}</div>
-      <fieldset class="atlas-form-group" id="mk-when-group"><legend class="atlas-label">When</legend>
+      </div>
+      <fieldset class="atlas-form-group mk-form-block" id="mk-when-group"><legend class="atlas-label">When</legend>
         <div class="atlas-segmented" role="radiogroup" aria-label="When">${[['time', 'At a time'], ['asap', 'As soon as it’s approved'], ['none', 'No time yet']].map(([key, label]) => `<button type="button" role="radio" aria-checked="${draft.when === key}"${radioTab(draft.when === key)} data-mk-when-mode="${key}"${dis}>${label}</button>`).join('')}</div>
         <div class="atlas-field" data-mk-when-field${draft.when === 'time' ? '' : ' hidden'}><label for="mk-when">Post on (${escapeHtml(venueTimeLabel())})</label><input class="atlas-input" type="datetime-local" step="60" id="mk-when" name="scheduled_for" min="${escapeHtml(minNow)}" value="${escapeHtml(draft.scheduled)}" data-mk-field="scheduled"${dis}>${editable ? '<div class="atlas-chips mk-quick"><button type="button" class="atlas-chip" data-mk-quick="1">Next day, same time</button><button type="button" class="atlas-chip" data-mk-quick="7">Next week, same time</button></div>' : ''}</div>
         <p class="help mk-when-echo" data-mk-when-echo>${escapeHtml(whenEcho(draft))}</p>
-        <details class="mk-reminder"${draft.reminder !== 'off' ? ' open' : ''}><summary>Reminder</summary><div class="atlas-field"><label for="mk-reminder">Remind me to post by hand</label><select class="atlas-select" id="mk-reminder" data-mk-field="reminder"${dis}>${REMINDERS.map(([key, label]) => `<option value="${key}"${draft.reminder === key ? ' selected' : ''}>${label}</option>`).join('')}</select><p class="help">Only matters for channels you post by hand.</p></div></details>
+        <details class="mk-reminder"${draft.reminder !== 'off' ? ' open' : ''}><summary class="mk-disclosure"><i data-lucide="chevron-right" aria-hidden="true"></i>Reminder</summary><div class="atlas-field"><label for="mk-reminder">Remind me to post by hand</label><select class="atlas-select" id="mk-reminder" data-mk-field="reminder"${dis}>${REMINDERS.map(([key, label]) => `<option value="${key}"${draft.reminder === key ? ' selected' : ''}>${label}</option>`).join('')}</select><p class="help">Only matters for channels you post by hand.</p></div></details>
       </fieldset>
-      ${item?.can_approve && item.status === 'pending_approval' ? '<div class="atlas-field"><label for="mk-note">Note for the team <span class="optional">(needed to request changes or reject)</span></label><textarea class="atlas-textarea" id="mk-note" name="note" rows="2" data-mk-field="note"></textarea></div>' : (!item || EDITABLE.has(item.status)) && editable ? '<div class="atlas-field"><label for="mk-note">Note for the approver <span class="optional">(optional)</span></label><textarea class="atlas-textarea" id="mk-note" name="note" rows="2" data-mk-field="note"></textarea></div>' : ''}
+      ${item?.can_approve && item.status === 'pending_approval' ? '<div class="atlas-field mk-form-block"><label for="mk-note">Note for the team <span class="optional">(needed to request changes or reject)</span></label><textarea class="atlas-textarea" id="mk-note" name="note" rows="2" data-mk-field="note"></textarea></div>' : (!item || EDITABLE.has(item.status)) && editable ? '<div class="atlas-field mk-form-block"><label for="mk-note">Note for the approver <span class="optional">(optional)</span></label><textarea class="atlas-textarea" id="mk-note" name="note" rows="2" data-mk-field="note"></textarea></div>' : ''}
       <div data-mk-publishing>${publishingSection(item)}</div>
-      ${approvals.length ? `<section class="atlas-stack atlas-stack--sm"><p class="atlas-label">Approval history</p><ul class="atlas-list">${approvals.map((entry) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(({ submitted: 'Sent for approval', approved: 'Approved', changes_requested: 'Changes requested', rejected: 'Rejected', cancelled: 'Cancelled' })[entry.decision] || humanize(entry.decision))}${entry.actor_label ? ` by ${escapeHtml(entry.actor_label)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(dateTime(entry.created_at, '—'))}${entry.note ? ` · ${escapeHtml(entry.note)}` : ''}</p></div></li>`).join('')}</ul></section>` : ''}
+      ${approvals.length ? `<section class="atlas-stack atlas-stack--sm mk-form-block mk-approvals"><p class="atlas-label">Approval history</p><ul class="atlas-list mk-box">${approvals.map((entry) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(({ submitted: 'Sent for approval', approved: 'Approved', changes_requested: 'Changes requested', rejected: 'Rejected', cancelled: 'Cancelled' })[entry.decision] || humanize(entry.decision))}${entry.actor_label ? ` by ${escapeHtml(entry.actor_label)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(dateTime(entry.created_at, '—'))}${entry.note ? ` · ${escapeHtml(entry.note)}` : ''}</p></div></li>`).join('')}</ul></section>` : ''}
       <p class="error" data-mk-error role="alert" hidden></p>
     </form>`;
   }
@@ -1565,7 +1731,8 @@
     const fields = contentFields(draft);
     const item = composerItem();
     if (composer.suggestion && !composer.id) {
-      const result = await mutate('convert-recommendation', { recommendation_id: composer.suggestion.id, occurrence_date: state.workspace?.venue_date || venueToday(), client_request_id: requestId(), scheduled_for: fields.scheduled_for, reminder_at: fields.reminder_at }, null);
+      const request = { recommendation_id: composer.suggestion.id, occurrence_date: state.workspace?.venue_date || venueToday(), scheduled_for: fields.scheduled_for, reminder_at: fields.reminder_at };
+      const result = await mutate('convert-recommendation', { ...request, client_request_id: composerRequestId(composer, 'convert-recommendation', request) }, null);
       const id = result?.content?.id || result?.content_id || result?.id;
       if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The suggestion was planned, but Alcedo couldn’t open it. Find it in Posts.' });
       composer.id = id;
@@ -1575,7 +1742,8 @@
     } else if (!composer.id) {
       let result;
       try {
-        result = await mutate('create-content', { client_request_id: requestId(), priority: 'normal', frames: [], media_requirements: {}, content_type: draft.content_type, ...fields, ...(draft.media.length ? { media: mediaPayload(draft) } : {}) }, null);
+        const request = { priority: 'normal', frames: [], media_requirements: {}, content_type: draft.content_type, ...fields, ...(draft.media.length ? { media: mediaPayload(draft) } : {}) };
+        result = await mutate('create-content', { client_request_id: composerRequestId(composer, 'create-content', request), ...request }, null);
       } catch (error) {
         // The post was created but its options or media were not saved: keep
         // editing that post, and send everything again on the next Save.
@@ -1856,13 +2024,14 @@
       const payload = await api('history', { params: { content_id: contentId } });
       const data = payload.history || {};
       const deliveries = Array.isArray(data.deliveries) ? data.deliveries : [];
-      body.innerHTML = `${deliveries.length ? deliveries.map((d) => `<section class="atlas-stack atlas-stack--sm mk-history-detail"><p class="atlas-label">${escapeHtml(CHANNELS[d.provider_key] || humanize(d.provider_key))} · ${escapeHtml(FORMAT_LABEL[d.target_kind] || humanize(d.target_kind))}</p>
+      const mark = (status) => ({ published: 'published', needs_attention: 'failed', failed: 'failed', publishing: 'publishing', processing: 'processing', verifying: 'processing', retrying: 'publishing', cancelled: 'skipped' })[status] || 'scheduled';
+      body.innerHTML = `${deliveries.length ? deliveries.map((d) => `<section class="atlas-stack atlas-stack--sm mk-history-detail"><div class="mk-history-detail__head"><span class="mk-chan mk-chan--${mark(d.status)}" aria-hidden="true">${escapeHtml(CHANNEL_LETTER[d.provider_key] || '')}</span><p class="atlas-label">${escapeHtml(CHANNELS[d.provider_key] || humanize(d.provider_key))} · ${escapeHtml(FORMAT_LABEL[d.target_kind] || humanize(d.target_kind))}</p></div>
           <p class="atlas-row__meta">${escapeHtml([humanize(d.status), d.published_at ? `published ${dateTime(d.published_at)}${d.published_source === 'manual' ? ' (by hand)' : ''}` : '', d.next_attempt_at && d.status === 'retrying' ? `next try ${dateTime(d.next_attempt_at)}` : '', `${d.attempt_count || 0} of ${d.max_attempts || 6} tries`].filter(Boolean).join(' · '))}</p>
           ${d.last_error_message ? `<p class="atlas-row__meta mk-channel-error">${escapeHtml(d.last_error_message)}</p>` : ''}
-          ${d.provider_permalink ? `<p><a class="atlas-link" href="${escapeHtml(d.provider_permalink)}" target="_blank" rel="noopener">View the post<i data-lucide="arrow-up-right"></i></a></p>` : ''}
-          ${Array.isArray(d.attempts) && d.attempts.length ? `<ul class="atlas-list">${d.attempts.map((a) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Try ${escapeHtml(a.attempt_no)} · ${escapeHtml(humanize(a.outcome || a.claim_kind || ''))}</p><p class="atlas-row__meta">${escapeHtml(dateTime(a.started_at, '—'))}${Array.isArray(a.steps) && a.steps.length ? ` · ${escapeHtml(a.steps.map((s) => humanize(s.step)).filter(Boolean).join(', '))}` : ''}</p></div></li>`).join('')}</ul>` : ''}
+          ${d.provider_permalink ? `<p class="mk-history-detail__link"><a class="atlas-link" href="${escapeHtml(d.provider_permalink)}" target="_blank" rel="noopener">View the post<i data-lucide="arrow-up-right"></i></a></p>` : ''}
+          ${Array.isArray(d.attempts) && d.attempts.length ? `<ul class="atlas-list mk-box">${d.attempts.map((a) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Try ${escapeHtml(a.attempt_no)} · ${escapeHtml(humanize(a.outcome || a.claim_kind || ''))}</p><p class="atlas-row__meta">${escapeHtml(dateTime(a.started_at, '—'))}${Array.isArray(a.steps) && a.steps.length ? ` · ${escapeHtml(a.steps.map((s) => humanize(s.step)).filter(Boolean).join(', '))}` : ''}</p></div></li>`).join('')}</ul>` : ''}
         </section>`).join('') : '<p class="mk-muted">Nothing has been sent to a channel yet.</p>'}
-        ${Array.isArray(data.approvals) && data.approvals.length ? `<section class="atlas-stack atlas-stack--sm"><p class="atlas-label">Approvals</p><ul class="atlas-list">${data.approvals.map((a) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(a.decision))}${a.actor_label ? ` by ${escapeHtml(a.actor_label)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(dateTime(a.created_at, '—'))}${a.note ? ` · ${escapeHtml(a.note)}` : ''}</p></div></li>`).join('')}</ul></section>` : ''}`;
+        ${Array.isArray(data.approvals) && data.approvals.length ? `<section class="atlas-stack atlas-stack--sm mk-history-detail"><p class="atlas-label">Approvals</p><ul class="atlas-list mk-box">${data.approvals.map((a) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(a.decision))}${a.actor_label ? ` by ${escapeHtml(a.actor_label)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(dateTime(a.created_at, '—'))}${a.note ? ` · ${escapeHtml(a.note)}` : ''}</p></div></li>`).join('')}</ul></section>` : ''}`;
       window.lucide?.createIcons?.();
     } catch (error) {
       body.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert"><i data-lucide="circle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__body">${escapeHtml(errorText(error, 'The history'))}</p></div></div>`;
@@ -1890,7 +2059,7 @@
     const root = modal('mk-campaign');
     root.innerHTML = `<section class="atlas-dialog atlas-dialog--form" data-modal-panel aria-labelledby="mk-campaign-title">
         <h2 class="atlas-dialog__title" id="mk-campaign-title">New campaign</h2>
-        <form class="atlas-dialog__body atlas-form" data-mk-campaign-form>
+        <form class="atlas-dialog__body atlas-form mk-campaign-form" data-mk-campaign-form>
           <div class="atlas-field"><label for="mk-c-name">Name</label><input class="atlas-input" id="mk-c-name" name="name" maxlength="180" required></div>
           <div class="atlas-field"><label for="mk-c-type">Type</label><select class="atlas-select" id="mk-c-type" name="campaign_type">${['promotion', 'event', 'seasonal', 'always_on', 'brand', 'other'].map((key) => `<option value="${key}">${humanize(key)}</option>`).join('')}</select></div>
           <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-c-start">Starts</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-start" name="start"></div><div class="atlas-field"><label for="mk-c-end">Ends</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-end" name="end" data-atlas-min-from="mk-c-start"></div></div>

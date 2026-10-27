@@ -100,6 +100,25 @@
     return `<span class="atlas-pill atlas-pill--${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
   }
 
+  // Progress at the true ratio with both ends labelled. Up to 12 items draw a
+  // segment each; more draw one bar filled from data-tr-ratio after paint (a
+  // transform, so no style markup).
+  function meterMarkup({ done, total, label, start, end, extra = '' }) {
+    const count = Math.max(0, Number(total) || 0);
+    const filled = Math.max(0, Math.min(count, Number(done) || 0));
+    const complete = count > 0 && filled === count;
+    const track = count && count <= 12
+      ? `<span class="tr-meter__track${complete ? ' is-complete' : ''}">${Array(count).fill('').map((_, index) => `<i${index < filled ? ' class="is-on"' : ''}></i>`).join('')}</span>`
+      : `<span class="tr-meter__track tr-meter__track--bar${complete ? ' is-complete' : ''}"><i data-tr-ratio="${count ? filled / count : 0}"></i></span>`;
+    return `<div class="tr-meter${extra ? ` ${extra}` : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${count}" aria-valuenow="${filled}" aria-label="${escapeHtml(label)}">${track}${start || end ? `<span class="tr-meter__ends" aria-hidden="true"><span>${escapeHtml(start)}</span><span>${escapeHtml(end)}</span></span>` : ''}</div>`;
+  }
+
+  function applyRatios(root) {
+    root?.querySelectorAll('[data-tr-ratio]').forEach((fill) => {
+      fill.style.transform = `scaleX(${Math.max(0, Math.min(1, Number(fill.dataset.trRatio) || 0))})`;
+    });
+  }
+
   // mm:ss ⇄ seconds.
   function formatClock(seconds) {
     const total = Math.max(0, Math.round(Number(seconds) || 0));
@@ -347,6 +366,12 @@
     return roles.length ? `Required · ${roles.map((r) => ROLE_LABELS[r] || humanize(r)).join(', ')}` : 'Required · Everyone';
   }
 
+  // Who it is for, in words ("Bartenders", "Everyone").
+  function audience(lesson) {
+    const roles = (Array.isArray(lesson.target_roles) ? lesson.target_roles : []).filter((r) => r && r !== 'all');
+    return roles.length ? roles.map((r) => ROLE_LABELS[r] || humanize(r)).join(', ') : 'Everyone';
+  }
+
   function cardMeta(lesson) {
     const parts = [];
     if (lesson.estimated_minutes) parts.push(`${Number(lesson.estimated_minutes)} min`);
@@ -357,30 +382,35 @@
     return parts.join(' · ');
   }
 
-  function cardStatePill(lesson) {
+  // One status mark per row: a pill once a lesson is under way or done; a
+  // plain "Start" while it is still ahead.
+  function cardState(lesson) {
     if (isDone(lesson)) return pill('Completed', 'positive');
-    if (isInProgress(lesson)) return pill('Continue', 'info');
-    return pill('Start', 'neutral');
+    if (isInProgress(lesson)) return pill('In progress', 'info');
+    return '<span class="tr-card__go">Start</span>';
   }
 
+  // A lesson row: its state mark, the title, what it teaches, then who it is
+  // for and how long it takes; the state on the right.
   function lessonCard(lesson) {
     const id = lesson.article_id;
-    const meta = cardMeta(lesson);
-    return `<li class="tr-card-wrap"><a class="atlas-card atlas-card--pad tr-card" href="#knowledge/training/${encodeURIComponent(id)}" data-training-card="${escapeHtml(id)}">
-      <div class="tr-card__body">
-        <p class="tr-card__tag">${escapeHtml(roleTag(lesson))}</p>
-        <p class="tr-card__title">${escapeHtml(lesson.title || 'Untitled lesson')}</p>
-        ${lesson.summary ? `<p class="tr-card__summary">${escapeHtml(lesson.summary)}</p>` : ''}
-        ${meta ? `<p class="tr-card__meta">${escapeHtml(meta)}</p>` : ''}
-      </div>
-      <div class="tr-card__end">${cardStatePill(lesson)}<span class="tr-card__chevron">${icon('chevron-right')}</span></div>
+    const meta = [lesson.required ? `Required · ${audience(lesson)}` : audience(lesson), cardMeta(lesson)].filter(Boolean).join(' · ');
+    const mark = isDone(lesson) ? 'is-done' : isInProgress(lesson) ? 'is-active' : '';
+    return `<li class="tr-card-wrap"><a class="tr-card" href="#knowledge/training/${encodeURIComponent(id)}" data-training-card="${escapeHtml(id)}">
+      <span class="tr-card__mark${mark ? ` ${mark}` : ''}" aria-hidden="true">${icon(isDone(lesson) ? 'circle-check' : isInProgress(lesson) ? 'circle-notch' : 'circle')}</span>
+      <span class="tr-card__body">
+        <span class="tr-card__title">${escapeHtml(lesson.title || 'Untitled lesson')}</span>
+        ${lesson.summary ? `<span class="tr-card__summary">${escapeHtml(lesson.summary)}</span>` : ''}
+        <span class="tr-card__meta">${escapeHtml(meta)}</span>
+      </span>
+      <span class="tr-card__end">${cardState(lesson)}<span class="tr-card__chevron">${icon('chevron-right')}</span></span>
     </a></li>`;
   }
 
   function cardSection(title, list, key) {
     if (!list.length) return '';
     return `<section class="tr-section" aria-labelledby="tr-${key}-title" data-training-section="${key}">
-      <h2 class="tr-section__title" id="tr-${key}-title">${escapeHtml(title)}</h2>
+      <div class="tr-section__head"><h2 class="tr-section__title" id="tr-${key}-title">${escapeHtml(title)}</h2><span class="tr-section__count">${list.length} ${list.length === 1 ? 'lesson' : 'lessons'}</span></div>
       <ul class="tr-cards">${list.map(lessonCard).join('')}</ul>
     </section>`;
   }
@@ -392,21 +422,29 @@
     const published = all.filter((lesson) => lesson.version_state === 'published' && lesson.status !== 'retired');
     const rowFor = (lesson) => `<li class="atlas-row tr-manage-row" data-training-manage="${escapeHtml(lesson.article_id)}">
         <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(lesson.title || 'Untitled lesson')}</p><p class="atlas-row__meta">${escapeHtml([lesson.version_number ? `v${Number(lesson.version_number)}` : null, humanize(lesson.version_state || lesson.status || ''), cardMeta(lesson)].filter(Boolean).join(' · '))}</p></div>
-        <div class="atlas-row__end"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#knowledge/training/${encodeURIComponent(lesson.article_id)}" data-training-card="${escapeHtml(lesson.article_id)}">${icon('pencil')}Open</a><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-training-report="${escapeHtml(lesson.article_id)}">${icon('users')}View completion</button></div>
+        <div class="atlas-row__end"><span class="tr-manage-row__actions"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#knowledge/training/${encodeURIComponent(lesson.article_id)}" data-training-card="${escapeHtml(lesson.article_id)}">${icon('pencil')}Open</a><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-training-report="${escapeHtml(lesson.article_id)}">${icon('users')}View completion</button></span></div>
       </li>`;
     return `<section class="tr-section tr-manage" aria-labelledby="tr-manage-title" data-training-section="manage">
-      <div class="tr-section__head"><h2 class="tr-section__title" id="tr-manage-title">Manage training</h2></div>
+      <div class="tr-section__head"><h2 class="tr-section__title" id="tr-manage-title">Manage training</h2><span class="tr-section__count">${drafts.length} ${drafts.length === 1 ? 'draft' : 'drafts'} · ${published.length} published</span></div>
       ${drafts.length ? `<h3 class="tr-subhead">Drafts</h3><ul class="atlas-list tr-list">${drafts.map(rowFor).join('')}</ul>` : ''}
       ${published.length ? `<h3 class="tr-subhead">Published</h3><ul class="atlas-list tr-list">${published.map(rowFor).join('')}</ul>` : ''}
       ${!drafts.length && !published.length ? '<p class="tr-note">No lessons yet. Create the first with “New training”.</p>' : ''}
     </section>`;
   }
 
+  // The lessons required of me (published, required, for my role) and how many
+  // are done: the figure the page leads with.
+  function myRequired() {
+    const required = publishedLessons().filter((lesson) => lesson.required && targetedToMe(lesson));
+    return { total: required.length, done: required.filter(isDone).length, open: required.filter((lesson) => !isDone(lesson)) };
+  }
+
   function headerMarkup() {
     const published = publishedLessons();
     const done = published.filter((lesson) => isDone(lesson)).length;
+    const due = state.snapshot ? myRequired().open.length : 0;
     const sub = state.snapshot
-      ? [`${published.length} ${published.length === 1 ? 'lesson' : 'lessons'}`, published.length ? `${done} completed` : null].filter(Boolean).join(' · ')
+      ? [`${published.length} ${published.length === 1 ? 'lesson' : 'lessons'}`, due ? `${due} required for you` : null, published.length ? `${done} completed` : null].filter(Boolean).join(' · ')
       : state.error ? 'Training couldn’t be loaded' : 'Watch, read and confirm the procedures for your role';
     return `<header class="page-head"><div class="page-head__text"><a class="tr-crumb" href="#knowledge">${icon('chevron-left')}Knowledge</a><h1 class="page-head__title">Training</h1><p class="page-head__sub">${escapeHtml(sub)}</p></div>${canManage() ? `<div class="page-head__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-training-new>${icon('plus')}New training</button></div>` : ''}</header>`;
   }
@@ -416,10 +454,40 @@
     return `<div class="atlas-alert atlas-alert--danger tr-alert" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Training couldn’t be ${state.snapshot ? 'updated' : 'loaded'}.</p><p class="atlas-alert__body">${escapeHtml(state.error)} ${state.snapshot ? 'You’re seeing what loaded last.' : 'Nothing has changed.'}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-training-refresh>Try again</button></div></div>`;
   }
 
+  // The aside: my required training at its true ratio (a segment per lesson,
+  // both ends labelled), the counts behind it, and the next lesson one click
+  // away.
+  function progressMarkup() {
+    const mine = myRequired();
+    const going = continueLessons();
+    const next = going[0] || mine.open[0] || null;
+    const completed = publishedLessons().filter(isDone).length;
+    const figure = mine.total
+      ? `<p class="tr-progress__figure"><span class="num">${mine.done}</span><span class="tr-progress__of"> of ${mine.total} required ${mine.total === 1 ? 'lesson' : 'lessons'}</span></p>
+        ${meterMarkup({ done: mine.done, total: mine.total, label: 'Required training', start: `${mine.done} completed`, end: `${mine.total} required` })}`
+      : '<p class="tr-progress__none">Nothing is required for your role yet.</p>';
+    const rows = [
+      ['In progress', going.length],
+      ['Still to start', mine.open.filter((lesson) => !isInProgress(lesson)).length],
+      ['Completed', completed]
+    ];
+    return `<section class="tr-progress" aria-labelledby="tr-progress-title">
+      <h2 class="tr-progress__title" id="tr-progress-title">Your training</h2>
+      ${figure}
+      <dl class="tr-progress__rows">${rows.map(([label, value]) => `<div><dt>${label}</dt><dd class="num">${value}</dd></div>`).join('')}</dl>
+      ${next ? `<a class="atlas-btn ${canManage() ? 'atlas-btn--secondary' : 'atlas-btn--primary'} tr-progress__next" href="#knowledge/training/${encodeURIComponent(next.article_id)}" data-training-card="${escapeHtml(next.article_id)}">${isInProgress(next) ? 'Continue' : 'Start'} ${escapeHtml(next.title || 'the next lesson')}${icon('arrow-right')}</a>` : mine.total ? `<p class="tr-done">${icon('circle-check')}All required training done</p>` : ''}
+    </section>`;
+  }
+
+  function skeletonMarkup() {
+    const rows = Array(4).fill('<div class="tr-skel__row"><span class="atlas-skel atlas-skel--circle tr-skel__mark"></span><span class="tr-skel__text"><span class="atlas-skel tr-skel__name"></span><span class="atlas-skel tr-skel__sub"></span></span></div>').join('');
+    return `<div class="tr-skel" aria-busy="true"><span class="atlas-skel tr-skel__head"></span><div class="tr-skel__list">${rows}</div><span class="sr-only">Loading Training</span></div>`;
+  }
+
   function homeMarkup() {
     if (!state.snapshot) {
       if (state.error) return '';
-      return `<div class="tr-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(5)}<span class="sr-only">Loading Training</span></div>`;
+      return skeletonMarkup();
     }
     if (!publishedLessons().length && !canManage()) {
       return `<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('graduation-cap')}</div><h3 class="atlas-empty__title">No training yet</h3><p class="atlas-empty__text">Your manager will add the lessons your role needs.</p></div>`;
@@ -432,18 +500,35 @@
     ].join('');
     const empty = !sections && !canManage()
       ? `<p class="tr-note">You’re all caught up.</p>` : '';
-    return `${sections}${empty}${managerListMarkup()}`;
+    return `<div class="tr-home">
+      <div class="tr-home__main">${sections}${empty}${managerListMarkup()}</div>
+      <aside class="tr-home__aside">${progressMarkup()}</aside>
+    </div>`;
   }
 
   // ---------- lesson ----------
 
+  // The completion moment: a positive well with the lesson, version and date,
+  // and the next lesson for me one click away. It rises in once, right after
+  // the learner confirms (is-fresh), and stays still on every later paint.
+  function finishMarkup(version, article, versionNumber, progress) {
+    const fresh = state.completedAt && Date.now() - state.completedAt < 600;
+    const next = [...continueLessons(), ...requiredLessons(), ...recommendedLessons()]
+      .find((lesson) => lesson.article_id !== article.id && !isDone(lesson)) || null;
+    return `<div class="tr-finish${fresh ? ' is-fresh' : ''}" data-training-completed>
+      <span class="tr-finish__mark" aria-hidden="true">${icon('circle-check')}</span>
+      <div class="tr-finish__text"><p class="tr-finish__title">Completed</p><p class="tr-finish__body">${escapeHtml(version.title || article.title || 'Training')} · version ${versionNumber}${progress?.completed_at ? ` · ${escapeHtml(formatDate(progress.completed_at))}` : ''}</p></div>
+      ${next ? `<a class="atlas-btn atlas-btn--secondary tr-finish__next" href="#knowledge/training/${encodeURIComponent(next.article_id)}" data-training-card="${escapeHtml(next.article_id)}">Next: ${escapeHtml(next.title || 'lesson')}${icon('arrow-right')}</a>` : `<a class="atlas-btn atlas-btn--ghost tr-finish__next" href="#knowledge/training">Back to Training</a>`}
+    </div>`;
+  }
+
   function lessonMarkup() {
     if (state.detailLoading && !state.detail) {
-      return `<div class="tr-lesson" aria-busy="true"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm tr-back" href="#knowledge/training">${icon('chevron-left')}Training</a><div class="atlas-skel atlas-skel--title"></div>${'<div class="atlas-skel atlas-skel--text"></div>'.repeat(6)}<span class="sr-only">Loading lesson</span></div>`;
+      return `<div class="tr-lesson tr-lesson--loading" aria-busy="true"><nav class="tr-lesson__crumb" aria-label="Breadcrumb"><a class="tr-back" href="#knowledge/training">${icon('chevron-left')}Training</a></nav><span class="atlas-skel tr-skel__title"></span><span class="atlas-skel tr-skel__meta"></span><span class="atlas-skel tr-skel__video"></span>${'<span class="atlas-skel tr-skel__line"></span>'.repeat(3)}<span class="sr-only">Loading lesson</span></div>`;
     }
     if (!state.detail) {
       const message = state.detailError || 'It may have been retired, or it isn’t shared with your role.';
-      return `<div class="tr-lesson"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm tr-back" href="#knowledge/training">${icon('chevron-left')}Training</a>
+      return `<div class="tr-lesson"><nav class="tr-lesson__crumb" aria-label="Breadcrumb"><a class="tr-back" href="#knowledge/training">${icon('chevron-left')}Training</a></nav>
         <div class="atlas-empty"><div class="atlas-empty__icon">${icon('circle-alert')}</div><h1 class="atlas-empty__title">This lesson isn’t available</h1><p class="atlas-empty__text">${escapeHtml(message)}</p><div class="atlas-empty__actions">${state.detailMissing ? '' : '<button type="button" class="atlas-btn atlas-btn--secondary" data-training-retry>Try again</button>'}<a class="atlas-btn atlas-btn--secondary" href="#knowledge/training">Back to Training</a></div></div></div>`;
     }
     const detail = state.detail;
@@ -486,34 +571,35 @@
           ? `<div class="atlas-alert atlas-alert--info tr-video-note">${icon('video')}<div class="atlas-alert__content"><p class="atlas-alert__title">Video is still processing</p><p class="atlas-alert__body">The written procedure below is ready to read now.</p></div></div>`
           : '';
 
-    const chaptersBlock = !draft && chapters.length ? `<section class="tr-section tr-lesson__section"><h2 class="tr-section__title">Chapters</h2><ul class="tr-chapters">${chapters.map((chapter) => `<li><button type="button" class="tr-chapter" data-training-chapter="${Number(chapter.start_seconds || 0)}"><span class="tr-chapter__time">${formatClock(chapter.start_seconds)}</span><span class="tr-chapter__title">${escapeHtml(chapter.title || 'Chapter')}</span></button></li>`).join('')}</ul></section>` : '';
+    const chaptersBlock = !draft && chapters.length ? `<section class="tr-section tr-lesson__section tr-lesson__chapters"><div class="tr-lesson__label"><h2 class="tr-section__title">Chapters</h2><span class="tr-section__count">${chapters.length}</span></div><ol class="tr-chapters">${chapters.map((chapter) => `<li><button type="button" class="tr-chapter" data-training-chapter="${Number(chapter.start_seconds || 0)}"><span class="tr-chapter__time">${formatClock(chapter.start_seconds)}</span><span class="tr-chapter__title">${escapeHtml(chapter.title || 'Chapter')}</span>${icon('play')}</button></li>`).join('')}</ol></section>` : '';
 
-    const sopBlock = version.content ? `<section class="tr-section tr-lesson__section"><h2 class="tr-section__title">Written procedure</h2><div class="tr-prose">${renderMarkdown(version.content)}</div></section>` : '';
+    const sopBlock = version.content ? `<section class="tr-section tr-lesson__section"><div class="tr-lesson__label"><h2 class="tr-section__title">Written procedure</h2></div><div class="tr-prose">${renderMarkdown(version.content)}</div></section>` : '';
 
     const checks = loadStepChecks();
-    const stepsBlock = steps.length ? `<section class="tr-section tr-lesson__section"><h2 class="tr-section__title">Procedure steps</h2><ul class="tr-steps">${steps.map((step, index) => {
+    const ticked = steps.filter((step, index) => checks.get(`${version.id}:${step.id ?? index}`)).length;
+    const stepsBlock = steps.length ? `<section class="tr-section tr-lesson__section"><div class="tr-lesson__label"><h2 class="tr-section__title">Procedure steps</h2><span class="tr-section__count" data-training-step-count>${ticked} of ${steps.length} ticked</span></div><ol class="tr-steps">${steps.map((step, index) => {
       const key = `${version.id}:${step.id ?? index}`;
       const checked = checks.get(key);
       const id = `tr-step-${index}`;
-      return `<li><label class="atlas-check-row tr-step" for="${id}"><input type="checkbox" class="atlas-check" id="${id}" data-training-step="${escapeHtml(key)}" ${checked ? 'checked' : ''}><span>${escapeHtml(step.label || `Step ${index + 1}`)}</span></label></li>`;
-    }).join('')}</ul><p class="tr-note">Ticks are a personal aid on this device; completing the training is what your manager sees.</p></section>` : '';
+      return `<li><label class="atlas-check-row tr-step" for="${id}"><span class="tr-step__n num" aria-hidden="true">${index + 1}</span><span class="tr-step__label">${escapeHtml(step.label || `Step ${index + 1}`)}</span><input type="checkbox" class="atlas-check" id="${id}" data-training-step="${escapeHtml(key)}" ${checked ? 'checked' : ''}></label></li>`;
+    }).join('')}</ol><p class="tr-note">Ticks are a personal aid on this device; completing the training is what your manager sees.</p></section>` : '';
 
     const completeFooter = draft
       ? `<div class="atlas-alert atlas-alert--warning tr-lesson__draftnote">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Private draft</p><p class="atlas-alert__body">Only managers see this. Publish it to release it to the team.</p></div></div>`
       : done
-        ? `<p class="tr-done" data-training-completed>${icon('circle-check')}Completed · ${escapeHtml(version.title || article.title || 'Training')} v${versionNumber}${progress?.completed_at ? ` · ${escapeHtml(formatDate(progress.completed_at))}` : ''}</p>`
-        : `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg tr-complete" data-training-complete ${state.completing ? 'disabled' : ''}>${icon('circle-check')}I have completed this training</button>`;
+        ? finishMarkup(version, article, versionNumber, progress)
+        : `<div class="tr-confirm"><div class="tr-confirm__text"><p class="tr-confirm__title">Done with this lesson?</p><p class="tr-confirm__body">Confirming records version ${versionNumber} as completed. Your manager sees it in the completion report.</p></div><button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg tr-complete" data-training-complete ${state.completing ? 'disabled aria-busy="true"' : ''}>${icon('circle-check')}I have completed this training</button></div>`;
 
     const stickyBar = phoneQuery.matches && !draft && !done
       ? `<div class="tr-bar"><button type="button" class="atlas-btn atlas-btn--primary" data-training-complete ${state.completing ? 'disabled' : ''}>${icon('circle-check')}I have completed this training</button></div>`
       : '';
 
     return `<article class="tr-lesson" aria-labelledby="tr-lesson-title">
-      <a class="atlas-btn atlas-btn--ghost atlas-btn--sm tr-back" href="#knowledge/training">${icon('chevron-left')}Training</a>
+      <nav class="tr-lesson__crumb" aria-label="Breadcrumb"><a class="tr-back" href="#knowledge/training">${icon('chevron-left')}Training</a></nav>
       <header class="tr-lesson__head">
         <h1 class="tr-lesson__title" id="tr-lesson-title">${escapeHtml(version.title || article.title || 'Untitled lesson')}</h1>
         <p class="tr-lesson__meta">${escapeHtml(metaLine)}</p>
-        ${article.required ? `<p class="tr-lesson__state">${pill(roleTag({ required: true, target_roles: article.target_roles }), 'info')}${draft ? pill('Draft', 'neutral') : ''}</p>` : draft ? `<p class="tr-lesson__state">${pill('Draft', 'neutral')}</p>` : ''}
+        ${article.required ? `<p class="tr-lesson__state">${pill(roleTag({ required: true, target_roles: article.target_roles }), done ? 'positive' : 'info')}${draft ? pill('Draft', 'neutral') : ''}</p>` : draft ? `<p class="tr-lesson__state">${pill('Draft', 'neutral')}</p>` : ''}
         ${managerActions}
       </header>
       ${version.summary ? `<p class="tr-lesson__summary">${escapeHtml(version.summary)}</p>` : ''}
@@ -636,7 +722,7 @@
     }
     const up = state.upload;
     let statusHtml = '';
-    if (up.status === 'uploading') statusHtml = `<div class="tr-upload__progress"><div class="atlas-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${up.percent}"><i style="width:${up.percent}%"></i></div><p class="tr-note">Uploading ${up.percent}%</p></div>`;
+    if (up.status === 'uploading') statusHtml = `<div class="tr-upload__progress"><div class="tr-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${up.percent}" aria-label="Upload progress"><span class="tr-meter__track tr-meter__track--bar"><i data-tr-ratio="${up.percent / 100}"></i></span></div><p class="tr-note">Uploading ${up.percent}%</p></div>`;
     else if (up.status === 'processing') statusHtml = `<p class="tr-note" data-training-upload-state>Processing…</p>`;
     else if (up.status === 'ready') statusHtml = `<p class="tr-done" data-training-upload-state>${icon('circle-check')}Ready</p>`;
     else if (up.status === 'error') statusHtml = `<div class="atlas-alert atlas-alert--danger">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Upload failed</p><p class="atlas-alert__body">${escapeHtml(up.error || 'The video couldn’t be uploaded.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-training-retry-upload>Retry</button></div></div>`;
@@ -652,6 +738,7 @@
     if (!panel) return;
     panel.innerHTML = uploadPanelMarkup(state.detail?.article || {});
     paintIcons();
+    applyRatios(panel);
   }
 
   function openEditor(options = {}) {
@@ -871,9 +958,9 @@
       state.upload.mediaId = mediaId;
       await putWithProgress(uploadUrl, upload.token, file, (percent) => {
         state.upload.percent = percent;
-        const bar = root.querySelector('.tr-upload__progress .atlas-progress i');
+        const bar = root.querySelector('.tr-upload__progress [data-tr-ratio]');
         const label = root.querySelector('.tr-upload__progress .tr-note');
-        if (bar) bar.style.width = `${percent}%`;
+        if (bar) { bar.dataset.trRatio = String(percent / 100); bar.style.transform = `scaleX(${percent / 100})`; }
         if (label) label.textContent = `Uploading ${percent}%`;
       });
       state.upload.status = 'processing';
@@ -907,7 +994,7 @@
       panel: `<section class="atlas-sheet tr-report" data-modal-panel aria-labelledby="tr-report-title">
         <span class="atlas-sheet__grabber" aria-hidden="true"></span>
         <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="tr-report-title">Completion</h2><p class="atlas-sheet__desc">${escapeHtml(lesson?.title || 'Training')}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
-        <div class="atlas-sheet__body" data-training-report-body><div class="tr-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(4)}<span class="sr-only">Loading completion</span></div></div>
+        <div class="atlas-sheet__body" data-training-report-body><div class="tr-skel tr-skel--report" aria-busy="true"><span class="atlas-skel tr-skel__stats"></span>${'<span class="atlas-skel tr-skel__person"></span>'.repeat(3)}<span class="sr-only">Loading completion</span></div></div>
       </section>`
     });
     try {
@@ -915,13 +1002,19 @@
       const body = root.querySelector('[data-training-report-body]');
       if (!body) return;
       const staff = Array.isArray(report.staff) ? report.staff : [];
+      const assigned = Number(report.assigned || 0);
+      const completed = Number(report.completed || 0);
+      // Outstanding first: the people the manager still has to chase.
+      const ordered = staff.slice().sort((a, b) => Number(Boolean(a.completed)) - Number(Boolean(b.completed)));
       body.innerHTML = `<div class="tr-report__stats">
-          <div class="tr-stat"><span class="tr-stat__num">${Number(report.assigned || 0)}</span><span class="tr-stat__label">Assigned</span></div>
-          <div class="tr-stat"><span class="tr-stat__num">${Number(report.completed || 0)}</span><span class="tr-stat__label">Completed</span></div>
-          <div class="tr-stat"><span class="tr-stat__num">${Number(report.outstanding || 0)}</span><span class="tr-stat__label">Outstanding</span></div>
+          <div class="tr-stat"><span class="tr-stat__label">Assigned</span><span class="tr-stat__num">${assigned}</span></div>
+          <div class="tr-stat"><span class="tr-stat__label">Completed</span><span class="tr-stat__num">${completed}</span></div>
+          <div class="tr-stat"><span class="tr-stat__label">Outstanding</span><span class="tr-stat__num">${Number(report.outstanding || 0)}</span></div>
         </div>
-        ${staff.length ? `<ul class="atlas-list tr-list">${staff.map((person) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon${person.completed ? ' atlas-row__icon--positive' : ''}">${icon(person.completed ? 'circle-check' : 'circle')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(person.user_label || 'Team member')}</p><p class="atlas-row__meta">${escapeHtml([humanize(person.role || ''), person.completed ? `Completed${person.completed_at ? ` ${formatDate(person.completed_at)}` : ''}` : 'Not yet'].filter(Boolean).join(' · '))}</p></div></li>`).join('')}</ul>` : '<p class="tr-note">No one is assigned to this training yet.</p>'}`;
+        ${assigned ? meterMarkup({ done: completed, total: assigned, label: 'Completion', start: `${completed} completed`, end: `${assigned} assigned`, extra: 'tr-report__meter' }) : ''}
+        ${ordered.length ? `<ul class="atlas-list tr-list tr-report__people">${ordered.map((person) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon${person.completed ? ' atlas-row__icon--positive' : ''}">${icon(person.completed ? 'circle-check' : 'circle')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(person.user_label || 'Team member')}</p><p class="atlas-row__meta">${escapeHtml(humanize(person.role || ''))}</p></div><span class="tr-report__when${person.completed ? '' : ' is-open'}">${escapeHtml(person.completed ? `Completed${person.completed_at ? ` ${formatDate(person.completed_at)}` : ''}` : 'Not yet')}</span></li>`).join('')}</ul>` : '<p class="tr-note">No one is assigned to this training yet.</p>'}`;
       paintIcons();
+      applyRatios(body);
     } catch (error) {
       const body = root.querySelector('[data-training-report-body]');
       if (body) body.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Completion couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(shown(error, 'Check the connection and try again.'))}</p></div></div>`;
@@ -1035,6 +1128,7 @@
       window.AtlasChrome?.setTabBarHidden?.('training', false);
     }
     paintIcons();
+    applyRatios(view);
   }
 
   function render(params = {}) {
@@ -1133,6 +1227,7 @@
         const result = await api('complete', { method: 'POST', body: { article_id: detail.article.id, version_id: detail.version.id } });
         if (state.detail) {
           state.detail.progress = { ...(state.detail.progress || {}), completion_state: result?.completion_state || 'completed', completed_at: result?.completed_at || new Date().toISOString() };
+          state.completedAt = Date.now();
         }
         window.AtlasShell?.toast?.(result?.replayed ? 'Completed again' : 'Training completed');
         loadSnapshot({ silent: true });
@@ -1151,6 +1246,10 @@
     if (target.matches('[data-training-step]')) {
       loadStepChecks().set(target.dataset.trainingStep, target.checked);
       saveStepChecks();
+      // The section count follows the ticks without a repaint (the video keeps playing).
+      const list = target.closest('.tr-steps');
+      const count = list?.closest('section')?.querySelector('[data-training-step-count]');
+      if (list && count) count.textContent = `${list.querySelectorAll('[data-training-step]:checked').length} of ${list.querySelectorAll('[data-training-step]').length} ticked`;
     }
   }
 
