@@ -9,14 +9,15 @@ the legacy layer is retired — there is no `atlas.legacy` layer, no
 the visual north star is `docs/design/atlas-reference.html`. Where this file and
 the spec disagree, the spec wins; fix this file.
 
-Direction: light, cool-neutral, precise (Brand v1.0, `docs/brand/README.md`).
-White canvas, Snow insets, Midnight ink, Mist hairlines; structure from type,
-spacing and hairlines rather than boxes. The logo is always monochrome (the
-supplied kit files, never redrawn or typed). One accent colour, Atlas Blue, for
-the primary action, links, focus, selection and the Atlas AI mark. No glass, no
-gradients, no blur, no coloured shadows. Functional truth before decoration:
-never style a control as available when its behaviour does not exist, never
-show a guessed number.
+Direction (October 2026): **Basalt & Kingfisher**, the framed sheet
+(`docs/design/Alcedo_Redesign_2026.md`, which wins on every visual value). A
+stone frame holds the sidebar and top bar; the work sits on one white sheet.
+Basalt ink, one filled near-black primary per screen, and one hue, kingfisher
+blue, for focus, selection, active markers, unread dots and charts. The logo is
+monochrome (the supplied kit files, never redrawn or typed). No glass, no
+gradients, no blur, no coloured or resting shadows. Functional truth before
+decoration: never style a control as available when its behaviour does not
+exist, never show a guessed number.
 
 ## 0. Files and cascade
 
@@ -52,108 +53,93 @@ show a guessed number.
   stylesheets; not part of the app bundle), checked by
   `tests/browser/components.browser.test.mjs` at 1440 and 390.
 
-## 1. Colour (spec §5.2; Brand v1.0 from 2026-09-24)
+## 1. Colour (Basalt & Kingfisher, October 2026)
 
-Brand palette (verbatim from the kit, `docs/brand/Atlas_Brand_Identity_Kit_v1.0/07_Developer/atlas-brand-tokens.css`):
-`--atlas-midnight #0B0F14`, `--atlas-slate #1F2937`, `--atlas-mist #CBD5E1`,
-`--atlas-snow #F8FAFC`, `--atlas-blue #3B82F6`. Every token below derives from
-them. Contrast ratios are checked by `tests/node/brand-kit-v1.test.js`.
+The visual values below are the 2026 redesign
+(`docs/design/Alcedo_Redesign_2026.md`, which wins on any visual value). Token
+names are unchanged since S88; only their values moved. Every value lives in
+`atlas-tokens.css`. The legacy `--atlas-*` anchors are internal identifiers.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--bg` | `#ffffff` | Content canvas |
-| `--bg-subtle` | `#f8fafc` (Snow) | Sidebar, table header, inset panels, AI list |
-| `--bg-muted` | `#f1f5f9` | Hover on subtle, segmented track, skeleton |
-| `--bg-hover` | `#fbfcfd` | Table row hover |
-| `--surface` | `#ffffff` | Cards, sheets, popovers |
-| `--overlay` | `rgba(11,15,20,.32)` (Midnight) | Scrim |
-| `--text` | `#0b0f14` (Midnight, 19.2:1) | Headings and primary text |
-| `--text-2` | `#475569` (7.6:1; 6.9:1 on `--bg-muted`) | Secondary text, metadata, table headers |
-| `--text-3` | `#606c80` (5.3:1; 4.9:1 on `--bg-muted`) | Placeholders, disabled, group labels, meta — AA on every surface, still never body copy |
-| `--ink` | `#1f2937` (Slate) | Tooltips, toasts, bulk bar (white text 14.7:1) |
-| `--line` | `#e2e8f0` | Card borders, dividers (hairline derived from Mist) |
-| `--line-strong` | `#cbd5e1` (Mist) | Inputs, secondary buttons |
-| `--line-hover` / `--control-border` | `#94a3b8` | Input hover; checkbox / radio outline |
-| `--line-subtle` | `#f1f5f9` | Row dividers inside cards and tables |
-| `--accent-brand` | `#3b82f6` (Atlas Blue) | Focus ring, selection and active-nav markers, unread dots, icons, badges, charts, AI mark. Never behind text. |
-| `--accent` | `#2563eb` (5.2:1 with white) | Primary button fill, accent text and links, count badges |
-| `--accent-hover` / `--accent-press` | `#1d4ed8` / `#1e40af` | Primary hover / pressed |
-| `--accent-soft` / `--accent-soft-hover` | `#eff6ff` / `#dbeafe` | Selected rows, active chip, info tiles (washes of Atlas Blue) |
-| `--accent-text` | = `--accent` (4.8:1 on `--accent-soft`) | Link and label text on white or accent-soft |
-| `--accent-ring` | `rgba(59,130,246,.20)` | Input focus ring |
-| `--positive` / `--positive-soft` | `#047857` / `#ecfdf5` | Ready, counted, verified, done (5.2:1 on soft) |
-| `--warning` / `--warning-icon` / `--warning-soft` | `#b45309` / `#d97706` / `#fffbeb` | Below par, due soon, draft (text 4.8:1 on soft; icon colour non-text only) |
-| `--danger` / `--danger-soft` | `#c42020` / `#fef2f2` | Out, failed, overdue, destructive (5.4:1 on soft, 5.9:1 white-on-fill) |
-| `--neutral-soft` | `#f1f5f9` | Neutral pills, count badges, icon tiles |
-| `--accent-illustration` | = `--atlas-blue` | Charts and illustration |
-
-**Accessibility decision (Brand v1.0).** Atlas Blue `#3B82F6` is the brand and
-interface accent, but white text on it is 3.7:1 and fails WCAG AA (4.5:1).
-Therefore text-bearing accent fills (primary buttons, count badges) and blue
-text/links use the darker same-hue `--accent` `#2563EB` (5.2:1), hover
-`#1D4ED8` (6.7:1). Atlas Blue itself (`--accent-brand`, `--focus-color`) is
-used where no text sits on it: focus rings, markers, dots, icons and charts,
-where it clears the 3:1 non-text minimum on white (3.7), Snow (3.5),
-`--bg-muted` (3.4), `--accent-soft` (3.4) and Slate (4.0).
+| `--bg-subtle` | `#f3f5f4` stone (`--atlas-snow`) | The frame: sidebar, top bar, phone bars, inset wells |
+| `--bg` / `--surface` | `#ffffff` | The work sheet, cards, inputs, popovers |
+| `--bg-muted` | `#ebedee` | Active nav pill, segmented track, skeleton bars, neutral pills |
+| `--bg-hover` | `#f6f7f8` | Row and item hover on white (fine pointers only) |
+| `--overlay` | `rgba(19,20,22,.36)` | Scrim |
+| `--text` | `#131416` basalt (18.4:1) | Headings, body, the filled primary |
+| `--text-2` | `#4f5254` (8.0:1) | Secondary text, table headers |
+| `--text-3` | `#5d6062` (6.4:1; 5.3:1 on `--bg-muted`) | Meta, placeholders, group labels, plain row icons |
+| `--ink` | `#1d1f21` | Tooltips, toasts, bulk bar |
+| `--line` / `--line-subtle` / `--line-strong` | `#e8eaec` / `#f0f1f2` / `#cdced1` | Edges and dividers / row rules / control borders |
+| `--accent` | `#18191b` near-black | The one filled primary per screen (white label, 18:1), count badges |
+| `--accent-brand`, `--highlight`, `--focus-color` | `#1f6aa5` kingfisher | The one hue: focus ring, selection, active tab underline, unread dots, charts, current-time lines. Never a large fill. |
+| `--accent-text` | `#1b5d91` (6.9:1) | Links and accent text |
+| `--accent-soft` | `#edf3f9` | Info wells, selected chip, the deep-linked record |
+| `--accent-ring` | `rgba(31,106,165,.24)` | Input focus ring |
+| `--positive` (`-soft`, `-ink`) | `#1e7b4f` / `#dcfae5` / `#04250e` | Done, counted, in stock |
+| `--warning` (`-icon`, `-soft`, `-line`) | `#92400e` / `#b45309` / `#fffbeb` / `#fde68a` | Below par, due, needs attention |
+| `--danger` (`-soft`, `-ink`) | `#c4242a` / `#ffedea` / `#831c1e` | Out, failed, overdue, destructive |
 
 Rules
-- Status colour always comes with a word or an icon.
-- Tinted backgrounds only on pills, icon tiles, alerts and selected rows —
-  never on whole cards or page sections. No blue icon tiles as decoration.
+- Colour budget under 3 % of the pixels: colour goes on data, status and the
+  one primary, never on chrome. No orange, no teal, no gradients, glass or blur.
+- Status colour always comes with a word or an icon. Pills are a pale tint with
+  dark ink of the same hue.
+- Tints only on pills, alerts, wells and selected rows. No icons in tinted
+  circles or squares: row and empty-state icons are plain grey glyphs.
+- The logo is monochrome (`assets/brand/alcedo/logo-black.svg`,
+  `symbol-black.svg`); the 3D kingfisher mascot keeps its own colours and
+  appears only inside the Alcedo AI view.
 - Dark mode is out of scope; a dark set can be added under
   `:root[data-theme="dark"]` without renaming anything.
 
-Legacy names (all aliases in `atlas-tokens.css`, do not use in new CSS):
+Legacy names (aliases in `atlas-tokens.css`, do not use in new CSS):
 `--atlas-bg`, `--color-background` → `--bg`; `--atlas-surface-sunken`,
 `--atlas-sidebar`, `--blue-50`, `--glass-fill-soft` → `--bg-subtle`;
-`--atlas-surface`, `--atlas-surface-solid`, `--color-surface`, `--glass-fill*`
-→ `--surface`; `--atlas-text`, `--color-text`, `--s38-ink` → `--text`;
-`--atlas-muted`, `--color-text-secondary`, `--s38-muted` → `--text-2`;
-`--atlas-subtle`, `--color-text-tertiary` → `--text-3`; `--atlas-line`,
-`--color-border`, `--glass-line`, `--s38-line` → `--line`;
-`--atlas-line-strong`, `--glass-line-strong`, `--atlas-home-accent-line`,
-`--s38-blue-line` → `--line-strong`; `--atlas-accent`, `--color-primary`,
-`--atlas-action`, `--atlas-home-accent`, `--s38-blue`, `--blue-400/500/600`,
-`--atlas-info` → `--accent`; `--atlas-accent-strong`, `--atlas-action-hover`,
-`--blue-700`, `--s38-blue-strong` → `--accent-hover`; `--atlas-accent-soft`,
-`--atlas-info-soft`, `--s38-blue-soft`, `--blue-100` → `--accent-soft`;
-`--atlas-green(-soft)` → `--positive(-soft)`; `--atlas-warn(-soft)` →
-`--warning-icon`/`--warning-soft`; `--atlas-danger(-soft)` → `--danger(-soft)`.
-Glass primitives are flat: `--glass-blur: none`, `--glass-highlight` and
-`--glass-shadow` are no shadow, `--glass-shadow-raised` is `--shadow-pop`.
+`--atlas-surface`, `--color-surface`, `--glass-fill*` → `--surface`;
+`--atlas-text`, `--color-text`, `--s38-ink` → `--text`; `--atlas-muted`,
+`--color-text-secondary` → `--text-2`; `--atlas-subtle` → `--text-3`;
+`--atlas-line`, `--color-border`, `--glass-line` → `--line`;
+`--atlas-accent`, `--color-primary`, `--atlas-action` → `--accent`;
+`--atlas-accent-soft`, `--atlas-info-soft` → `--accent-soft`;
+`--atlas-green(-soft)`, `--atlas-warn(-soft)`, `--atlas-danger(-soft)` → the
+status tokens. Glass primitives are flat (`--glass-blur: none`).
 
-## 2. Typography (spec §5.3)
+## 2. Typography
 
-Families: `--font-sans` IBM Plex Sans (UI, 400/500/600); `--font-display`
-Fraunces 500 `opsz` 72 — Home greeting, sign-in heading and the Atlas AI empty
-state only; `--font-mono` IBM Plex Mono — codes, SKUs and audit-log times only,
-never money or quantities.
+One grotesk: `--font-sans` **IBM Plex Sans** (self-hosted variable woff2,
+latin + latin-ext, `assets/fonts/`, preloaded) for every role;
+`--font-display` resolves to Plex Sans. `--font-mono` **IBM Plex Mono** has one
+job: IDs, keys, SKUs, storage codes and setup keys — never labels, eyebrows,
+money or quantities. Instrument Serif, Manrope, Fraunces and JetBrains Mono are
+retired and their files removed.
 
-| Role | Token (`font:` shorthand) | Size/line | Weight | Tracking |
+| Role | Token (`font:` shorthand) | Size/line (phone) | Weight | Tracking |
 | --- | --- | --- | --- | --- |
-| Display | `--type-display` | 32/38 (28/34 phone) | Fraunces 500 | `--track-display` −0.02em |
-| Page title | `--type-title` | 24/32 (22/28 phone) | 600 | `--track-title` −0.015em |
-| Section | `--type-section` | 17/24 (sheet titles 18) | 600 | `--track-section` −0.005em |
-| Heading | `--type-heading` | 15/22 | 600 | 0 |
-| Body | `--type-body` | 14/20 (15/22 phone) | 400 | 0 |
-| Body large | `--type-body-lg` | 15/24 | 400 | 0 |
-| Label | `--type-label` | 13/18 (14 for tabs and buttons) | 500 | 0 |
+| Display (Home greeting only) | `--type-display` | 26/32 (22/28) | 600 | `--track-display` −0.02em |
+| Page title | `--type-title` | 22/28 (20/26) | 600 | `--track-title` −0.015em |
+| Section | `--type-section` | 16/24 | 600 | `--track-section` −0.005em |
+| Heading (card) | `--type-heading` | 14/20 | 600 | 0 |
+| Body | `--type-body` | 14/20 (15/22) | 400 | 0 |
+| Body large (reading) | `--type-body-lg` | 16/24 | 400 | 0 |
+| Label | `--type-label` | 13/18 | 500 | 0 |
 | Meta | `--type-meta` | 13/18 | 400 | 0 |
-| Caption | `--type-caption` | 12/16 — **the minimum size** | 400/500 | 0 |
-| KPI | `--type-kpi` | 28/32 (22/28 phone) | 500 | `--track-kpi` −0.02em |
+| Caption | `--type-caption` | 12/16 — **the minimum size** | 400 | 0 |
+| KPI | `--type-kpi` | 28/32 (24/28) | **400** (the semibold is on the label) | `--track-kpi` −0.02em |
 | Numeric | `--type-num` | 14/20 | 500 | 0 |
 
-Size-only tokens for rules that set `font-size`: `--fs-display`, `--fs-title`,
-`--fs-section`, `--fs-heading`, `--fs-body`, `--fs-body-lg`, `--fs-label`,
-`--fs-caption`, `--fs-kpi`. Legacy `--text-*` sizes alias these by role;
-`--text-micro` is 12 px (micro labels are retired).
+Size-only tokens: `--fs-display` 26, `--fs-title` 22, `--fs-section` 16,
+`--fs-heading` 14, `--fs-body` 14, `--fs-body-lg` 16, `--fs-label` 13,
+`--fs-caption` 12, `--fs-kpi` 28.
 
-- `font-variant-numeric: tabular-nums` in tables, KPIs, times and money (`.num`).
-  Numeric columns are right-aligned. Money is "3.900 kr" via
-  `AtlasFormat.money()`.
-- Sentence case. No uppercase labels, no letter-spaced eyebrows, nothing under
-  12 px. 600 only for titles, headings and selected emphasis; 500 for labels and
-  row titles; 700+ never.
+- `font-variant-numeric: tabular-nums` on every number in a table, KPI, count,
+  time or anything that updates (`.num`); numeric columns right-aligned, and a
+  numeric header ends level with its figures (its sort chevron sits on the left).
+- A missing value is a grey dash (`.atlas-stat__value.is-empty` for KPIs); a
+  real zero is printed.
+- Sentence case. No uppercase labels, no letter-spaced or monospace eyebrows,
+  nothing under 12 px, nothing at 48 px. 700+ never.
 
 ## 3. Spacing (spec §5.4)
 
@@ -168,60 +154,80 @@ Size-only tokens for rules that set `font-size`: `--fs-display`, `--fs-title`,
   40 / 32 (≤1279) / 24 (≤1023) / 16 (<768). Content max `--page-max` 1200,
   reading column `--reading-max` 720.
 
-## 4. Radius (spec §5.5)
+## 4. Radius
 
-`--r-xs` 4 (checkbox, kbd, skeleton) · `--r-sm` 6 (segmented inner, small tags,
-tooltip) · `--r-md` 8 (buttons, inputs, nav items, record chips) · `--r-lg` 12
-(cards, tables, alerts, popovers, toasts) · `--r-xl` 16 (dialogs, sheets,
-palette, composer) · `--r-pill` (pills, chips, avatars, toggles). Legacy
-`--radius-*`, `--atlas-radius`, `--atlas-card-radius`, `--s38-radius` alias these.
+`--r-xs` 4 (checkbox, kbd, skeleton, tags) · `--r-sm` / `--r-md` 6 (buttons,
+inputs, nav items, segmented, record chips) · `--r-lg` 8 (cards, tables,
+alerts, popovers, toasts) · `--r-xl` 12 (dialogs, sheets, palette, composer) ·
+`--r-sheet` 16 (the work sheet) · `--r-pill` (status pills, avatars, toggles,
+dots only — **buttons are not pills**). Legacy `--radius-*` alias these.
 
-## 5. Elevation (spec §5.6)
+## 5. Elevation
 
-- `--shadow-1` `0 1px 2px rgba(23,25,30,.05)` — secondary buttons, active nav
-  item, approval card.
-- `--shadow-pop` — menus, popovers, notification panel, toasts, voice panel.
-- `--shadow-modal` — dialogs, sheets, palette.
-- Cards at rest have **no shadow**, only a 1 px `--line` border. No coloured
-  shadows. `--shadow-none` is the explicit "no shadow" value.
+- Flat: a resting card has a 1 px `--line` border and **no shadow** (a border
+  or a shadow, never both). `--shadow-soft` resolves to none.
+- `--shadow-pop` — menus, popovers, notification panel, toasts, the floating
+  composers (Alcedo AI, Messages).
+- `--shadow-modal` — dialogs, sheets, the palette, the overlay sidebar.
+- `--shadow-1` is kept for small lifts inside floating surfaces only. No
+  coloured shadows.
 
-## 6. Motion (spec §5.7)
+## 6. Motion (Emil Kowalski)
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--dur-1` | 120 ms | Hover, press, colour |
-| `--dur-2` | 180 ms | Menus, popovers, toggles, tabs, row expand |
-| `--dur-3` | 240 ms | Sheets, dialogs, palette |
-| `--ease-out` | `cubic-bezier(.2,.8,.2,1)` | Entering |
-| `--ease-in-out` | `cubic-bezier(.4,0,.2,1)` | Moving, resizing |
+| `--dur-1` | 120 ms | Hover, colour |
+| `--motion-press` | 140 ms | `:active { transform: scale(var(--press-scale)) }`, `--press-scale` .97 (1 under reduced motion) |
+| `--dur-2` | 180 ms | Menus, popovers, toggles, tabs, toasts in |
+| `--dur-3` | 240 ms | Dialogs, sheets, page entry |
+| `--ease-out` | `cubic-bezier(.23,1,.32,1)` | Enter and exit |
+| `--ease-in-out` | `cubic-bezier(.77,0,.175,1)` | On-screen movement |
+| `--ease-drawer` | `cubic-bezier(.32,.72,0,1)` | Sheets and drawers |
 
-Enter = 4–8 px translate + opacity; exit = opacity only at 70 % of the enter
-duration. No bounce, no scale above 1, no hover lift, no looping animation
-except spinners, skeletons and the live-voice waveform. `prefers-reduced-motion`
-and `html.atlas-reduce-motion` (the personal preference) cut every duration to
-~0 in `atlas-base.css`; the skeleton shimmer is static.
+- Nothing in the UI over 300 ms; never `transition: all`; no ease-in (the
+  `--ease-in` name resolves to the ease-out curve); animate transform and
+  opacity only; never from `scale(0)` — popovers enter from `scale(.96)`.
+- Overlays enter through transitions with `@starting-style` (interruptible).
+  Keyboard-opened surfaces (the palette from Ctrl K, `.is-instant`) do not
+  animate. Hover effects only under `(hover: hover) and (pointer: fine)`.
+- The page header and KPI strip play their entry once per navigation
+  (`.atlas-view-enter`, set by `atlas-app.js`), never on a module re-render.
+- `prefers-reduced-motion` and `html.atlas-reduce-motion` keep opacity and
+  colour and drop movement (`--move-*` and `--press-scale` collapse).
 
 ## 7. Focus and accessibility
 
-- `--focus-outline` (2 px solid `--focus-color` = Atlas Blue `#3b82f6`) with
-  `--focus-offset` 2 px on every interactive element (`:focus-visible`,
-  `atlas-base.css`). Inputs show the Atlas Blue border plus `--focus-ring`
-  (3 px `rgba(59,130,246,.20)`) instead. The ring is ≥ 3:1 against every
-  surface it can sit on (`tests/node/brand-kit-v1.test.js`).
-- Contrast AA: text ≥ 4.5:1, large text and UI ≥ 3:1 (checked by the gallery
-  test). Touch targets ≥ 44 px under `(pointer: coarse)`; inputs use 16 px text
-  on touch. Pinch zoom stays allowed.
+- `--focus-outline` (2 px solid kingfisher `#1f6aa5`) with `--focus-offset`
+  2 px on every interactive element (`:focus-visible`). Inputs show the
+  kingfisher border plus `--focus-ring` (3 px `rgba(31,106,165,.24)`).
+- Contrast AA: text ≥ 4.5:1, UI ≥ 3:1 (checked by the gallery test). Touch
+  targets ≥ 44 px under `(pointer: coarse)` (a pseudo-element hit area counts);
+  inputs use 16 px text on touch; `touch-action: manipulation`, no tap
+  highlight, `100dvh`, safe-area insets.
 - Keyboard: reading order; Esc closes overlays; focus returns to the trigger.
 
-## 8. Icons (spec §5.8)
+## 8. Icons
 
-Lucide 0.454.0 only. Sizes `--icon-sm` 16 (inline, buttons, rows), `--icon-md`
-18 (top bar, header icon buttons), `--icon-lg` 20 (sheet close, phone top bar),
-`--icon-xl` 22 (tab bar). Stroke `--icon-stroke` 1.75 (`--icon-stroke-xl` 1.6
-at 22, `--icon-stroke-strong` 2 for the active tab and send). Classes `.icon`,
-`.icon--md`, `.icon--lg`, `.icon--xl` (aliases `.atlas-icon*`); every rendered
-`svg.lucide` gets the 1.75 stroke. Colour is `currentColor`. One meaning per
-icon (spec §5.8 list); no emoji; no decorative icons.
+One self-hosted set: `apps/web/assets/js/alcedo-icons.js`, the ALCEDO icon set
+(Phosphor Icons 2.1.1 Regular, MIT, plus custom glyphs drawn on the same grid;
+`apps/web/assets/icons/README.md` lists every name and glyph). Lucide and its
+CDN are gone from the pages and the CSP.
+
+- Glyphs are filled paths in `currentColor` on a 256 grid. Size with width and
+  height: `--icon-sm` 16 (inline, buttons, rows, nav), `--icon-md` 18 (top bar,
+  sheet close), `--icon-lg` 20 (phone top bar, empty states), `--icon-xl` 22
+  (tab bar). There is no stroke to set.
+- Markup: `<i data-lucide="name" aria-hidden="true"></i>` plus
+  `lucide.createIcons()` (the set provides that API), or
+  `AlcedoIcons.svg(name, { size, className, label })` for template strings.
+  `tests/node/alcedo-icons.test.js` fails if a name used in `apps/web` has no
+  glyph.
+- `alcedo` / `atlas-bot` is the kingfisher mark: the Alcedo AI nav entry and
+  every small "Ask Alcedo" control (Home briefing, module headers and drawers,
+  the palette, the More sheet, toasts). The 3D mascot (`atlas-bot.js`) is drawn
+  only in the Alcedo AI view (welcome, answer who-line, voice).
+- One meaning per icon; no emoji; no decorative icons; icons are plain glyphs,
+  never set in tinted tiles.
 
 ## 9. Components (spec §6; all in `atlas-components.css`)
 

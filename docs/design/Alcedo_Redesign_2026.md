@@ -79,8 +79,12 @@ kit allows for single-colour use. The 3D kingfisher mascot keeps its own colours
 - **Tables / lists**: no zebra, no header band; header 12px grey sentence case; rows
   44-56px; 1px `--line-subtle` rules; numbers right-aligned tabular; one status mark per
   row; a missing value is a grey dash, a zero is printed.
-- **Status pills**: 20-24px tall, pale tint + dark ink of the same hue, `flex: none;
-  white-space: nowrap`.
+- **Status pills**: a 6px dot plus a 13/500 word, no fill, 20px tall, `flex: none;
+  white-space: nowrap`. Warning and danger words take their own ink; neutral is a
+  hollow ring. One filled tag (`.atlas-pill--solid`) is kept for the single most
+  critical state on a screen.
+- **Alerts**: a white block with a 1px hairline; the status colour is on the icon
+  only (no pink or cream slabs). Tab counts are plain grey numbers.
 - **KPIs**: type, not tiles: one container split by 1px dividers, label above value.
 - **Empty / loading / error**: the frame and header stay; one sentence; loading is flat
   grey bars at the real size (no shimmer gradient); errors live inside the failed block.
@@ -98,8 +102,13 @@ kit allows for single-colour use. The 3D kingfisher mascot keeps its own colours
   (`transform-origin` at the trigger); modals stay centred.
 - Exits faster than enters. Use transitions (interruptible) over keyframes for
   anything triggered repeatedly. `@starting-style` for enter states where supported.
-- `prefers-reduced-motion`: keep opacity/colour, drop movement (the `--move-*` tokens
-  already collapse to 0).
+- `prefers-reduced-motion`: keep opacity and colour fades, drop movement (the
+  `--move-*` tokens already collapse to 0).
+- Phone sheets drag down to dismiss (`AtlasShell.sheetGesture`): they follow the
+  finger, resist upward, and close on a flick or a drag past 30%. Esc, Cancel and
+  submit close at once.
+- Tooltips appear instantly when another tooltip showed in the last 300ms; shared
+  menus grow from the trigger's corner (`--atlas-origin`).
 
 ## 7. Phone (≤ 767px)
 
@@ -109,7 +118,94 @@ targets ≥ 44px, margins 16px, inputs at 16px, `-webkit-tap-highlight-color: tr
 `touch-action: manipulation` on controls, safe-area insets respected, `100dvh` not
 `100vh`. Tables become two-line rows.
 
-## 8. What must not change
+**Large title.** The page H1 stays visible at 20px under the top bar; the bar shows
+the page name only once that H1 scrolls under it (or at once when the page has no
+visible H1 or owns the bar with a back button). The bar's Alcedo mark has a 44px hit
+area.
+
+## 8. Icons
+
+One self-hosted set replaces Lucide (unpkg): `apps/web/assets/js/alcedo-icons.js`,
+the ALCEDO icon set, built on **Phosphor Icons 2.1.1 Regular** (MIT,
+`apps/web/assets/icons/LICENSE-phosphor.txt`) plus custom glyphs drawn as 16-unit
+round-capped centre lines on Phosphor's 256 grid, so every icon carries the same
+weight and corners. `apps/web/assets/icons/README.md` maps every app name to its
+glyph and records how each custom glyph is built.
+
+- Filled paths in `currentColor`; size with width and height (`--icon-sm` 16,
+  `--icon-md` 18, `--icon-lg` 20, `--icon-xl` 22). There is no stroke width.
+- Markup is unchanged: `<i data-lucide="name">` plus `lucide.createIcons()` (the
+  set provides that API and the `lucide.icons` nodes), or
+  `AlcedoIcons.svg(name, { size, className, label })` in template strings. An
+  unknown name draws a dashed circle and warns once; `tests/node/alcedo-icons.test.js`
+  fails if any name used in `apps/web` has no glyph.
+- Icons are plain grey glyphs (`--text-2`/`--text-3`); colour only where the icon
+  is the status (a warning or failure glyph in its status colour). Never in a
+  tinted circle or square.
+- **The kingfisher mark** (`alcedo`, `atlas-bot`) is Alcedo's symbol at UI size:
+  the sidebar and tab-bar Alcedo AI entries and every small "Ask Alcedo" control
+  (Home briefing, module headers and drawers, the palette, the More sheet, the
+  Alcedo system avatar in Messages, "Filled by Alcedo" in Accounting). The full
+  3D mascot (`atlas-bot.js`) is drawn only inside the Alcedo AI view: the welcome
+  robot, the who-line of an answer and the voice panel.
+- **The navigation family** (house, messages, clipboard, martini, a bottle for
+  Inventory, truck, calendars, users, book, chart, megaphone, receipt, price tag,
+  database, gear) is drawn for Alcedo on Phosphor's stroke weight with round caps
+  and joins; its signature is one sharp "beak" corner at the top right of each
+  container. Purchasing uses the truck everywhere (nav, palette, actions).
+- Toasts, the PWA banner and the shell build their icons from the same set; the
+  file is precached by the service worker and allowed by the CSP as same-origin.
+
+## 9. Patterns the module teams settled on
+
+Good deviations and additions from the module passes, now part of the direction:
+
+- **One question per screen.** Each page's subtitle states its finding, counted
+  from the rows on screen ("2 deliveries late · 1 waiting for approval", "41 of 59
+  locked prices are under the 5% cash floor"), and the biggest block answers it.
+- **Data marks instead of tiles.** Tick bars (one segment per checklist item:
+  kingfisher while open, positive when done) on Home and Operations; an on-hand
+  track at the true ratio to par under every Inventory quantity, plus one stacked
+  stock-health partition; a pipeline strip that doubles as the Purchasing stage
+  filter; the Shifts rota (filled = published, dashed = draft, hatched = time
+  off); the Bookings floor plan with one mark per booking state; inline-SVG
+  charts in Reports in one hue, drawn only when their buckets add up to the KPI
+  shown.
+- **Missing is a dash.** `.atlas-stat__value.is-empty` is the shared grey dash at
+  section size for a KPI the data does not report; a real zero is printed.
+- **One primary per screen**, enforced where several rows need a next step
+  (Settings › Integrations fills only the first provider's step).
+- **Phone rows**: a row that opens as a whole (a stretched link) shows a chevron
+  and hides its trailing buttons; a row whose buttons are its job (Confirm,
+  Approve, Count now, Edit) keeps them.
+- **No page-entry animation.** Navigation is the most frequent action, so a page
+  appears at once; nothing replays when a module re-renders on a keystroke,
+  filter or save.
+- **Floating composers.** The Alcedo AI and Messages composers are the one
+  floating surface on their screens (`--shadow-pop`, 12 px corners).
+- **Identity colour is data.** Six muted hues (`--person-1..6`, no orange, no
+  teal) serve the twelve Shifts person slots and the Bookings areas, only as a
+  14 % tint, a 3 px edge or an 8 px dot.
+- **Figures read the Icelandic way.** Krónur group with "." ("3.900 kr");
+  percentages use a decimal comma and a no-break space ("64,0 %"); Menu Pricing
+  writes a loss with a true minus ("−2,3 %"). `AtlasFormat.money` keeps the
+  hyphen for now because the server's formatter (Atlas AI, Reports) must match
+  it byte for byte; switching both is a backend change.
+- **The Alcedo AI welcome robot** is the whole bird (`framing: 'full'`), its feet
+  about 12px above the greeting.
+- **Header actions**: at most one secondary and the primary; an Alcedo action is
+  the ghost kingfisher-glyph button just before the primary; anything else goes in
+  a ⋯ menu.
+- **Shared two-factor enrolment** (`.atlas-mfa-enroll`, three numbered steps on
+  one hairline, the setup key the one mono string) serves Settings, the sign-in
+  step and the invitation wizard.
+- **Monochrome logo** in the sidebar and phone top bar is the kit symbol drawn
+  inline at small size (the open A and the beak, without the hairline horizon)
+  beside the wordmark cropped from `logo-black.svg`, the venue on its own caption
+  line; sign-in, invitation and recovery use
+  the stacked `logo-black.svg`.
+
+## 10. What must not change
 
 Behaviour, routes, data, ARIA, test hooks (`data-*`, ids, class names the JS or tests
 query), role gating, CSP (no inline styles/scripts, no new hosts), the S88 cascade

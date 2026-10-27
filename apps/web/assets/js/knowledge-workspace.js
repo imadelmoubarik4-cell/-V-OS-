@@ -70,9 +70,8 @@
     } catch { return null; }
   }
 
+  // 'atlas-bot' is the kingfisher glyph in the ALCEDO icon set (alcedo-icons.js).
   function icon(name) {
-    // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), the assistant's face.
-    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escapeHtml(name)}" aria-hidden="true"></i>`;
   }
 

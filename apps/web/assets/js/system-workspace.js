@@ -169,7 +169,8 @@
 
   // One divided strip, label above a tabular figure (shared .atlas-stat).
   function stat(text, value) {
-    return `<div class="atlas-stat"><p class="atlas-stat__label">${escapeHtml(text)}</p><p class="atlas-stat__value">${count(value)}</p></div>`;
+    const shown = count(value);
+    return `<div class="atlas-stat"><p class="atlas-stat__label">${escapeHtml(text)}</p><p class="atlas-stat__value${shown === '—' ? ' is-empty' : ''}">${shown}</p></div>`;
   }
 
   function summaryMarkup() {

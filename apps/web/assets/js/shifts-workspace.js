@@ -148,10 +148,24 @@
     return local ? String(local).slice(0, 10) : '';
   }
 
+  // Hours a shift contributes. The instants are the truth; a shift known only
+  // by its local wall-clock times ('2026-09-25T18:30') falls back to those, so
+  // a shift drawn as 17:00–23:30 never totals 0 h. An end at or before the
+  // start on the local clock runs past midnight.
+  function localMs(local) {
+    const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(String(local || ''));
+    return match ? Date.parse(`${match[1]}T${match[2]}:00Z`) : NaN;
+  }
+
   function hoursOf(shift) {
-    const start = new Date(shift.starts_at);
-    const end = new Date(shift.ends_at);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+    let start = new Date(shift.starts_at).getTime();
+    let end = new Date(shift.ends_at).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      start = localMs(shift.starts_local);
+      end = localMs(shift.ends_local);
+      if (Number.isNaN(start) || Number.isNaN(end)) return 0;
+      if (end <= start) end += 24 * 3600000;
+    }
     return Math.max(0, ((end - start) / 3600000) - (Number(shift.break_minutes || 0) / 60));
   }
 
@@ -319,13 +333,17 @@
     return `<button type="button" class="shifts-color-toggle" data-shifts-color-toggle role="switch" aria-checked="${state.colorByPerson}"><span class="shifts-color-toggle__track" aria-hidden="true"></span><span>Colour by person</span></button>`;
   }
 
-  // The key to the schedule's marks: a filled bar is published, a dashed one
-  // is a draft the team can't see yet, a hatched one is time off. Each entry
-  // is shown only when that mark is on the screen, and a key with one entry
-  // (every bar is published) is left out.
+  // The key to the schedule's marks: a filled bar is a shift, a dashed one is
+  // a draft the team can't see yet, a hatched one is time off. Each entry is
+  // shown only when that mark is on the screen, and a key with one entry
+  // (every bar is published) is left out. Every swatch is the grid's own chip,
+  // so with colour by person on, the plain shift swatch turns neutral grey
+  // like the person-tinted chips it explains. The publish state is said once,
+  // by the status beside it, so the key never repeats the word "Published".
   function legendMarkup({ drafts = false, leave = false, awaiting = false } = {}) {
+    const neutral = state.colorByPerson ? ' shift-chip--neutral' : '';
     const entries = [
-      '<span class="shifts-legend__item"><span class="shifts-legend__mark" aria-hidden="true"></span>Published</span>',
+      `<span class="shifts-legend__item"><span class="shift-chip shift-chip--legend${neutral}" aria-hidden="true"></span>Shift</span>`,
       drafts ? '<span class="shifts-legend__item"><span class="shift-chip shift-chip--legend is-unpublished" aria-hidden="true"></span>Dashed: not published yet</span>' : '',
       leave ? '<span class="shifts-legend__item"><span class="shifts-legend__mark shifts-legend__mark--leave" aria-hidden="true"></span>Time off</span>' : '',
       awaiting ? '<span class="shifts-legend__item"><span class="shifts-legend__mark shifts-legend__mark--await" aria-hidden="true"></span>Not confirmed yet</span>' : ''
@@ -739,7 +757,10 @@
     const shifts = list(ws, 'shifts');
     const changed = shifts.filter((shift) => isUnpublished(shift, ws)).length;
     const published = info.status === 'published' || Boolean(info.latest_publication);
-    const pending = Boolean(info.has_unpublished_changes) || (!published && shifts.length > 0);
+    // Any shift drawn as a draft is a change to publish, whatever the summary
+    // flag says, so the status, the caption and the button never disagree
+    // with the dashed chips on the grid.
+    const pending = Boolean(info.has_unpublished_changes) || changed > 0 || (!published && shifts.length > 0);
     return { published, pending, changed, revision: Number(info.revision || info.latest_publication?.revision || 0), empty: !shifts.length };
   }
 
@@ -758,9 +779,15 @@
     const info = canManage() && schedule ? publishState() : null;
     const publishLabel = month ? 'Publish month' : 'Publish week';
     const publishDisabled = !info || !info.pending || info.empty || state.submitting;
-    const caption = !info ? '' : info.empty ? '' : info.pending
-      ? (info.changed ? `${info.changed} ${info.changed === 1 ? 'shift' : 'shifts'} changed since publishing` : 'Changes not published')
-      : 'No changes to publish';
+    const shiftWord = (n) => `${n} ${n === 1 ? 'shift' : 'shifts'}`;
+    // Never published: the drafts are "not published yet"; once published,
+    // an edited shift is "changed since publishing".
+    const caption = !info ? '' : info.empty ? '' : !info.pending ? 'No changes to publish'
+      : !info.published ? (info.changed ? `${shiftWord(info.changed)} not published yet` : 'Not published yet')
+      : (info.changed ? `${shiftWord(info.changed)} changed since publishing` : 'Changes not published');
+    // The handover notes sit with the schedule's other header actions.
+    const handover = schedule && (canManage() || canRespond())
+      ? `<a class="atlas-btn atlas-btn--ghost atlas-btn--sm shifts-handover" href="#messages/shift-handover" aria-label="Shift handover notes">${icon('notebook-pen')}<span class="shifts-handover__text">Handover</span></a>` : '';
     const nav = schedule ? `<div class="shifts-nav" role="group" aria-label="${month ? 'Month' : 'Week'}">
         <button type="button" class="atlas-icon-btn" data-shifts-step="-1" aria-label="Previous ${month ? 'month' : 'week'}">${icon('chevron-left')}</button>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-today>Today</button>
@@ -770,7 +797,7 @@
     const primary = info && !info.empty ? `<div class="shifts-publish">${caption ? `<span class="shifts-publish__caption" id="shifts-publish-caption">${escapeHtml(caption)}</span>` : ''}<button type="button" class="atlas-btn atlas-btn--primary" data-shifts-publish ${publishDisabled ? 'disabled' : ''}${caption ? ' aria-describedby="shifts-publish-caption"' : ''}>${icon('send')}${publishLabel}</button></div>` : '';
     return `<header class="page-head shifts-head">
       <div class="page-head__text"><h1 class="page-head__title">Shifts</h1><p class="page-head__sub" data-shifts-summary>${escapeHtml(summaryText())}</p></div>
-      ${nav || primary ? `<div class="page-head__actions shifts-head__actions">${nav}${primary}</div>` : ''}
+      ${nav || primary ? `<div class="page-head__actions shifts-head__actions">${handover}${nav}${primary}</div>` : ''}
     </header>`;
   }
 
@@ -827,7 +854,7 @@
       return `<div class="shifts-now__day"><p class="shifts-now__label">${label} <span>${escapeHtml(shortDate(key))}</span></p>${rows.length
         ? `<p class="shifts-now__people">${rows.map((row) => `<span class="shifts-now__person${personColorClassOn(personFor(row.personId, ws) || { id: row.personId, display_name: row.name })}">${escapeHtml(row.name.split(' ')[0])} <span class="num">${escapeHtml(row.start)}–${escapeHtml(row.end)}</span></span>`).join('')}</p>`
         : `<p class="shifts-now__none">${canManage() ? 'No one scheduled' : 'No published shifts'}</p>`}</div>`;
-    }).join('')}${canManage() || canRespond() ? '<a class="atlas-btn atlas-btn--ghost atlas-btn--sm shifts-now__handover" href="#messages/shift-handover">' + icon('notebook-pen') + 'Handover</a>' : ''}</section>`;
+    }).join('')}</section>`;
   }
 
   // One word for a chip's warnings; the full text is the chip's title and label.
@@ -999,7 +1026,7 @@
         : `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar')}</div><h3 class="atlas-empty__title">No shifts for you this week</h3><p class="atlas-empty__text">${ownPersonId() ? 'You’re not on the published schedule this week.' : 'Your account isn’t linked to the shift roster yet. Ask a manager to add you.'}</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-staff-view="team">See the team’s week</button></div></div>`;
     } else content = narrowQuery.matches ? dayListMarkup(ws) : weekGridMarkup(ws);
     const team = state.staffView === 'team';
-    return `${onNowMarkup(ws)}<div class="atlas-toolbar shifts-toolbar">${toggle}${statusMarkup()}${team ? gridLegend(content, ws) : ''}${team ? `<div class="atlas-toolbar__end">${colorToggleMarkup()}</div>` : ''}</div>${content}`;
+    return `${onNowMarkup(ws)}<div class="atlas-toolbar shifts-toolbar">${toggle}${statusMarkup()}${team ? `<div class="atlas-toolbar__end">${gridLegend(content, ws)}${colorToggleMarkup()}</div>` : ''}</div>${content}`;
   }
 
   function weekScheduleMarkup() {
@@ -1010,7 +1037,7 @@
     const any = list(ws, 'shifts').length > 0;
     const content = any ? (narrowQuery.matches ? dayListMarkup(ws) : weekGridMarkup(ws)) : weekEmptyMarkup();
     const addDate = state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart;
-    return `${alertMarkup(slot)}${any ? onNowMarkup(ws) : ''}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}${gridLegend(content, ws)}${any ? `<div class="atlas-toolbar__end">${colorToggleMarkup()}<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(addDate)}">${icon('plus')}Add shift</button></div>` : ''}</div>${content}`;
+    return `${alertMarkup(slot)}${any ? onNowMarkup(ws) : ''}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}${any ? `<div class="atlas-toolbar__end">${gridLegend(content, ws)}${colorToggleMarkup()}<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(addDate)}">${icon('plus')}Add shift</button></div>` : ''}</div>${content}`;
   }
 
   function monthScheduleMarkup() {
@@ -1043,7 +1070,7 @@
         ${gap ? '<span class="shifts-month__gap">No one scheduled</span>' : ''}` : ''}
       </button>`;
     };
-    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}${manage ? legendMarkup({ drafts: list(ws, 'shifts').some((shift) => isUnpublished(shift, ws)) }) : ''}${manage ? `<div class="atlas-toolbar__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(current.slice(0, 7) === first.slice(0, 7) ? current : first)}">${icon('plus')}Add shift</button></div>` : ''}</div>
+    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}${manage ? `<div class="atlas-toolbar__end">${legendMarkup({ drafts: list(ws, 'shifts').some((shift) => isUnpublished(shift, ws)) })}<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(current.slice(0, 7) === first.slice(0, 7) ? current : first)}">${icon('plus')}Add shift</button></div>` : ''}</div>
       <div class="shifts-month" role="grid" aria-label="${escapeHtml(monthLabel(first))}">
         <div class="shifts-month__weekdays" role="row">${WEEK_ORDER.map((day) => `<span role="columnheader"${[0, 6].includes(day) ? ' class="is-weekend"' : ''}>${DAY_NAMES[day].slice(0, 3)}</span>`).join('')}</div>
         <div class="shifts-month__grid">${cells.map(cellMarkup).join('')}</div>

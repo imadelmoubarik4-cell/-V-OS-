@@ -81,13 +81,10 @@
   color: var(--text-2);
 }
 .page-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: 0 1 auto; min-width: 0; max-width: 100%; }
-/* Page entry: the header and the KPI strip fade in with a 4 px rise once, on
-   load. The keyframe ENDS at opacity 1 and the resting state is fully
-   visible, so nothing waits on JS. Dense lists and table rows are excluded
-   so live updates never flicker. Reduced motion collapses the rise
-   (--move-sm → 0) and atlas-base.css cuts the duration. */
-.page-head, .atlas-stats { animation: atlas-enter var(--dur-3) var(--ease-out); }
-@keyframes atlas-enter { from { opacity: 0; transform: translateY(var(--move-sm)); } to { opacity: 1; transform: none; } }
+/* Page navigation is the most frequent action in the app, so it does not
+   animate: a page is simply there (Emil's frequency rule). The header and
+   the KPI strip paint at rest, and a module re-rendering its page (the
+   skeleton header replaced by the real one, a filter, a save) never blinks. */
 /* Text that carries user content wraps even a very long unbroken token inside
    its (min-width: 0) column instead of overflowing the page. Leaf text
    elements break anywhere; the containers (card, sheet and dialog bodies)
@@ -112,16 +109,11 @@
   .page-head { flex-direction: column; align-items: stretch; gap: var(--s-4); }
   /* In the column the 280 px basis would be a height: the text takes its content height. */
   .page-head__text { flex: none; }
-  /* The phone top bar shows the page name; the H1 stays for assistive tech. */
-  .page-head__title {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-  .page-head__sub { margin-top: 0; }
+  /* Large title (the native phone pattern): the H1 stays on the page at
+     20/26 (--type-title on phones) as the one visible heading; the top bar
+     shows the same name only once this title has scrolled under it
+     (atlas-chrome.js sets .is-titled), so the name is never printed twice. */
+  .page-head__sub { margin-top: 2px; }
   .page-head__actions > .atlas-btn { flex: 1 1 0; }
   .atlas-toolbar {
     flex-wrap: nowrap;
@@ -132,8 +124,8 @@
     /* The row scrolls sideways: controls past the edge fade out under the
        right gutter (as the tab strips do) instead of being cut mid-label.
        A mask, not a painted gradient: nothing is drawn. */
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent); /* taste-skill-ignore: mask fade, paints nothing */
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent); /* taste-skill-ignore: mask fade, paints nothing */
   }
   /* A mask clips every descendant, fixed-position popovers included: while a
      menu opened from the toolbar is showing, drop the fade. */
@@ -179,7 +171,7 @@
   color: var(--text);
 }
 .atlas-section__meta { font: var(--type-meta); color: var(--text-2); }
-.atlas-section__link { font: var(--type-label); color: var(--accent-text); white-space: nowrap; text-decoration: none; }
+.atlas-section__link { font: var(--type-label); color: var(--text-2); white-space: nowrap; text-decoration: none; }
 @media (max-width: 767px) { .atlas-section { margin-top: 28px; } }
 
 /* ==========================================================================
@@ -767,21 +759,23 @@ textarea.atlas-input,
   .atlas-tabs > :is(a, button, [role="tab"]):is([aria-current="page"], [aria-selected="true"], .is-active)::after { opacity: 0; transform: scaleX(.6); }
 }
 .atlas-tabs > :is(a, button, [role="tab"]):focus-visible { outline: var(--focus-outline); outline-offset: -2px; border-radius: var(--r-xs); }
+/* A tab's count is plain grey figures beside the label, not a pill: the tab
+   is a peer, not a queue. */
 .atlas-tabs .count {
-  padding: 0 6px;
-  border-radius: var(--r-pill);
-  background: var(--neutral-soft);
-  color: var(--text-2);
-  font: var(--type-caption);
+  padding: 0;
+  background: none;
+  color: var(--text-3);
+  font: 400 13px/18px var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
+.atlas-tabs > :is(a, button, [role="tab"]):is([aria-current="page"], [aria-selected="true"], .is-active) .count { color: var(--text-2); }
 @media (hover: hover) and (pointer: fine) {
   .atlas-tabs > :is(a, button, [role="tab"]):hover { color: var(--text); text-decoration: none; }
 }
 @media (max-width: 767px) {
   .atlas-tabs {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); /* taste-skill-ignore: mask fade, paints nothing */
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); /* taste-skill-ignore: mask fade, paints nothing */
     padding-right: var(--s-6);
   }
 }
@@ -865,7 +859,8 @@ textarea.atlas-input,
 
 /* Hover for the text links and record chips above. */
 @media (hover: hover) and (pointer: fine) {
-  .atlas-link:hover, .atlas-section__link:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .atlas-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .atlas-section__link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
   a.atlas-record-chip:hover { border-color: var(--line-strong); background: var(--bg-hover); text-decoration: none; }
 }
 
@@ -894,34 +889,44 @@ textarea.atlas-input,
 }
 
 /* ==========================================================================
-   6.13 Status pill and badge — .atlas-pill, .atlas-badge
-   A pill is a pale tint with dark ink of the same hue (--positive-soft with
-   --positive-ink, --danger-soft with --danger-ink), a 6 px dot in the full hue, never
-   squeezed (flex: none; nowrap). A badge is a count: near-black, white
-   figures, tabular.
+   6.13 Status mark and badge — .atlas-pill, .atlas-badge
+   One status grammar for the whole product: a 6 px dot and a 13/500 word,
+   no fill and no border (the class keeps its old name for the modules).
+   The dot carries the hue; the word stays grey except for the two states
+   that ask for attention (warning, danger), whose word takes its own ink.
+   Neutral ("Draft", "Not counted", "Setup incomplete") is a hollow ring:
+   nothing has happened yet. One filled treatment exists, --solid, for the
+   single most critical state on a screen. Never squeezed (flex: none;
+   nowrap). A badge is a count: near-black, white figures, tabular.
    ========================================================================== */
 .atlas-pill {
   --pill-dot: var(--text-3);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 22px;
+  height: 20px;
   flex: none;
-  padding: 0 8px;
-  border-radius: var(--r-pill);
-  background: var(--neutral-soft);
+  padding: 0;
+  border-radius: 0;
+  background: none;
   color: var(--text-2);
-  font: 500 12px/16px var(--font-sans);
+  font: var(--type-label);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .atlas-pill::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--pill-dot); }
-.atlas-pill--positive { --pill-dot: var(--positive); background: var(--positive-soft); color: var(--positive-ink); }
-.atlas-pill--warning { --pill-dot: var(--warning-icon); background: var(--warning-soft); color: var(--warning); box-shadow: inset 0 0 0 1px var(--warning-line); }
-.atlas-pill--danger { --pill-dot: var(--danger); background: var(--danger-soft); color: var(--danger-ink); }
-.atlas-pill--info { --pill-dot: var(--accent-brand); background: var(--accent-soft); color: var(--accent-text); }
-.atlas-pill--neutral { --pill-dot: var(--text-3); background: var(--neutral-soft); color: var(--text-2); }
+.atlas-pill--positive { --pill-dot: var(--positive); }
+.atlas-pill--warning { --pill-dot: var(--warning-icon); color: var(--warning); }
+.atlas-pill--danger { --pill-dot: var(--danger); color: var(--danger); }
+.atlas-pill--info { --pill-dot: var(--accent-brand); }
+.atlas-pill--neutral { --pill-dot: var(--text-3); }
+.atlas-pill:not([class*="atlas-pill--"])::before,
+.atlas-pill--neutral::before { box-sizing: border-box; border: 1.5px solid var(--text-3); background: transparent; }
 .atlas-pill--plain::before { display: none; }
+/* The one filled status: white on the danger hue, a 4 px rectangle (a tag,
+   not a pill), for the single most critical state on a screen. */
+.atlas-pill--solid { height: 20px; padding: 0 6px; border-radius: var(--r-xs); background: var(--danger); color: var(--text-on-accent); }
+.atlas-pill--solid::before { display: none; }
 .atlas-badge {
   display: inline-grid;
   place-items: center;
@@ -1042,6 +1047,13 @@ a.atlas-row:focus-visible, button.atlas-row:focus-visible { outline: var(--focus
   a.atlas-row:hover, button.atlas-row:hover, .atlas-row--link:hover { background: var(--bg-hover); text-decoration: none; }
   .atlas-row:has(.atlas-row__link):hover { background: var(--bg-hover); }
 }
+/* Press: the instant muted fill every tappable row, card and menu item shows
+   while held (atlas-base.css turns the platform tap flash off, so this is a
+   phone's only answer to a tap). No transition in: the fill is there the
+   moment the finger lands, and fades out on release. A press on a control
+   inside the row's end slot belongs to that control, not the row. */
+:is(a.atlas-row, button.atlas-row, .atlas-row--link, a.atlas-table-list__row, button.atlas-table-list__row, a.atlas-card, button.atlas-card, .atlas-card--link, a.atlas-stat, .atlas-menu__item:not(:disabled, [aria-disabled="true"])):active,
+.atlas-row:has(.atlas-row__link):active:not(:has(.atlas-row__end :active)) { background: var(--bg-muted); transition-duration: 0ms; }
 
 /* Linked target: the record a deep link opened (#inventory/movements?movement=,
    #marketing?recommendation=, #settings/integrations?provider=). The module
@@ -1081,7 +1093,9 @@ html.atlas-reduce-motion :is(.is-linked-target, .atlas-table tr.is-linked-target
 .atlas-row__chevron { display: none; color: var(--text-3); }
 @media (max-width: 767px) {
   .atlas-row { align-items: flex-start; padding: 12px 14px; }
-  .atlas-row__end > .atlas-btn, .atlas-row__action { display: none; }
+  /* A row that opens as a whole (a stretched link) shows a chevron instead
+     of its trailing buttons; rows whose buttons are their job keep them. */
+  :is(a.atlas-row, .atlas-row--link, .atlas-row:has(.atlas-row__link)) :is(.atlas-row__end > .atlas-btn, .atlas-row__action) { display: none; }
   .atlas-row__chevron { display: inline-grid; align-self: center; }
 }
 
@@ -1134,6 +1148,9 @@ html.atlas-reduce-motion :is(.is-linked-target, .atlas-table tr.is-linked-target
 th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg,
 th[aria-sort="descending"] :is(.atlas-th-sort, .th-sort) > svg { visibility: visible; }
 th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotate(180deg); }
+/* A numeric header ends level with its right-aligned figures: the (hidden
+   until sorted) chevron sits on the label's left. */
+th.is-num > :is(.atlas-th-sort, .th-sort) { flex-direction: row-reverse; }
 .atlas-table td {
   height: 48px;
   padding: 0 12px;
@@ -1147,6 +1164,13 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
 .atlas-table .col-check { width: 40px; padding-right: 0; }
 .atlas-table .col-actions { width: 48px; padding-right: 8px; text-align: right; }
 .atlas-table .cell-primary { font-weight: 500; }
+/* The main column reads the same in every module: a linked name is ink, not
+   a blue link (the one hue is not spent on routine content); it underlines
+   on hover only. */
+.atlas-table a.cell-primary { color: var(--text); text-decoration: none; }
+@media (hover: hover) and (pointer: fine) {
+  .atlas-table a.cell-primary:hover { text-decoration: underline; text-decoration-color: var(--line-hover); text-underline-offset: 3px; }
+}
 /* Truncated cell text: one line with an ellipsis inside a fixed-layout (or
    width-limited) column; put the full text in the cell's title. Use it on the
    td or on a span inside it. */
@@ -1234,9 +1258,9 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
   /* A row that opens a sheet in place is a button: same row, no button chrome. */
   button.atlas-table-list__row { width: 100%; margin: 0; border-width: 0 0 1px; background: none; font: inherit; text-align: left; cursor: pointer; }
   .atlas-table-list__body { flex: 1 1 auto; min-width: 0; }
-  .atlas-table-list__title { font: 500 15px/20px var(--font-sans); }
+  .atlas-table-list__title { font: var(--type-row); }
   .atlas-table-list__meta { margin-top: 2px; font: var(--type-meta); color: var(--text-2); }
-  .atlas-table-list__value { font: 500 15px/20px var(--font-sans); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .atlas-table-list__value { font: var(--type-row); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .atlas-table-list__value > br + .atlas-pill { margin-top: 4px; }
 }
 
@@ -1262,6 +1286,8 @@ a.atlas-stat:focus-visible { outline: var(--focus-outline); outline-offset: -2px
 .atlas-stat__label { display: flex; align-items: center; gap: 6px; margin: 0; font: var(--type-label); color: var(--text-2); }
 .atlas-stat__label > svg { width: 14px; height: 14px; color: var(--text-3); }
 .atlas-stat__value { margin: var(--s-2) 0 0; font: var(--type-kpi); letter-spacing: var(--track-kpi); font-variant-numeric: tabular-nums; color: var(--text); }
+/* A missing value: a short grey dash on the value's line, not ink at KPI size. */
+.atlas-stat__value.is-empty { font-size: var(--fs-section); letter-spacing: 0; color: var(--text-3); }
 .atlas-stat__unit { margin-left: 4px; font: var(--type-meta); letter-spacing: 0; color: var(--text-3); }
 .atlas-stat__detail { margin: var(--s-1) 0 0; font: var(--type-meta); color: var(--text-2); }
 .atlas-stat__link { display: inline-flex; align-items: center; gap: 4px; margin-top: var(--s-3); font: var(--type-label); color: var(--text-2); }
@@ -1297,8 +1323,12 @@ a.atlas-stat:focus-visible { outline: var(--focus-outline); outline-offset: -2px
    12 px corners and the modal shadow, no border. Enter via @starting-style
    (a transition, so it can be interrupted): the dialog grows from
    scale(.96) in place (centred, never from 0), the sheet slides in on the
-   drawer curve, 240 ms. modal.js hides a closing layer at once, so every
-   exit is instant — always faster than its enter.
+   drawer curve, 240 ms. modal.js hides a closing layer at once (Esc, Cancel,
+   a submit: always faster than its enter). A phone bottom sheet leaves by the
+   edge it came from: its grabber and head drag it down (damped above the
+   rest position), a flick or a drag past 30 % of its height dismisses it,
+   and a tap on the scrim slides it out over 200 ms (AtlasShell.sheetGesture,
+   used by modal.js and the More sheet).
    ========================================================================== */
 body.atlas-modal-open { overflow: hidden; }
 .atlas-scrim,
@@ -1338,7 +1368,9 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-dialog--form { width: min(560px, calc(100% - 32px)); }
 .atlas-dialog__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
 .atlas-dialog__body { margin-top: var(--s-2); font: var(--type-body); color: var(--text-2); }
-.atlas-dialog__body > * + * { margin-top: var(--s-4); }
+/* Stacked blocks get a 16 px rhythm; a body that is itself a form already
+   spaces its fields with the grid gap. */
+.atlas-dialog__body:not(.atlas-form) > * + * { margin-top: var(--s-4); }
 .atlas-dialog__error { margin-top: var(--s-3); }
 .atlas-dialog__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-6); }
 .atlas-sheet {
@@ -1380,6 +1412,9 @@ body.atlas-modal-open { overflow: hidden; }
   display: grid;
   flex: 1 1 auto;
   align-content: start;
+  /* Rows take their content height: the body is the scroller, so a child
+     that clips its overflow never collapses to its border. */
+  grid-auto-rows: max-content;
   gap: var(--s-5);
   min-height: 0;
   padding: var(--s-5) var(--s-6) var(--s-6);
@@ -1396,9 +1431,6 @@ body.atlas-modal-open { overflow: hidden; }
   background: var(--surface);
 }
 .atlas-sheet__foot-start { margin-right: auto; }
-/* Kept for the shell scrim and module sheets that still name them. */
-@keyframes atlas-fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes atlas-sheet-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 @media (max-width: 767px) {
   .atlas-sheet, .atlas-sheet--wide {
     top: auto;
@@ -1415,7 +1447,11 @@ body.atlas-modal-open { overflow: hidden; }
   /* A sheet that is a whole screen on phones (recipe detail and editor). */
   .atlas-sheet--full-phone { top: 0; max-height: none; border-radius: 0; }
   .atlas-sheet--full-phone .atlas-sheet__grabber { display: none; }
-  .atlas-sheet__grabber { display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: var(--r-pill); background: var(--line-strong); flex: none; }
+  .atlas-sheet__grabber { position: relative; display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: var(--r-pill); background: var(--line-strong); flex: none; }
+  .atlas-sheet__grabber::before { content: ''; position: absolute; inset: -8px -48px -12px; }
+  /* The grabber and the head are the drag handle: the browser must not
+     scroll or zoom from them. */
+  .atlas-sheet:not(.atlas-sheet--full-phone) :is(.atlas-sheet__grabber, .atlas-sheet__head) { touch-action: none; }
   .atlas-sheet__head, .atlas-sheet__body { padding-left: var(--s-4); padding-right: var(--s-4); }
   .atlas-sheet__foot { padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom)); }
   .atlas-sheet__foot > .atlas-btn, .atlas-dialog__foot > .atlas-btn { flex: 1 1 0; min-width: max-content; }
@@ -1480,7 +1516,10 @@ body.atlas-modal-open { overflow: hidden; }
 @media (pointer: coarse) { .atlas-menu__item { height: var(--touch); } }
 
 /* Tooltips: the dark floating surface, 12 px text, after a 400 ms delay,
-   fading in over 120 ms. */
+   fading in over 120 ms. Once one tooltip has shown, the next appears at
+   once with no fade while the pointer moves along a row of icons
+   (html.atlas-tips-warm, set by atlas-chrome.js for 300 ms after a tooltip
+   hides). */
 .atlas-tooltip,
 [data-atlas-tooltip]::after {
   padding: 4px 8px;
@@ -1516,6 +1555,7 @@ body.atlas-modal-open { overflow: hidden; }
 @starting-style {
   [data-atlas-tooltip]:is(:hover, :focus-visible)::after { opacity: 0; }
 }
+html.atlas-tips-warm [data-atlas-tooltip]:is(:hover, :focus-visible)::after { transition: none; }
 [data-atlas-tooltip][data-atlas-tooltip-align="end"]::after { left: auto; right: 0; transform: none; }
 [data-atlas-tooltip][data-atlas-tooltip-align="start"]::after { left: 0; transform: none; }
 @media (pointer: coarse) { [data-atlas-tooltip]::after { display: none; } }
@@ -1546,23 +1586,17 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-avatar--c { background: var(--bg-subtle); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
 .atlas-avatar--d { background: var(--neutral-soft); color: var(--text); }
 
-/* Per-person colour palette: a stable --person-color token per teammate, used to
-   colour-code the Shift plan (chip accent bars, avatar rings, row markers). Twelve
-   mid-tone hues chosen to stay legible as a thin bar or a faint tint on both light
-   and dark surfaces. Data colours: hex lives here (component layer); consumers
-   reference the --person-color token only. */
-.atlas-person--0 { --person-color: #3f7fd6; }
-.atlas-person--1 { --person-color: #c25a2e; }
-.atlas-person--2 { --person-color: #2f9e6f; }
-.atlas-person--3 { --person-color: #8a5cd0; }
-.atlas-person--4 { --person-color: #b5860c; }
-.atlas-person--5 { --person-color: #1f9bb3; }
-.atlas-person--6 { --person-color: #d05f91; }
-.atlas-person--7 { --person-color: #5f8a2a; }
-.atlas-person--8 { --person-color: #cf7a2a; }
-.atlas-person--9 { --person-color: #6a6cd6; }
-.atlas-person--10 { --person-color: #2f9ea0; }
-.atlas-person--11 { --person-color: #b0503f; }
+/* Per-person colour: a stable --person-color per teammate, used to tell
+   people apart in the Shift plan (a 3 px chip edge, a 14 % tint, an 8 px
+   dot). The six muted identity hues live in atlas-tokens.css (--person-1..6;
+   no orange, no teal, kingfisher kept for "today"); the twelve slots the
+   module assigns cycle through them. Consumers read --person-color only. */
+:is(.atlas-person--0, .atlas-person--6) { --person-color: var(--person-1); }
+:is(.atlas-person--1, .atlas-person--7) { --person-color: var(--person-2); }
+:is(.atlas-person--2, .atlas-person--8) { --person-color: var(--person-3); }
+:is(.atlas-person--3, .atlas-person--9) { --person-color: var(--person-4); }
+:is(.atlas-person--4, .atlas-person--10) { --person-color: var(--person-5); }
+:is(.atlas-person--5, .atlas-person--11) { --person-color: var(--person-6); }
 
 /* PWA install prompt (Android native prompt / iOS Add-to-Home hint). Injected by
    pwa.js only off-standalone and before install; hidden during automated tests.
@@ -1573,6 +1607,7 @@ body.atlas-modal-open { overflow: hidden; }
 .pwa-install__action { flex: none; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--r-sm); background: var(--accent); color: var(--text-on-accent); font: 500 14px/1 var(--font-sans); cursor: pointer; touch-action: manipulation; transition: transform var(--motion-press) var(--ease-out); }
 .pwa-install__action:active { transform: scale(var(--press-scale)); }
 .pwa-install__close { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font-size: 22px; line-height: 1; cursor: pointer; }
+.pwa-install__close > svg { width: var(--icon-md); height: var(--icon-md); }
 @media (hover: hover) and (pointer: fine) {
   .pwa-install__close:hover { background: var(--bg-muted); color: var(--text); }
 }
@@ -1609,6 +1644,8 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-empty__title, .atlas-empty h3 { margin: 0; font: var(--type-heading); color: var(--text); }
 .atlas-empty__text, .atlas-empty p { max-width: 360px; margin: 0; font: var(--type-body); color: var(--text-2); }
 .atlas-empty > .atlas-btn, .atlas-empty__actions { margin-top: var(--s-3); }
+.atlas-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2); }
+.atlas-empty--inline .atlas-empty__actions { justify-content: flex-start; }
 .atlas-empty--page { padding: var(--s-20) var(--s-6); }
 .atlas-empty--inline { justify-items: start; padding: var(--s-6) 0; text-align: left; }
 
@@ -1641,8 +1678,12 @@ body.atlas-modal-open { overflow: hidden; }
 
 /* ==========================================================================
    6.23 Inline alert — .atlas-alert
-   One quiet tint per alert, no border bar; the status hue only on the icon.
-   It lives inside the block it is about.
+   It lives inside the block it is about, never as a page-wide band. A plain
+   note is a stone well; an info note the pale kingfisher well. A status
+   alert (warning, danger, positive) is a white block on a 1 px hairline with
+   the status hue on its icon alone: no pastel slab, no side stripe. The page
+   subtitle stays neutral (scope or "Last updated 09:14"), so an error is
+   stated once, where it happened.
    ========================================================================== */
 .atlas-alert {
   display: flex;
@@ -1660,13 +1701,11 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-alert__body { margin: 0; font: var(--type-body); color: var(--text-2); }
 .atlas-alert__title + .atlas-alert__body { margin-top: 2px; }
 .atlas-alert__actions { display: flex; align-items: center; gap: var(--s-2); flex: none; margin-left: auto; }
-.atlas-alert--warning { background: var(--warning-soft); box-shadow: inset 0 0 0 1px var(--warning-line); }
+:is(.atlas-alert--warning, .atlas-alert--danger, .atlas-alert--positive) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
 .atlas-alert--warning > :is(svg, .icon) { color: var(--warning-icon); }
-.atlas-alert--danger { background: var(--danger-soft); }
 .atlas-alert--danger > :is(svg, .icon) { color: var(--danger); }
 .atlas-alert--info { background: var(--accent-soft); }
 .atlas-alert--info > :is(svg, .icon) { color: var(--accent-brand); }
-.atlas-alert--positive { background: var(--positive-soft); }
 .atlas-alert--positive > :is(svg, .icon) { color: var(--positive); }
 /* Phone: the text stays beside its icon; the actions take their own line
    under the text (16 px icon + 12 px gap = 28 px). */
@@ -1779,14 +1818,18 @@ body.atlas-modal-open { overflow: hidden; }
   font-variant-numeric: tabular-nums;
 }
 .atlas-steps .is-done .n { border-color: var(--text); background: var(--text); color: var(--text-on-accent); }
-.atlas-steps .is-done .n > svg { width: 12px; height: 12px; stroke-width: 2.5; }
+.atlas-steps .is-done .n > svg { width: 14px; height: 14px; }
 .atlas-steps .is-current { color: var(--text); }
 .atlas-steps .is-current .n { border: 1.5px solid var(--text); color: var(--text); font-weight: 600; }
 .atlas-steps .sep { width: 24px; height: 1px; flex: none; background: var(--line-strong); }
 .atlas-steps-compact { display: none; }
-/* Progress: a 4 px grey track with a kingfisher fill at the true ratio. */
+/* Progress: a 4 px grey track with a kingfisher fill at the true ratio. The
+   fill is drawn with scaleX(--ratio) from the left edge, so it moves on the
+   compositor (no layout per frame during an upload), like every other meter
+   in the system. A caller sets --ratio (0-1) on the fill; one that still
+   sets a width keeps working (--ratio defaults to 1), it just doesn't glide. */
 .atlas-progress { height: 4px; overflow: hidden; border-radius: var(--r-pill); background: var(--bg-muted); }
-.atlas-progress > i, .atlas-progress > span { display: block; height: 100%; border-radius: var(--r-pill); background: var(--accent-brand); transition: width var(--dur-2) var(--ease-out); }
+.atlas-progress > i, .atlas-progress > span { display: block; width: 100%; height: 100%; border-radius: var(--r-pill); background: var(--accent-brand); transform: scaleX(var(--ratio, 1)); transform-origin: left center; transition: transform var(--dur-2) var(--ease-out); }
 .atlas-progress--thin { height: 2px; }
 @media (max-width: 767px) {
   .atlas-steps:has(+ .atlas-steps-compact) { display: none; }
@@ -1834,10 +1877,10 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-upload__thumb > img { width: 100%; height: 100%; object-fit: cover; }
 .atlas-upload__body { flex: 1 1 auto; min-width: 0; }
 .atlas-upload > .atlas-btn { flex: none; }   /* the text column wraps; the button keeps its label */
-.atlas-upload__title { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
+.atlas-upload__title { display: block; margin: 0; font: 500 14px/20px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
 /* The hint under the title: muted and smaller, and it wraps instead of
    pushing the control sideways. */
-.atlas-upload__help { margin: 2px 0 0; font: var(--type-caption); color: var(--text-2); overflow-wrap: anywhere; }
+.atlas-upload__help { display: block; margin: 2px 0 0; font: var(--type-caption); color: var(--text-2); overflow-wrap: anywhere; }
 .atlas-upload__error { margin: 2px 0 0; font: var(--type-caption); color: var(--danger); }
 .atlas-upload .atlas-progress { margin-top: 6px; }
 .atlas-upload--file { border-style: solid; border-color: var(--line); }
@@ -1904,12 +1947,13 @@ body.atlas-modal-open { overflow: hidden; }
   opacity: 1;
 }
 
-/* Reduced motion: nothing moves. The movement tokens (--move-sm/--move-md)
-   are already 0 here and atlas-base.css cuts every duration; below we also
-   drop the transforms that do not read those tokens (the press scale, the
-   popover and dialog scale-in, the drawer slide, the tab indicator) and stop
-   the loops, while every state stays visible (colour, opacity, the open
-   panel). The mascot rules are intentionally untouched. */
+/* Reduced motion: fewer, gentler animations, not none. The movement tokens
+   (--move-sm/--move-md) are already 0 here, and atlas-base.css lets only
+   opacity and colour transitions run (so a dialog, sheet, menu or toast
+   still fades in, in place); below we also stop the transforms that do not
+   read those tokens (the press scale, the tab indicator, the disclosure
+   caret) and the loops, while every state stays visible. The mascot rules
+   are intentionally untouched. */
 @media (prefers-reduced-motion: reduce) {
   .atlas-loading-line::after { animation: none; left: 0; width: 100%; opacity: .6; }
   .atlas-tabs > :is(a, button, [role="tab"]):is([aria-current="page"], [aria-selected="true"], .is-active)::after { transition: none; }
@@ -1922,6 +1966,37 @@ html.atlas-reduce-motion .atlas-tabs > :is(a, button, [role="tab"]):is([aria-cur
 html.atlas-reduce-motion :is(.atlas-btn:active:not(:disabled, [aria-disabled="true"], .is-loading), .atlas-icon-btn:active:not(:disabled), .atlas-chip:active, .atlas-segmented > :is(button, a):active, .atlas-toast__action:active, .atlas-toast button:active, .pwa-install__action:active) { transform: none; }
 html.atlas-reduce-motion .atlas-disclosure__panel { transition: none; }
 html.atlas-reduce-motion .atlas-disclosure__toggle > svg { transition: none; }
+/* ==========================================================================
+   6.39 Two-factor enrolment — .atlas-mfa-enroll (atlas-mfa-enroll.js)
+   Shared by the Settings dialog, the sign-in step (index.html) and the
+   invitation wizard (invitation.html). Three numbered steps hang from one
+   hairline; the setup key is the one mono string.
+   ========================================================================== */
+.atlas-mfa-enroll { min-width: 0; color: var(--text); text-align: left; }
+.atlas-mfa-enroll__steps { margin: var(--s-5) 0 0; padding: 0; list-style: none; counter-reset: atlas-mfa-step; }
+.atlas-mfa-enroll__step { position: relative; min-width: 0; padding: 0 0 var(--s-6) 36px; counter-increment: atlas-mfa-step; }
+.atlas-mfa-enroll__step:last-child { padding-bottom: 0; }
+.atlas-mfa-enroll__step::before { content: counter(atlas-mfa-step); position: absolute; top: 0; left: 0; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); font: 500 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); }
+.atlas-mfa-enroll__step:not(:last-child)::after { content: ''; position: absolute; top: 26px; bottom: 4px; left: 11px; width: 1px; background: var(--line); }
+.atlas-mfa-enroll__step-title { margin: 1px 0 0; font: 500 14px/20px var(--font-sans); color: var(--text); }
+.atlas-mfa-enroll__step-text { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
+.atlas-mfa-enroll__pair { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-5); margin-top: var(--s-3); }
+.atlas-mfa-enroll__qr { flex: none; padding: var(--s-2); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); line-height: 0; }
+.atlas-mfa-enroll__qr > img { display: block; width: 152px; height: 152px; image-rendering: pixelated; }
+.atlas-mfa-enroll__secret { display: grid; gap: var(--s-2); flex: 1 1 180px; min-width: 0; justify-items: start; }
+.atlas-mfa-enroll__secret-label { font: var(--type-caption); color: var(--text-3); }
+.atlas-mfa-enroll__key { display: flex; flex-wrap: wrap; gap: 2px 10px; max-width: 100%; padding: var(--s-2) var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font: 500 14px/22px var(--font-mono); color: var(--text); user-select: all; }
+.atlas-mfa-enroll__form { display: grid; gap: var(--s-4); max-width: 320px; margin-top: var(--s-3); }
+.atlas-mfa-enroll__step-title + .atlas-mfa-enroll__form { margin-top: var(--s-3); }
+.atlas-mfa-enroll__form > .atlas-field > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atlas-mfa-enroll .atlas-input.atlas-mfa-enroll__code { width: 100%; height: var(--control-lg); padding: 0 var(--s-3); font: 500 20px/28px var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: .32em; }
+.atlas-mfa-enroll__code::placeholder { color: var(--text-3); letter-spacing: .32em; }
+.atlas-mfa-enroll__submit { width: 100%; }
+.atlas-mfa-enroll > .atlas-btn { margin-top: var(--s-3); }
+@media (max-width: 767px) {
+  .atlas-mfa-enroll__qr > img { width: 176px; height: 176px; }
+  .atlas-mfa-enroll__form { max-width: none; }
+}
   /* ==========================================================================
      6.40 Atlas AI robot — .atlas-bot badge, .atlas-bot-live (atlas-bot.js)
      The assistant's face, never a replacement for the Atlas logo. The badge
@@ -1955,7 +2030,12 @@ html.atlas-reduce-motion .atlas-disclosure__toggle > svg { transition: none; }
     vertical-align: middle;
     transition: transform var(--dur-2) var(--ease-out), filter var(--dur-2) var(--ease-out);
   }
-  :is(a, button):hover > .atlas-bot { transform: translateY(-1px); }
+  /* The lift and the hidden sleeping Z answer a real hover only: on touch a
+     tap leaves a sticky :hover that would hold the bird raised. */
+  @media (hover: hover) and (pointer: fine) {
+    :is(a, button):hover > .atlas-bot { transform: translateY(-1px); }
+    :is(a, button):hover > .atlas-bot::after { content: none; }
+  }
   .atlas-bot[data-state="error"] { filter: saturate(.85); }
   /* The large live surface shows the FULL bird and carries the restrained
      motion: breathing at rest, a small tilt while listening. */
@@ -2007,7 +2087,6 @@ html.atlas-reduce-motion .atlas-disclosure__toggle > svg { transition: none; }
     /* Starts at one Z whenever the robot falls asleep. */
     animation: atlas-bot-z-reveal 6s step-end infinite, atlas-bot-z-fade 6s ease-in-out infinite;
   }
-  :is(a, button):hover > .atlas-bot::after,
   .atlas-bot-live > .atlas-bot.atlas-bot-live__poster::after { content: none; }
   @keyframes atlas-bot-z-reveal {
     0% { text-shadow: calc(var(--atlas-bot-size) * .14) calc(var(--atlas-bot-size) * -.3) 0 transparent, calc(var(--atlas-bot-size) * .28) calc(var(--atlas-bot-size) * -.6) 0 transparent; }

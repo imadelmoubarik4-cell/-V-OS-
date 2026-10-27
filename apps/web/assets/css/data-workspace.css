@@ -108,7 +108,6 @@
   .data-pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); min-height: var(--control-md); }
   .data-pane-head__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
   .data-pane-head__meta { font: var(--type-meta); color: var(--text-2); white-space: nowrap; }
-  .data-issue-pane .atlas-empty { border: 1px dashed var(--line-strong); border-radius: var(--r-lg); padding: var(--s-8) var(--s-6); }
 
   /* ---------- Par levels ---------- */
   .data-par-input { width: 96px; margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
@@ -129,7 +128,6 @@
   .data-raw[open] summary { margin-bottom: var(--s-3); }
   .data-upload-note { margin: 0; font: var(--type-meta); color: var(--text-2); }
   .data-upload-drop { cursor: pointer; }
-  .data-upload-drop :is(.atlas-upload__title, .atlas-upload__help) { display: block; }
 
   @media (max-width: 1023px) {
     .data-issues { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }

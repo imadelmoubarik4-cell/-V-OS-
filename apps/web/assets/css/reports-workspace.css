@@ -22,19 +22,19 @@
   .reports-body > .atlas-section { margin-top: var(--s-4); }
   .reports-page.is-refreshing .reports-body { opacity: .6; transition: opacity var(--dur-1) var(--ease-out); }
   .reports-stats { margin: 0; }
-  /* A figure the period doesn't report: a short grey dash on the value's line. */
-  .reports-stats .atlas-stat__value.is-empty { font-size: var(--fs-section); color: var(--text-3); }
   .reports-delta { font: var(--type-meta); color: var(--text-2); }
   .reports-delta__figure { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }
   .reports-delta.is-good .reports-delta__figure { color: var(--positive); }
   .reports-delta.is-bad .reports-delta__figure { color: var(--danger); }
 
-  /* Bands: the answer and its evidence side by side; rows share a top edge
-     and keep their own height (no card is stretched over empty space). */
-  .reports-band { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--s-4); align-items: start; }
+  /* One column split for the whole module (7:5), so the gutter and the right
+     edge land on the same line on every tab. Bands put the answer beside its
+     evidence; the Overview stacks its cards in two columns on the same split,
+     so each column ends where its content ends instead of rows of cards
+     ending at different heights. No card is stretched over empty space. */
+  .reports-band, .reports-columns { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s-4); align-items: start; }
   .reports-band--single { grid-template-columns: minmax(0, 1fr); }
-  .reports-band--lead { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-  .reports-band--pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reports-column { display: grid; gap: var(--s-4); align-content: start; min-width: 0; }
 
   /* ---------- cards ---------- */
   .reports-panel { display: flex; flex-direction: column; min-width: 0; margin: 0; }
@@ -89,7 +89,11 @@
   .reports-meter__value { grid-area: 1 / 3; font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); text-align: right; white-space: nowrap; }
   .reports-meter__track { display: block; grid-column: 1 / -1; }
   .reports-meter__rail { fill: var(--bg-muted); }
-  .reports-meter__fill { fill: var(--text-2); }
+  /* Chart key shared with Inventory: a share still short of complete is
+     measured in kingfisher, attention (under half) in amber; a complete
+     share has nothing to act on and goes quiet grey; the rail is the empty
+     remainder. */
+  .reports-meter__fill { fill: var(--accent-brand); }
   .reports-meter.is-full .reports-meter__fill { fill: var(--line-hover); }
   .reports-meter.is-low .reports-meter__fill { fill: var(--warning-icon); }
   .reports-meter.is-low .reports-meter__value { color: var(--warning); }
@@ -104,21 +108,21 @@
   .reports-well__note { margin: var(--s-3) 0 0; font: var(--type-meta); color: var(--text-2); }
 
   /* ---------- quiet states ---------- */
-  .reports-not-enough { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; margin: 0; padding: var(--s-2) var(--s-4); border: 1px dashed var(--line-strong); border-radius: var(--r-lg); font: var(--type-meta); color: var(--text-2); }
+  .reports-not-enough { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; margin: 0; padding: var(--s-2) 0; font: var(--type-meta); color: var(--text-2); }
   .reports-not-enough > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
   .reports-panel .reports-not-enough { margin: 0 var(--s-5) var(--s-5); }
   .reports-note { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; font: var(--type-meta); color: var(--text-2); }
   .reports-note > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-top: 1px; color: var(--text-3); }
   .reports-muted { margin: 0; font: var(--type-meta); color: var(--text-2); }
   .reports-section__meta { font: var(--type-meta); color: var(--text-2); }
-  .reports-skeleton .reports-panel { display: grid; gap: var(--s-4); padding: var(--s-4) var(--s-5) var(--s-5); }
+  .reports-skeleton > .reports-panel { display: grid; gap: var(--s-4); padding: var(--s-4) var(--s-5) var(--s-5); }
   .reports-skeleton__head { width: 30%; height: 14px; }
   .reports-skeleton__row { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: var(--s-6); }
   .reports-skeleton__label { width: 45%; }
   .reports-skeleton__value { width: 55%; height: 28px; margin-top: var(--s-3); }
 
   @media (max-width: 1023px) {
-    .reports-band, .reports-band--lead, .reports-band--pair { grid-template-columns: minmax(0, 1fr); }
+    .reports-band, .reports-columns { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 767px) {
     .reports-head .page-head__actions > * { flex: 1 1 0; }
@@ -137,6 +141,6 @@
   }
   @media print {
     .reports-head .page-head__actions, .atlas-tabs, .reports-scope__controls { display: none; }
-    .reports-band, .reports-band--lead, .reports-band--pair { grid-template-columns: minmax(0, 1fr); }
+    .reports-band, .reports-columns { grid-template-columns: minmax(0, 1fr); }
   }
 }

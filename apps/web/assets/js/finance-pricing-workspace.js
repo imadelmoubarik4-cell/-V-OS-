@@ -69,14 +69,19 @@
 
   // Whole-króna formatting: reuse the app's formatter when present so the whole
   // product reads identically; fall back to a matching local format otherwise.
+  // A negative amount carries a true minus sign (U+2212), the same glyph as
+  // the ladder's "− Product cost" lines, so the column's signs line up.
   function isk(value) {
     if (!Number.isFinite(value)) return '—';
-    if (window.AtlasCalculations?.formatIsk) return window.AtlasCalculations.formatIsk(value);
+    if (window.AtlasCalculations?.formatIsk) return window.AtlasCalculations.formatIsk(value).replace(/^-/, '\u2212');
     const n = Math.round(value);
-    return `${n < 0 ? '-' : ''}${Math.abs(n).toLocaleString('de-DE')} kr`;
+    return `${n < 0 ? '\u2212' : ''}${Math.abs(n).toLocaleString('de-DE')} kr`;
   }
-  function pct(value) { return Number.isFinite(value) ? `${value.toFixed(1)}%` : '—'; }
-  function fracPct(value) { return Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : '—'; }
+  // Percentages read the way the krónur beside them do (Icelandic: "." groups
+  // thousands, "," is the decimal), one decimal, a no-break space before "%"
+  // as in Reports and Recipes ("64,0 %", "−2,3 %").
+  function pct(value) { return Number.isFinite(value) ? `${value.toFixed(1).replace('.', ',').replace(/^-/, '\u2212')}\u00a0%` : '—'; }
+  function fracPct(value) { return Number.isFinite(value) ? pct(value * 100) : '—'; }
   // A share of net sales from the figures on screen (so the percentage and the
   // krónur beside it agree).
   function share(part, whole) { return whole > 0 ? pct((part / whole) * 100) : '—'; }
@@ -89,9 +94,11 @@
 
   // Route tabs: links with addresses (#pricing/<section>), underlined on the
   // page's full-width rule. The click is routed through the shell (go()).
+  // A count marks only the queue that needs action (the exceptions); the full
+  // lists say how long they are on their own tab.
   function tabs() {
     const s = state.snapshot;
-    const counts = { locked: s?.locked_menu?.length, classics: s?.classics?.length, exceptions: s?.exceptions?.length };
+    const counts = { exceptions: s?.exceptions?.length };
     const tab = (id, label) => {
       const active = state.section === id;
       const count = Number.isFinite(counts[id]) ? ` <span class="count">${counts[id]}</span>` : '';
@@ -387,11 +394,13 @@
     const e = engine();
     const p = profile();
     const rows = demoItems().map((item) => ({ item, l: e.priceProduct({ guestPrice: item.price, productCost: item.cost }, p) }));
+    // What is fine stays grey text, as on the locked menu; a mark only where
+    // the engine has something to say.
     const status = (l) => (l.warnings.some((w) => w.level === 'error') ? '<span class="atlas-pill atlas-pill--danger">Error</span>'
-      : l.warnings.length ? `<span class="atlas-pill atlas-pill--warning">${escapeHtml(plural(l.warnings.length, 'warning', 'warnings'))}</span>` : '<span class="atlas-pill atlas-pill--neutral">No warnings</span>');
+      : l.warnings.length ? `<span class="atlas-pill atlas-pill--warning">${escapeHtml(plural(l.warnings.length, 'warning', 'warnings'))}</span>` : '<span class="fp-muted">No warnings</span>');
     const head = [th('Item'), th('Cost', true), th('Menu price', true), th('Net', true), th('Gross margin', true), th('Operating', true), th('Cash', true), th('Status')].join('');
     const body = `<tbody>${rows.map(({ item, l }) => `<tr>${itemCell(item.name, item.note)}${td(isk(item.cost))}${td(isk(item.price))}${td(isk(l.netSales))}${td(pct(l.grossMarginPct))}${td(isk(l.operatingContribution))}${td(isk(l.cashContribution), 'fp-strong')}<td>${status(l)}</td></tr>`).join('')}</tbody>`;
-    const list = rows.map(({ item, l }) => listRow({ title: item.name, meta: `cost ${isk(item.cost)} · price ${isk(item.price)} · ${pct(l.grossMarginPct)} gross`, value: `${isk(l.cashContribution)} cash`, pill: status(l) })).join('');
+    const list = rows.map(({ item, l }) => listRow({ title: item.name, meta: `cost ${isk(item.cost)} · price ${isk(item.price)} · ${pct(l.grossMarginPct)} gross`, value: `${isk(l.cashContribution)} cash`, pill: l.warnings.length ? status(l) : '' })).join('');
     return `<section class="atlas-section fp-section" aria-labelledby="fp-examples-title">
       ${sectionHead('Worked examples', navLink('quick', 'Price a new item'), 'fp-examples-title')}
       ${tableBlock({ head, body, list, caption: 'Worked examples' })}
@@ -399,14 +408,17 @@
     </section>`;
   }
 
+  // The overview answers the line under the title first: how the locked menu
+  // sits against the cash floor (the strip, then the worst shortfalls). The
+  // monthly model that sets the floor follows; worked examples close.
   function dashboardMarkup() {
     const s = state.snapshot;
     const meta = state.snapshotState === 'ready' ? navLink('exceptions', `All ${s.exceptions.length} exceptions`) : '';
-    return `${modelMarkup()}
-      <section class="atlas-section fp-section" aria-labelledby="fp-locked-title">
+    return `<section class="atlas-section fp-section" aria-labelledby="fp-locked-title">
         ${sectionHead('Locked menu against the 5% cash floor', meta, 'fp-locked-title')}
         ${shortfallsMarkup()}
       </section>
+      ${modelMarkup()}
       ${examplesMarkup()}`;
   }
 

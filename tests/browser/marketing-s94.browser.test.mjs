@@ -204,10 +204,11 @@ test('S94 operator workflow: compose with media, checks, schedule, submit, appro
     const head = await page.textContent('#marketing-view');
     assert.match(head, /Alcedo publishes approved posts to Instagram, Facebook and TikTok\. Google Business Profile is posted by hand\./);
     assert.deepEqual(await page.$$eval('#marketing-view .atlas-tabs a', (a) => a.map((x) => x.textContent.replace(/\d+/g, '').trim())), ['Overview', 'Calendar', 'Posts', 'Media', 'Campaigns', 'History']);
-    // Merged with the Atlas AI robot: the header's Ask Atlas carries the robot
-    // badge (not the sparkles icon) next to the S94 "New post" action.
+    // The header's Ask Alcedo carries Alcedo's mark, the kingfisher glyph (not
+    // the sparkles icon, not the robot) next to the S94 "New post" action.
     const ask = page.locator('#marketing-view .page-head [data-mk-ask]');
-    assert.equal(await ask.locator('.atlas-bot').count(), 1, 'Ask Atlas shows the robot');
+    assert.equal(await ask.locator('svg.alcedo-icon.lucide-atlas-bot').count(), 1, 'Ask Alcedo shows the kingfisher glyph');
+    assert.equal(await ask.locator('.atlas-bot').count(), 0);
     assert.equal(await ask.locator('[data-lucide="sparkles"], .lucide-sparkles').count(), 0);
     assert.match(await page.textContent('#marketing-view .page-head [data-mk-new]'), /^\s*New post\s*$/);
     await shot(page, 'desktop-overview');

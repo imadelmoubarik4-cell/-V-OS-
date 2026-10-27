@@ -48,9 +48,8 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  // 'atlas-bot' is the kingfisher glyph in the ALCEDO icon set (alcedo-icons.js).
   function icon(name) {
-    // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), the assistant's face.
-    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;
   }
 
@@ -520,7 +519,7 @@
     return `<section class="atlas-section home-attention" aria-labelledby="home-attention-title">
       <div class="atlas-section__head">
         <h2 class="atlas-section__title" id="home-attention-title">Needs attention${count ? ` <span class="atlas-badge atlas-badge--muted">${count}</span>` : ''}</h2>
-        ${count ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm home-attention__all" data-home-view-all>View all</button>' : ''}
+        ${count ? '<button type="button" class="home-section-link home-attention__all" data-home-view-all>View all</button>' : ''}
       </div>
       <ul class="atlas-list atlas-card" data-home-rows>${body}</ul>
     </section>`;
@@ -624,9 +623,9 @@
     const text = facts.lines.length
       ? facts.lines.slice(0, 2).map((line) => `<p>${escape(line)}</p>`).join('')
       : `<p class="home-briefing__muted">${preparing ? 'Preparing today’s briefing…' : 'Today’s briefing isn’t available yet.'}</p>`;
-    // The robot thinks while the briefing is prepared, then rests (the text
-    // says the same, so the state never rests on the animation alone).
-    const bot = window.AtlasBot ? window.AtlasBot.html({ size: 18, state: preparing ? 'thinking' : 'idle' }) : icon('atlas-bot');
+    // The briefing carries Alcedo's mark, the kingfisher glyph; the text says
+    // when it is still being prepared.
+    const bot = icon('atlas-bot');
     return `<section class="atlas-card home-briefing" aria-labelledby="home-briefing-title">
       <div class="home-briefing__head">${bot}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
       <div class="home-briefing__text">${text}</div>
@@ -644,7 +643,8 @@
     let value; let unit = ''; let detail; let failed = false;
     if (health('inventory') === 'failed' && !stock.active) { value = '—'; detail = 'Stock couldn’t be loaded. Nothing was changed.'; failed = true; }
     else if (!loaded) { value = '—'; detail = 'Loading stock'; }
-    else if (!stock.active) { value = '—'; detail = 'No items yet'; }
+    // No items is a real zero (printed); the dash is only for what didn't load.
+    else if (!stock.active) { value = '0'; unit = 'items'; detail = 'No items yet'; }
     else if (stockIncomplete()) { value = 'Incomplete'; detail = `Stock figures are incomplete — ${missingStockInputs()} couldn’t load`; }
     else if (!stock.known) { value = 'Not counted'; detail = 'No verified count yet'; }
     else {
@@ -674,7 +674,7 @@
       blocks.push({ icon: 'martini', label: 'Recipes', value: '—', unit: '', detail: 'Recipes couldn’t be loaded. Nothing was changed.', failed: true });
     } else {
       if (!loaded || !recipeInfo.known) { recipeValue = '—'; recipeDetail = 'Loading recipes'; }
-      else if (!recipeInfo.active) { recipeValue = '—'; recipeDetail = 'No recipes yet'; }
+      else if (!recipeInfo.active) { recipeValue = '0'; recipeUnit = 'recipes'; recipeDetail = 'No recipes yet'; }
       else if (recipeInfo.unavailable.length) {
         // A known count; recipes that can't be checked are named as a fact.
         recipeValue = String(recipeInfo.unavailable.length);
@@ -705,7 +705,9 @@
       const shift = state.shifts.status === 'ready' && venue ? (nextShift(state.shifts.week, venue.today()) || nextShift(state.shifts.next, venue.today())) : null;
       blocks.push(shift
         ? { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: shiftDate(shift) === venue.today() ? 'Today' : venue.formatDate(shiftDate(shift)), unit: '', detail: `${shiftTime(shift.starts_local)}–${shiftTime(shift.ends_local)}${shift.role_name ? ` · ${shift.role_name}` : ''}`, link: 'View shifts', text: true }
-        : { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: '—', unit: '', detail: state.shifts.status === 'ready' ? 'No shifts published for you' : state.shifts.status === 'error' ? 'Shifts couldn’t be loaded' : 'Loading shifts', link: 'View shifts' });
+        : state.shifts.status === 'ready'
+          ? { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: 'None', unit: '', detail: 'No shifts published for you', link: 'View shifts', text: true }
+          : { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: '—', unit: '', detail: state.shifts.status === 'error' ? 'Shifts couldn’t be loaded' : 'Loading shifts', link: 'View shifts' });
     }
     // A tile whose source failed says so and offers Try again: never an
     // empty-state claim ("No items yet") for data that didn't load. Figures
@@ -758,7 +760,7 @@
   function tonightPanelMarkup() {
     if (isViewer()) return '';
     return `<aside class="home-tonight" aria-labelledby="home-tonight-title">
-      <div class="atlas-section__head"><h2 class="atlas-section__title" id="home-tonight-title">Tonight</h2><a class="atlas-section__link" href="#shifts">Shifts</a></div>
+      <div class="atlas-section__head"><h2 class="atlas-section__title" id="home-tonight-title">Tonight</h2><a class="home-section-link" href="#shifts">View shifts</a></div>
       <div class="atlas-card home-tonight__card">
         ${timelineMarkup()}
         ${tonightMarkup()}

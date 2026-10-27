@@ -38,11 +38,11 @@
   //
   // The ALCEDO icon set (alcedo-icons.js) returns an <svg> string, so streamed
   // markup never needs a DOM re-scan. Glyphs are filled paths in currentColor;
-  // atlas-ai.css sizes them with width and height. The assistant itself is the
-  // robot badge (atlas-bot.js).
+  // atlas-ai.css sizes them with width and height. 'atlas-bot' is the
+  // kingfisher glyph; the 3D robot (atlas-bot.js) is drawn only where the
+  // assistant speaks (the welcome, the who-line and the voice panel).
 
   function icon(name, extraClass = '') {
-    if (name === 'atlas-bot' && root.AtlasBot) return root.AtlasBot.html({ size: 18, className: extraClass });
     const className = `icon${extraClass ? ` ${extraClass}` : ''}`;
     if (root.AlcedoIcons?.svg) return root.AlcedoIcons.svg(name, { className });
     return `<span class="${className}" aria-hidden="true"></span>`;
@@ -1101,8 +1101,10 @@
     if (state.configured === false) return notConfiguredMarkup();
     // The live robot greets once, follows the pointer and reacts to a tap.
     // It follows the assistant's state (AtlasBot.robot): it sleeps after a
-    // quiet spell and wakes on hover, the composer or a new question.
-    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'head', size: 176, follow: true })}</div>` : '';
+    // quiet spell and wakes on hover, the composer or a new question. The
+    // whole bird stands above the greeting (full framing: feet and contact
+    // shadow, never a cropped bust that reads as a clipped picture).
+    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176, follow: true })}</div>` : '';
     return `<div class="ai-empty">
       ${bot}
       <h2 class="ai-empty__greeting">What can I help with${name ? `, ${escapeHtml(name)}` : ''}?</h2>
@@ -2048,7 +2050,9 @@
     const now = Date.now();
     bars.forEach((bar, index) => {
       const wobble = reducedMotion() ? 0.5 : (Math.sin(now / 120 + index) + 1) / 2;
-      bar.style.height = `${Math.max(4, Math.round(4 + level * 20 * (0.4 + wobble * 0.6)))}px`;
+      // The bar is drawn 24 px tall and scaled: transform stays on the
+      // compositor, where height would lay the bar out again every update.
+      bar.style.transform = `scaleY(${Math.max(4, Math.round(4 + level * 20 * (0.4 + wobble * 0.6))) / 24})`;
     });
   }
 
@@ -2182,7 +2186,9 @@
       bars.forEach((bar, index) => {
         const motion = reducedMotion() ? 0.5 : (Math.sin(now / 140 + index * 0.9) + 1) / 2;
         const height = active ? 5 + Math.round((level * 22 + 4) * motion) : 5;
-        bar.style.height = `${Math.min(28, height)}px`;
+        // Drawn 28 px tall and scaled every frame (compositor only; height
+        // would lay out the panel again on each frame of the call).
+        bar.style.transform = `scaleY(${Math.min(28, height) / 28})`;
       });
     }
     live.frame = root.requestAnimationFrame(waveLoop);

@@ -6,10 +6,11 @@
  * (.inv-detail) and the full-screen capture (.atlas-capture, atlas-capture.js).
  *
  * Basalt & Kingfisher (docs/design/Alcedo_Redesign_2026.md). The figure this
- * module owns is "on hand against par": a neutral ink track at the true ratio
- * under every quantity, the item sheet's hero, and the stock-health partition
- * above the list. Colour stays on status (pills, the partition's at-risk
- * segments) and the one primary; units are muted, figures are tabular and
+ * module owns is "on hand against par": a track at the true ratio under every
+ * quantity, the item sheet's hero, and the stock-health partition above the
+ * list. Chart key (shared with Reports and Recipes): the measured quantity is
+ * kingfisher, attention is amber, critical is red, not counted / the empty
+ * remainder is the grey track. Units are muted, figures are tabular and
  * right-aligned, storage codes (B03) are the one monospace.
  */
 @layer atlas.modules {
@@ -24,10 +25,12 @@
 .inv-qty__unit { margin-left: 4px; font: var(--type-caption); color: var(--text-3); }
 .inv-qty > .inv-qty__unit { margin-left: 0; }
 .inv-change { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }
-/* The par track: a 3 px neutral rule at the true ratio, its own grey track
-   behind it. Square ends: it reads as a measure, not a pill. */
+/* The par track: a 3 px rule at the true ratio, its own grey track behind
+   it. Kingfisher at or above par, amber below it. Square ends: it reads as a
+   measure, not a pill. */
 .inv-par { display: block; width: 64px; height: 3px; margin: 6px 0 0 auto; border-radius: 0; background: var(--bg-muted); vertical-align: initial; }
-.inv-par > i { width: 0; border-radius: 0; background: var(--text); }
+.inv-par > i { width: 0; border-radius: 0; background: var(--accent-brand); }
+.inv-par[data-level="below"] > i { background: var(--warning-icon); }
 .inv-par--wide { width: 100%; height: 6px; margin: 0; border-radius: var(--r-xs); }
 .inv-par--wide > i { border-radius: var(--r-xs) 0 0 var(--r-xs); }
 /* Storage code: the monospace badge used in the list, the sheet and the picker. */
@@ -39,7 +42,6 @@
 
 /* ---------- Items workspace ---------- */
 .inv { display: block; min-width: 0; }
-.inv > .atlas-tabs { margin-top: var(--s-5); }
 .inv__body { min-width: 0; padding-top: var(--s-5); container: inv-items / inline-size; }
 .inv__body > .atlas-alert { margin-bottom: var(--s-5); }
 .inv__body > .atlas-bulkbar { margin-bottom: var(--s-3); }
@@ -74,9 +76,6 @@
 .inv__table .inv-col--cost { width: 96px; }
 .inv__table .inv-col--date { width: 92px; }
 .inv__table :is(.inv-col--name, .inv-col--text) { overflow: hidden; }
-/* A right-aligned header ends flush with its figures: the sort glyph sits on
-   its left, so the label's last letter lines up with the numbers' last digit. */
-.inv__table th.is-num .atlas-th-sort { flex-direction: row-reverse; }
 @container inv-items (max-width: 1080px) { .inv__table [data-priority="3"] { display: none; } }
 @container inv-items (max-width: 860px) { .inv__table [data-priority="2"] { display: none; } }
 .inv__bulk-clear { margin-left: auto; }
@@ -102,9 +101,10 @@
 .inv-figure { white-space: nowrap; }
 .inv__first-run { padding-top: var(--s-8); }
 
-/* Stock health: every active item in one state, drawn as one 6 px partition
-   with 2 px seams and a legend of counts under it. Only the at-risk parts
-   carry a hue; in stock is ink, not counted is the empty track. */
+/* Stock health: every active item in one state, drawn as one 4 px partition
+   with 2 px seams and a legend of counts under it. In stock is the data hue
+   (kingfisher), the at-risk parts carry their status hue, not counted is the
+   empty track. */
 .inv-health { display: grid; gap: var(--s-3); margin-bottom: var(--s-5); }
 .inv-health__track { display: flex; gap: 2px; height: 4px; }
 .inv-health__seg { flex: 0 1 0; min-width: 4px; background: var(--bg-muted); }
@@ -114,7 +114,7 @@
 .inv-health :is(.inv-health__seg, li)[data-tone="out"] { --inv-tone: var(--danger); }
 .inv-health :is(.inv-health__seg, li)[data-tone="almost_out"] { --inv-tone: color-mix(in srgb, var(--danger) 55%, var(--surface)); }
 .inv-health :is(.inv-health__seg, li)[data-tone="below_par"] { --inv-tone: var(--warning-icon); }
-.inv-health :is(.inv-health__seg, li)[data-tone="ok"] { --inv-tone: var(--text); }
+.inv-health :is(.inv-health__seg, li)[data-tone="ok"] { --inv-tone: var(--accent-brand); }
 .inv-health :is(.inv-health__seg, li)[data-tone="not_counted"] { --inv-tone: var(--line-strong); }
 .inv-health__seg[data-tone] { background: var(--inv-tone); }
 .inv-health__legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-6); margin: 0; padding: 0; list-style: none; font: var(--type-meta); color: var(--text-2); }
@@ -307,7 +307,7 @@
 .sc-stepper__value { position: relative; display: block; min-width: 0; }
 .sc-stepper__input {
   width: 100%; height: 100%; margin: 0; padding: 0 var(--s-2); border: 0; border-radius: 0; background: transparent; color: var(--text);
-  font: 500 40px/48px var(--font-sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; text-align: center; appearance: none;
+  font: var(--type-count); letter-spacing: var(--track-count); font-variant-numeric: tabular-nums; text-align: center; appearance: none;
 }
 .sc-stepper__input::placeholder { color: var(--text-3); opacity: 1; }
 .sc-stepper__input:focus { outline: none; }
@@ -426,8 +426,10 @@ body.atlas-capture-open { overflow: hidden; }
   position: absolute; right: 0; bottom: 0; left: 0; max-height: calc(100% - 56px); overflow: auto; overscroll-behavior: contain;
   padding: 0 var(--s-4) calc(var(--s-5) + env(safe-area-inset-bottom)); border-radius: var(--r-xl) var(--r-xl) 0 0;
   background: var(--surface); color: var(--text); box-shadow: var(--shadow-modal);
-  transition: transform var(--dur-3) var(--ease-drawer), display var(--dur-3) allow-discrete;
+  transition: transform var(--dur-3) var(--ease-drawer);
 }
+/* Enters from below; hiding is instant (atlas-capture.js clears the sheet's
+   content as it hides it, so a delayed exit would show an empty panel). */
 @starting-style { .atlas-capture__sheet { transform: translateY(100%); } }
 .atlas-capture__sheet .atlas-sheet__grabber { display: block; width: 36px; height: 4px; margin: var(--s-2) auto var(--s-3); border-radius: var(--r-pill); background: var(--line-strong); }
 .atlas-capture__working { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-4) 0; font: var(--type-body); }

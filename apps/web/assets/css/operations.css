@@ -39,7 +39,7 @@
   min-height: 72px;
   padding: var(--s-3) var(--s-4) var(--s-3) var(--s-5);
 }
-.ops-row__open { font: 500 15px/22px var(--font-sans); }
+.ops-row__open { font: var(--type-row); }
 .ops-row .ops-progress { width: 100%; }
 .ops-row__status { display: flex; flex: none; width: 104px; }
 .ops-row .atlas-row__end > .atlas-btn { min-width: 96px; }
@@ -48,8 +48,9 @@
 .ops-skel-meta { width: 60%; margin-top: var(--s-2); }
 .ops-skel-ticks { width: 100%; height: 6px; grid-column: 3; }
 .ops-list--loading .ops-row > .atlas-row__body { grid-column: 2; }
-/* An empty list keeps its frame: one sentence in a dashed box. */
-.ops-empty { border: 1px dashed var(--line-strong); border-radius: var(--r-lg); }
+/* An empty list is the shared .atlas-empty composition (glyph, one line, one
+   action), unframed like every other module's: dashed edges are for drop
+   slots only. */
 
 /* ---------- checklist page ---------- */
 /* 1156 at 1440: list 836 + 32 + 288 sign-off. */

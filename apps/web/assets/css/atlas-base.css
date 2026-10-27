@@ -3,7 +3,8 @@
  *
  * Direction: docs/design/Alcedo_Redesign_2026.md ("Basalt & Kingfisher"):
  * one grotesk (IBM Plex Sans) for every role, sentence case, tabular figures,
- * a 2 px kingfisher focus ring and no motion for reduced-motion users.
+ * a 2 px kingfisher focus ring and, for reduced-motion users, fades without
+ * movement.
  * Structure: docs/design/Atlas_Design_System.md §0. Values come only from
  * atlas-tokens.css.
  * Component classes live in atlas-components.css; element rules here are the
@@ -22,6 +23,10 @@ html {
   scrollbar-color: var(--line-strong) transparent;
   /* Phones: no grey flash on tap; every control gives its own press feedback. */
   -webkit-tap-highlight-color: transparent;
+  /* Pulling down at the top of a list (a stock count in progress) must not
+     reload the app, and the page never rubber-bands past its edges; inner
+     scrollers (sheets, the palette) contain their own overscroll. */
+  overscroll-behavior: none;
 }
 
 /* Body type: 14/20, IBM Plex Sans, basalt ink on white (16 px on phones, so
@@ -52,6 +57,10 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; color: 
 button { cursor: pointer; }
 /* Controls answer a tap at once (no double-tap-to-zoom delay). */
 :where(button, a[href], input, select, textarea, label, summary, [role="button"], [role="tab"], [role="switch"], [role="menuitem"]) { touch-action: manipulation; }
+/* Holding a control is a press, not a text selection, and a long-press on a
+   tab-bar tab or a nav row (links) opens no link preview or callout, as on a
+   native control. Text fields and content stay selectable. */
+:where(button, [role="button"], [role="tab"], [role="menuitem"], [role="switch"], .atlas-btn, .atlas-icon-btn, .atlas-tabbar__item, .atlas-more__row, .nav-item, .atlas-chip, .atlas-segmented > *, .atlas-tabs > *) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 /* Native controls without a component class read as unavailable when disabled
    (components set their own disabled look). */
@@ -73,9 +82,12 @@ strong, b { font-weight: 600; }
    anything that updates. */
 .num, time, [data-num] { font-variant-numeric: tabular-nums; }
 
-/* Links: accent text, underline on hover. */
+/* Links: accent text, underline on hover (a real hover only: on touch a
+   tapped link would keep its underline until the next tap elsewhere). */
 a { color: var(--accent-text); text-decoration: none; }
-a:hover { text-decoration: underline; text-underline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  a:hover { text-decoration: underline; text-underline-offset: 2px; }
+}
 
 /* Icons: the ALCEDO set (assets/js/alcedo-icons.js) is the only icon set:
    Phosphor Regular geometry on a 256 grid, drawn as filled paths in
@@ -159,14 +171,18 @@ body:not(.atlas-commercial-manager) :is([data-commercial-only], [data-view="supp
 
 /* ---------- Reduced motion ----------
    prefers-reduced-motion and the personal Reduce motion preference
-   (html.atlas-reduce-motion): no movement (the --move-* tokens are already 0
-   and every animation and transition finishes at once); colour and opacity
-   states still change, so nothing loses its feedback. */
+   (html.atlas-reduce-motion) mean fewer and gentler animations, not none:
+   movement goes, fades stay. Only opacity and colour may transition (at the
+   durations each component already sets, 120-240 ms), so a dialog, sheet,
+   scrim, menu or toast still fades in and out, in place, and a colour state
+   still eases instead of snapping; a transform (scale-in, slide, press)
+   applies at once. Keyframe animations, which carry movement and loops,
+   finish at once. The --move-* and --press-scale tokens are 0 / 1 here too. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+    transition-property: opacity, color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, box-shadow !important;
     scroll-behavior: auto !important;
   }
 }
@@ -175,7 +191,7 @@ html.atlas-reduce-motion *::before,
 html.atlas-reduce-motion *::after {
   animation-duration: .01ms !important;
   animation-iteration-count: 1 !important;
-  transition-duration: .01ms !important;
+  transition-property: opacity, color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, box-shadow !important;
   scroll-behavior: auto !important;
 }
 }

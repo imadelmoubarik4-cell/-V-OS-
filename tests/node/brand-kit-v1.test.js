@@ -96,8 +96,9 @@ test('pages use the swapped logos, favicons and manifest; no typed wordmark or "
     /<link rel="manifest" href="site\.webmanifest">/,
     // 2026 redesign: the app shows the ALCEDO kit in monochrome (black on light).
     /class="atlas-brand__lockup" src="assets\/brand\/alcedo\/logo-black\.svg" alt="Alcedo"/,
-    /class="atlas-brand__mark" src="assets\/brand\/alcedo\/symbol-black\.svg" alt="Alcedo"/,
-    /class="atlas-topbar__mark"[^>]*><img src="assets\/brand\/alcedo\/symbol-black\.svg"/,
+    // The small-size mark is the kit symbol inline (open A and beak, no horizon), aria-hidden: the link names it.
+    /<svg class="atlas-brand__mark" viewBox="75 25 320 285"[^>]*aria-hidden="true"/,
+    /class="atlas-topbar__mark"[^>]*aria-label="Alcedo[^"]*"><svg viewBox="75 25 320 285"/,
     /class="atlas-auth__lockup" src="assets\/brand\/alcedo\/logo-black\.svg" alt="Alcedo"/
   ]) assert.match(index, pattern);
   for (const page of ['invitation.html', 'recovery.html']) {

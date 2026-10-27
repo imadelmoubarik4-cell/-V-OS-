@@ -683,7 +683,7 @@
         end = `${job.permanent ? '' : `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-mm-retry="${job.id}">Retry</button>`}<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-mm-remove="${job.id}" aria-label="Remove ${name} from uploads"><i data-lucide="x"></i></button>`;
       }
       const progress = job.status === 'uploading'
-        ? `<div class="atlas-progress atlas-progress--thin" role="progressbar" aria-label="Uploading ${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span data-mm-bar style="width:${pct}%"></span></div>`
+        ? `<div class="atlas-progress atlas-progress--thin" role="progressbar" aria-label="Uploading ${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span data-mm-bar style="--ratio:${pct / 100}"></span></div>`
         : '';
       const thumb = job.preview ? `<img src="${escapeHtml(job.preview)}" alt="">` : `<i data-lucide="${job.kind === 'video' ? 'film' : 'image'}"></i>`;
       return `<li class="atlas-row atlas-row--compact mk-queue__row" data-mm-job="${job.id}" data-mm-state="${job.status}"><span class="atlas-upload__thumb" aria-hidden="true">${thumb}</span><div class="atlas-row__body"><p class="atlas-row__title">${name}</p><p class="atlas-row__meta">${meta}</p>${progress}</div><div class="atlas-row__end">${end}</div></li>`;
@@ -699,7 +699,7 @@
     document.querySelectorAll(`[data-mm-job="${job.id}"]`).forEach((row) => {
       const pct = job.size ? Math.floor((job.loaded / job.size) * 100) : 0;
       const bar = row.querySelector('[data-mm-bar]');
-      if (bar) bar.style.width = `${pct}%`;
+      if (bar) bar.style.setProperty('--ratio', String(pct / 100));
       row.querySelector('[role="progressbar"]')?.setAttribute('aria-valuenow', String(pct));
       const text = row.querySelector('[data-mm-progress-text]');
       if (text) text.textContent = `${pct}% · ${bytesText(job.loaded)} of ${bytesText(job.size)}`;

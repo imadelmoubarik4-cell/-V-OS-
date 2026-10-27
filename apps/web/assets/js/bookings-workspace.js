@@ -71,7 +71,8 @@
     snapshotPromise: null,
     configPromise: null,
     visible: false,
-    initialized: false
+    initialized: false,
+    cal: null                  // the open date popover: { month: 'YYYY-MM-01', focus: 'YYYY-MM-DD' }
   };
 
   // ---------- helpers ----------
@@ -432,9 +433,11 @@
   }
 
   function headerMarkup() {
+    // A failed load is said once, inside the failed block; the line under the
+    // title stays neutral (the day itself is named by the pager below it).
     const sub = state.snapshot
       ? daySummary()
-      : state.error ? 'Bookings couldn’t be loaded' : 'Loading the day…';
+      : state.error ? 'The day’s bookings and floor plan' : 'Loading the day…';
     const actions = canManageReservations()
       ? `<button type="button" class="atlas-btn atlas-btn--primary" data-bookings-add>${icon('plus')}Add booking</button>` : '';
     const configLink = canConfigure()
@@ -442,12 +445,98 @@
     return `<header class="page-head"><div class="page-head__text"><h1 class="page-head__title">Bookings</h1><p class="page-head__sub bk-summary" data-bookings-summary>${escapeHtml(sub)}</p></div><div class="page-head__actions">${configLink}${actions}</div></header>`;
   }
 
+  // ---------- the day pager: ‹ Today › and the date that opens a calendar ----------
+  // The same way through time as Shifts (‹ Today ›), plus the day itself
+  // spelled the Alcedo way ("Thursday 24 September") as a button that opens a
+  // small month calendar in the popover style. Weeks start on Monday. Dates
+  // are calendar keys ('YYYY-MM-DD') stepped in UTC, so no zone shifts them.
+
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const WEEKDAYS_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  function keyToUTC(key) {
+    const [year, month, day] = String(key).split('-').map(Number);
+    return new Date(Date.UTC(year, (month || 1) - 1, day || 1, 12));
+  }
+
+  function utcToKey(date) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  function shiftDay(key, n) {
+    const date = keyToUTC(key);
+    date.setUTCDate(date.getUTCDate() + n);
+    return utcToKey(date);
+  }
+
+  function shiftMonth(monthStart, n) {
+    const date = keyToUTC(monthStart);
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() + n);
+    return utcToKey(date);
+  }
+
+  function monthStartOf(key) {
+    return `${String(key).slice(0, 7)}-01`;
+  }
+
+  function shortDay(dateKey) {
+    return vc()?.formatDate?.(dateKey) || longDate(dateKey);
+  }
+
+  function relativeWord(dateKey) {
+    if (dateKey === todayISO()) return 'Today';
+    if (dateKey === (vc()?.tomorrow?.() || shiftDay(todayISO(), 1))) return 'Tomorrow';
+    if (dateKey === shiftDay(todayISO(), -1)) return 'Yesterday';
+    return '';
+  }
+
+  function calendarGridMarkup() {
+    const cal = state.cal;
+    const first = cal.month;
+    const date = keyToUTC(first);
+    const lead = (date.getUTCDay() + 6) % 7;          // Monday-first offset
+    const start = shiftDay(first, -lead);
+    const today = todayISO();
+    const cells = [];
+    for (let index = 0; index < 42; index += 1) {
+      const key = shiftDay(start, index);
+      const inMonth = key.slice(0, 7) === first.slice(0, 7);
+      if (index >= 35 && !inMonth && cells.length % 7 === 0) break;
+      const selected = key === state.date;
+      const focus = key === cal.focus;
+      cells.push(`<button type="button" class="bk-cal__day${inMonth ? '' : ' is-outside'}${key === today ? ' is-today' : ''}${selected ? ' is-selected' : ''}" data-bookings-pick="${key}" tabindex="${focus ? '0' : '-1'}" aria-label="${escapeHtml(vc()?.formatDate?.(key, { long: true, year: true }) || key)}"${selected ? ' aria-pressed="true"' : ''}${key === today ? ' aria-current="date"' : ''}>${Number(key.slice(8, 10))}</button>`);
+    }
+    return `<div class="bk-cal__head">
+        <p class="bk-cal__title" id="bk-cal-title" aria-live="polite">${escapeHtml(`${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`)}</p>
+        <button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-bookings-cal-month="-1" aria-label="Previous month">${icon('chevron-left')}</button>
+        <button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-bookings-cal-month="1" aria-label="Next month">${icon('chevron-right')}</button>
+      </div>
+      <div class="bk-cal__weekdays" aria-hidden="true">${WEEKDAYS_MON.map((day) => `<span>${day.slice(0, 2)}</span>`).join('')}</div>
+      <div class="bk-cal__grid" role="group" aria-labelledby="bk-cal-title">${cells.join('')}</div>`;
+  }
+
+  function calendarMarkup() {
+    if (!state.cal) return '';
+    return `<div class="atlas-popover bk-cal" id="bk-cal" role="dialog" aria-label="Choose a date" data-bookings-cal><div class="bk-cal__body" data-bookings-cal-body>${calendarGridMarkup()}</div></div>`;
+  }
+
   function controlsMarkup() {
+    const relative = relativeWord(state.date);
+    const long = vc()?.formatDate?.(state.date, { long: true }) || longDate(state.date);
     return `<div class="bk-controls">
       <div class="bk-date">
-        <label class="sr-only" for="bk-date-input">Date</label>
-        <input class="atlas-input bk-date__input" type="date" id="bk-date-input" value="${escapeHtml(state.date)}" data-bookings-date aria-label="Booking date">
-        <p class="bk-date__day">${escapeHtml(dayLabel(state.date))}</p>
+        <div class="bk-pager" role="group" aria-label="Day">
+          <button type="button" class="atlas-icon-btn" data-bookings-day-step="-1" aria-label="Previous day">${icon('chevron-left')}</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-bookings-today>Today</button>
+          <button type="button" class="atlas-icon-btn" data-bookings-day-step="1" aria-label="Next day">${icon('chevron-right')}</button>
+        </div>
+        <div class="bk-date__anchor">
+        <button type="button" class="bk-date__pick" data-bookings-calendar aria-haspopup="dialog" aria-expanded="${state.cal ? 'true' : 'false'}"${state.cal ? ' aria-controls="bk-cal"' : ''} aria-label="${escapeHtml(`Booking date: ${dayLabel(state.date)}. Choose a date`)}">
+          <span class="bk-date__long">${escapeHtml(long)}</span><span class="bk-date__short">${escapeHtml(shortDay(state.date))}</span>${relative ? `<span class="bk-date__rel">${escapeHtml(relative)}</span>` : ''}${icon('chevron-down')}
+        </button>
+        ${calendarMarkup()}
+        </div>
       </div>
       <div class="atlas-segmented bk-viewtoggle" role="group" aria-label="Floor plan or list" data-bookings-view-toggle>
         <button type="button" aria-pressed="${state.mode === 'map'}" data-bookings-view="map">${icon('layout-grid')}Floor plan</button>
@@ -492,6 +581,15 @@
 
   function freeCount(list) {
     return list.filter((table) => tableStatus(table).key === 'free').length;
+  }
+
+  // An area's head counts seats, not tables, so it adds up from the tiles
+  // ("6 seats", "2 seats"): the free seats out of every seat in the area.
+  function seatsFreeLine(list) {
+    const seatsOf = (table) => Math.max(1, Number(table.seat_capacity) || 1);
+    const total = list.reduce((sum, table) => sum + seatsOf(table), 0);
+    const free = list.filter((table) => tableStatus(table).key === 'free').reduce((sum, table) => sum + seatsOf(table), 0);
+    return `${free} of ${plural(total, 'seat')} free`;
   }
 
   // The open centre of the stool ring is the counter. It carries the section
@@ -564,7 +662,7 @@
       // circular ring was replaced by three fixed sections; see s106 migration.)
       const floorClass = areaTables.some((table) => table.position_index) ? ' bk-floor-grid' : '';
       const isFloor = Boolean(floorClass);
-      const meta = areaTables.length ? `${freeCount(areaTables)} of ${plural(areaTables.length, 'seat')} free` : '';
+      const meta = areaTables.length ? seatsFreeLine(areaTables) : '';
       return `<section class="bk-area bk-c-${escapeHtml(colour)}" data-bookings-area="${escapeHtml(area.id)}" aria-labelledby="bk-area-${escapeHtml(area.id)}">
         ${areaHeadMarkup(area, meta)}
         <div class="bk-area__tables${floorClass}">${areaTables.length ? areaTables.map(tableButtonMarkup).join('') + (isFloor ? counterMarkup(area) : '') : '<p class="bk-empty-line">No seats configured here.</p>'}</div>
@@ -687,7 +785,7 @@
           </button>
         </li>`;
       }).join('');
-      return `<section class="bk-lane" aria-labelledby="bk-lane-${escapeHtml(area.id)}"><h2 class="bk-lane__title" id="bk-lane-${escapeHtml(area.id)}"><span class="bk-swatch bk-c-${escapeHtml(sectionColour(area))}" aria-hidden="true"></span>${escapeHtml(area.name)}<span class="bk-lane__meta">${escapeHtml(`${freeCount(areaTables)} of ${plural(areaTables.length, 'seat')} free`)}</span></h2><ul class="atlas-list">${rows}</ul></section>`;
+      return `<section class="bk-lane" aria-labelledby="bk-lane-${escapeHtml(area.id)}"><h2 class="bk-lane__title" id="bk-lane-${escapeHtml(area.id)}"><span class="bk-swatch bk-c-${escapeHtml(sectionColour(area))}" aria-hidden="true"></span>${escapeHtml(area.name)}<span class="bk-lane__meta">${escapeHtml(seatsFreeLine(areaTables))}</span></h2><ul class="atlas-list">${rows}</ul></section>`;
     }).join('');
 
     if (!lanes) {
@@ -1534,6 +1632,7 @@
 
   function onHide() {
     state.visible = false;
+    state.cal = null;
   }
 
   // ---------- navigation ----------
@@ -1544,9 +1643,78 @@
 
   // ---------- events ----------
 
+  function setDay(key) {
+    if (!DATE_RE.test(key)) return;
+    state.cal = null;
+    if (key === state.date) { paint(); return; }
+    state.date = key;
+    loadSnapshot({ force: true });
+  }
+
+  function openCalendar() {
+    state.cal = { month: monthStartOf(state.date), focus: state.date };
+    paint();
+    host()?.querySelector('[data-bookings-cal] [tabindex="0"]')?.focus({ preventScroll: true });
+  }
+
+  function closeCalendar({ refocus = false } = {}) {
+    if (!state.cal) return;
+    state.cal = null;
+    paint();
+    if (refocus) host()?.querySelector('[data-bookings-calendar]')?.focus({ preventScroll: true });
+  }
+
+  // Moving inside the open calendar redraws only its body: no re-entry, no
+  // animation for a keyboard step, and focus follows the day.
+  function moveCalendar(focus, month = monthStartOf(focus)) {
+    if (!state.cal) return;
+    state.cal = { month, focus };
+    const body = host()?.querySelector('[data-bookings-cal-body]');
+    if (!body) return;
+    body.innerHTML = calendarGridMarkup();
+    paintIcons();
+    body.querySelector('[tabindex="0"]')?.focus({ preventScroll: true });
+  }
+
+  function handleKeydown(event) {
+    if (!state.cal) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target?.closest('[data-bookings-cal]')) {
+      if (event.key === 'Escape' && host()?.contains(target)) closeCalendar({ refocus: true });
+      return;
+    }
+    if (event.key === 'Escape') { event.preventDefault(); closeCalendar({ refocus: true }); return; }
+    if (!target.matches('[data-bookings-pick]')) return;
+    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
+    if (step) { event.preventDefault(); moveCalendar(shiftDay(state.cal.focus, step)); return; }
+    if (event.key === 'PageUp' || event.key === 'PageDown') {
+      event.preventDefault();
+      const month = shiftMonth(state.cal.month, event.key === 'PageUp' ? -1 : 1);
+      const day = Math.min(Number(state.cal.focus.slice(8, 10)), 28);
+      moveCalendar(`${month.slice(0, 8)}${String(day).padStart(2, '0')}`, month);
+    }
+  }
+
   function handleClick(event) {
     const target = event.target instanceof Element ? event.target : null;
+    // A click anywhere outside the date control closes its calendar.
+    if (state.cal && !target?.closest('.bk-date')) closeCalendar();
     if (!target || !host()?.contains(target)) return;
+
+    const dayStep = target.closest('[data-bookings-day-step]');
+    if (dayStep) { setDay(shiftDay(state.date, Number(dayStep.dataset.bookingsDayStep) || 0)); return; }
+    if (target.closest('[data-bookings-today]')) { setDay(todayISO()); return; }
+    if (target.closest('[data-bookings-calendar]')) { if (state.cal) closeCalendar(); else openCalendar(); return; }
+    const calMonth = target.closest('[data-bookings-cal-month]');
+    if (calMonth && state.cal) {
+      const month = shiftMonth(state.cal.month, Number(calMonth.dataset.bookingsCalMonth) || 0);
+      state.cal = { month, focus: state.date.slice(0, 7) === month.slice(0, 7) ? state.date : month };
+      const body = host()?.querySelector('[data-bookings-cal-body]');
+      if (body) { body.innerHTML = calendarGridMarkup(); paintIcons(); body.querySelector(`[data-bookings-cal-month="${calMonth.dataset.bookingsCalMonth}"]`)?.focus({ preventScroll: true }); }
+      return;
+    }
+    const pick = target.closest('[data-bookings-pick]');
+    if (pick) { setDay(pick.dataset.bookingsPick); host()?.querySelector('[data-bookings-calendar]')?.focus({ preventScroll: true }); return; }
 
     if (target.closest('[data-bookings-refresh]')) { state.failedAt = 0; if (state.section === 'config') loadConfig({ force: true }); else loadSnapshot({ force: true }); return; }
     if (target.closest('[data-bookings-add]')) { openAddBooking(); return; }
@@ -1593,15 +1761,6 @@
     }
   }
 
-  function handleChange(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || !host()?.contains(target)) return;
-    if (target.matches('[data-bookings-date]')) {
-      const value = target.value;
-      if (DATE_RE.test(value)) { state.date = value; loadSnapshot({ force: true }); }
-    }
-  }
-
   function handleSubmit(event) {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !host()?.contains(form)) return;
@@ -1644,7 +1803,7 @@
     state.initialized = true;
     loadStoredMode();
     document.addEventListener('click', handleClick);
-    document.addEventListener('change', handleChange);
+    document.addEventListener('keydown', handleKeydown);
     document.addEventListener('submit', handleSubmit);
     window.addEventListener('online', () => { if (state.visible) { if (state.section === 'config') loadConfig({ force: true, silent: true }); else loadSnapshot({ force: true, silent: true }); } });
     phoneQuery.addEventListener?.('change', () => { if (state.visible) paint(); });

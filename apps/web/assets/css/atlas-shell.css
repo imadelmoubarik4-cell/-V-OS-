@@ -30,10 +30,10 @@
 body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
 .atlas-main { grid-column: 2; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: transparent; }
 /* The sheet. It always reaches the bottom inset, so a short page still reads
-   as one white surface. Its 1 px edge is an inset outline (it follows the
-   corners and takes no layout), so the page header starts exactly at the
-   gutter. */
-.atlas-content, .atlas-content.standard-view { flex: 1 0 auto; width: auto; min-width: 0; max-width: none; min-height: calc(100dvh - var(--topbar-h) - var(--sheet-inset)); margin: 0 var(--sheet-inset) var(--sheet-inset) 0; padding: var(--page-gutter) var(--page-gutter) var(--s-16); background: var(--bg); border: 0; border-radius: var(--r-sheet); box-shadow: none; outline: 1px solid var(--line); outline-offset: -1px; }
+   as one white surface. Its 1 px edge is a border (the padding gives the
+   pixel back, so the page header starts exactly at the gutter); an inset
+   outline would be painted under full-bleed panes (Messages, Alcedo AI). */
+.atlas-content, .atlas-content.standard-view { flex: 1 0 auto; width: auto; min-width: 0; max-width: none; min-height: calc(100dvh - var(--topbar-h) - var(--sheet-inset)); margin: 0 var(--sheet-inset) var(--sheet-inset) 0; padding: calc(var(--page-gutter) - 1px) calc(var(--page-gutter) - 1px) var(--s-16); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sheet); box-shadow: none; }
 /* Inside the sheet the page column is fluid up to --page-max, centred on the
    sheet (never on the window). */
 .atlas-content > main { width: 100%; max-width: var(--page-max); margin: 0 auto; padding: 0; }
@@ -63,40 +63,39 @@ body[data-atlas-view="ai"] .atlas-content > main { max-width: none; }
    Sidebar: product mark and name, labelled rows, user row
    ========================================================================== */
 .atlas-sidebar { grid-column: 1; position: sticky; top: 0; z-index: 40; display: flex; flex-direction: column; width: 100%; height: 100vh; height: 100dvh; min-width: 0; padding: 0 10px 10px; background: var(--bg-subtle); border: 0; }
-/* The product is named: the monochrome ALCEDO kit files as <img>, never
-   redrawn or typed (assets/brand/alcedo/; the kit allows black on light for
-   single-colour use). The symbol (symbol-black.svg) and the wordmark (cropped
-   from the stacked logo-black.svg) sit side by side, the height of one
-   48 px top-bar row. The venue line, when set, is ordinary meta text. */
+/* The product is named, in monochrome ink (the kit allows black on light for
+   single-colour use), never typed. The mark is the kit symbol drawn for
+   small sizes (an inline 20 x 18 svg in index.html: the open A and the beak,
+   without the hairline horizon that breaks up below the kit's 180 px lockup
+   minimum); the wordmark is the kit's outlined lettering, cropped from the
+   stacked logo-black.svg. Mark and word share one centre line in the 48 px
+   top-bar row; the venue, when set, is its own caption line 4 px below,
+   starting under the mark. */
 .atlas-brand { display: flex; align-items: center; flex: none; height: var(--topbar-h); padding: 0 8px; }
-.atlas-brand__link { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 10px; row-gap: 3px; min-width: 0; padding: 4px 0; color: var(--text); text-decoration: none; border-radius: var(--r-sm); }
+.atlas-brand__link { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 9px; row-gap: 4px; min-width: 0; padding: 4px 0; color: var(--text); text-decoration: none; border-radius: var(--r-sm); }
 .atlas-brand__link:hover { text-decoration: none; }
-/* symbol-black.svg is a 512 px square around a 442 x 271 drawing: the
-   negative margins trim the empty art board so the visible mark is 18 px tall
-   (29 px wide) and the row aligns to it. */
-.atlas-brand__mark { display: block; grid-row: 1 / span 2; flex: none; width: 34px; height: 34px; max-width: none; margin: -6.4px -2.3px -9.6px; }
+.atlas-brand__mark { display: block; flex: none; width: 20px; height: 18px; color: var(--text); }
 /* logo-black.svg is the stacked 800 x 650 lockup; the wordmark (307 x 43 at
-   x 245, y 448) is shown alone through a 72 x 10 window. */
-.atlas-brand__word { display: block; grid-column: 2; align-self: end; width: 72px; height: 10px; overflow: hidden; }
+   x 245, y 448) is shown alone through a 72 x 10 window, its cap height. */
+.atlas-brand__word { display: block; width: 72px; height: 10px; overflow: hidden; }
 .atlas-brand__lockup { display: block; width: 186px; height: auto; max-width: none; margin: -104.1px 0 0 -57px; }
-.atlas-brand__link:not(:has(.atlas-brand__venue:not([hidden]))) .atlas-brand__word { grid-row: 1 / span 2; align-self: center; }
-.atlas-brand__venue { grid-column: 2; max-width: 100%; color: var(--text-3); font: var(--type-caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* The Atlas AI empty state carries the monochrome mark where the robot
-   (atlas-bot.js) is absent. Decorative, from the kit file; here rather than
-   in atlas-ai.css so the AI module stays untouched. */
-.atlas-ai .ai-empty:not(.ai-empty--off):not(:has(.atlas-bot-live))::before { content: ''; display: block; width: 36px; height: 32px; margin-bottom: 8px; background: url("../brand/alcedo/symbol-black.svg") center / 52px no-repeat; }
+.atlas-brand__venue { grid-column: 1 / -1; max-width: 100%; color: var(--text-3); font: var(--type-caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The Atlas AI empty state carries the small-size mark where the robot
+   (atlas-bot.js) is absent: the same three shapes as the sidebar mark, as an
+   ink mask. Here rather than in atlas-ai.css so the AI module stays
+   untouched. */
+.atlas-ai .ai-empty:not(.ai-empty--off):not(:has(.atlas-bot-live))::before { content: ''; display: block; width: 32px; height: 29px; margin-bottom: 12px; background: var(--text); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='75 25 320 285'%3E%3Cpath d='M75 310Q150 255 220 170L270 110 235 25Z'/%3E%3Cpath d='M395 112 285 153Q265 160 278 180L385 310 305 168Z'/%3E%3Cpath d='M280 120H365L246 158Z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='75 25 320 285'%3E%3Cpath d='M75 310Q150 255 220 170L270 110 235 25Z'/%3E%3Cpath d='M395 112 285 153Q265 160 278 180L385 310 305 168Z'/%3E%3Cpath d='M280 120H365L246 158Z'/%3E%3C/svg%3E") center / contain no-repeat; }
 
 .atlas-nav { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; padding: 0; overflow: visible; }
 .atlas-nav__scroll { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -10px; padding: 4px 10px 8px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 .atlas-nav__foot { flex: none; padding-top: 8px; }
-/* Rows: a 32 px hit area on a 34 px pitch, 16 px outline icons at 1.5 stroke
-   in --text-2, labels 14/400 in ink starting at x 44. */
+/* Rows: a 32 px hit area on a 34 px pitch, 16 px ALCEDO glyphs (filled,
+   currentColor) in --text-2, labels 14/400 in ink starting at x 44. The
+   Alcedo AI entry is the kingfisher glyph, drawn like every other icon. */
 .atlas-nav .nav-group { display: grid; gap: 2px; margin: 0; }
 .atlas-nav .nav-label { margin: 0; padding: 20px 8px 6px; color: var(--text-3); font: var(--type-caption); letter-spacing: 0; text-transform: none; }
 .atlas-nav .nav-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; min-height: 32px; margin: 0; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); font: var(--type-body); text-align: left; text-decoration: none; box-shadow: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color var(--dur-1) var(--ease-out), transform var(--motion-press) var(--ease-out); }
-.atlas-nav .nav-item svg { flex: none; width: var(--icon-sm); height: var(--icon-sm); stroke-width: var(--icon-stroke); color: var(--text-2); }
-/* The Atlas AI robot sits in the 16 px icon slot, a little larger so its face reads. */
-.atlas-nav .nav-item .atlas-bot--nav { --atlas-bot-size: 20px; margin: -2px; }
+.atlas-nav .nav-item svg { flex: none; width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
 .atlas-nav .nav-item:hover { text-decoration: none; }
 .atlas-nav .nav-item:active { transform: scale(var(--press-scale)); }
 /* Active: a neutral grey pill, label unchanged. No coloured bar, no tint. */
@@ -147,7 +146,8 @@ body.atlas-rail:not(.atlas-sidebar-open) .atlas-account { justify-content: cente
    drawer inset from the window, on white, the one place the sidebar casts a
    shadow. */
 body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: var(--sheet-inset); left: var(--sheet-inset); bottom: var(--sheet-inset); z-index: 70; width: var(--sidebar-w); height: auto; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-modal); animation: atlas-drawer-in var(--dur-3) var(--ease-drawer) both; }
-.atlas-sidebar-scrim { position: fixed; inset: 0; z-index: 69; background: var(--overlay); animation: atlas-fade-in var(--dur-2) var(--ease-out) both; }
+.atlas-sidebar-scrim { position: fixed; inset: 0; z-index: 69; background: var(--overlay); transition: opacity var(--dur-2) var(--ease-out); }
+@starting-style { .atlas-sidebar-scrim { opacity: 0; } }
 @keyframes atlas-drawer-in { from { opacity: 0; transform: translateX(calc(-1 * var(--move-md))); } to { opacity: 1; transform: none; } }
 
 /* Rail tooltips: the .atlas-tooltip component, positioned by atlas-chrome.js after 400 ms. */
@@ -166,9 +166,9 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: var(--
 .atlas-topbar__title { display: none; min-width: 0; margin: 0; color: var(--text); font: var(--type-heading); font-size: var(--fs-section); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .atlas-topbar__spacer { flex: 1; }
 .atlas-topbar__phone, .atlas-topbar__back, .atlas-topbar__actions, .atlas-topbar__mark { display: none; }
-/* Phone top bar: the monochrome symbol before the page title (the same
-   trimmed 18 px mark as the sidebar); hidden when a page owns the bar. */
-.atlas-topbar__mark img { display: block; width: 34px; height: 34px; max-width: none; margin: -6.4px -2.3px -9.6px; }
+/* Phone top bar: the small-size mark (the same inline 20 x 18 symbol as the
+   sidebar) before the page title; hidden when a page owns the bar. */
+.atlas-topbar__mark svg { display: block; width: 20px; height: 18px; color: var(--text); }
 /* Search: 548 x 32, centred over the sheet, with its shortcut hint. Absolute
    with auto margins (no transform), so the press scale stays free. */
 .atlas-omni { position: absolute; top: 8px; left: 0; right: 0; z-index: 1; display: flex; align-items: center; gap: 8px; width: min(548px, calc(100% - 288px)); min-width: 0; height: 32px; margin: 0 auto; padding: 0 6px 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--text-3); font: var(--type-body); text-align: left; cursor: text; -webkit-tap-highlight-color: transparent; transition: border-color var(--dur-1) var(--ease-out), transform var(--motion-press) var(--ease-out); }
@@ -184,6 +184,10 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: var(--
 
 /* Offline bar (§4.11): a slim strip on the frame above the sheet; the colour
    sits on the status words only. */
+/* Connection and rehearsal status (rehearsal-boundary.js): one quiet warning
+   band across the top of the page, above the frame. */
+.atlas-connection-status { position: sticky; top: 0; z-index: calc(var(--z-toast) + 1); padding: 8px 16px; border-bottom: 1px solid var(--warning-line); background: var(--warning-soft); color: var(--warning); font: var(--type-meta); text-align: center; }
+.atlas-connection-status[hidden] { display: none; }
 .atlas-offline { position: sticky; top: var(--topbar-h); z-index: 29; display: flex; align-items: center; gap: 8px; min-height: 32px; margin: 0 var(--sheet-inset) 0 0; padding: 0 16px 8px 8px; background: var(--bg-subtle); color: var(--warning); font: var(--type-label); }
 .atlas-offline svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--warning-icon); }
 
@@ -194,10 +198,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: var(--
 .atlas-tabbar__item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-2); font: 500 12px/14px var(--font-sans); text-decoration: none; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; transition: color var(--dur-1) var(--ease-out), transform var(--motion-press) var(--ease-out); }
 .atlas-tabbar__item:hover { text-decoration: none; }
 .atlas-tabbar__item:active { transform: scale(var(--press-scale)); }
-.atlas-tabbar__item svg { width: var(--icon-xl); height: var(--icon-xl); stroke-width: var(--icon-stroke); }
-.atlas-tabbar__item .atlas-bot--tab { --atlas-bot-size: 24px; margin: -1px; }
-/* The sleeping ZZZ sits lower beside the tab robot, inside the tab bar. */
-.atlas-tabbar__item .atlas-bot--tab::after { bottom: calc(100% - var(--atlas-bot-size) * .7); }
+.atlas-tabbar__item svg { width: var(--icon-xl); height: var(--icon-xl); }
 /* The app's active tab: ink label, kingfisher icon. */
 .atlas-tabbar__item[aria-current="page"] { color: var(--text); }
 .atlas-tabbar__item[aria-current="page"] svg { color: var(--accent-brand); }
@@ -214,7 +215,10 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: var(--
 .atlas-scrim--clear { background: transparent; }
 /* Bottom sheet (More): slides up from the bottom edge on the drawer curve. */
 .atlas-sheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - 12px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); border-radius: var(--r-xl) var(--r-xl) 0 0; background: var(--surface); box-shadow: var(--shadow-modal); animation: atlas-shell-sheet-up var(--dur-3) var(--ease-drawer) both; }
-.atlas-sheet-panel__grabber { width: 36px; height: 4px; margin: 0 auto 8px; border-radius: var(--r-pill); background: var(--line-strong); }
+.atlas-sheet-panel__grabber { position: relative; width: 36px; height: 4px; margin: 0 auto 8px; border-radius: var(--r-pill); background: var(--line-strong); touch-action: none; }
+/* The grabber is the drag handle (AtlasShell.sheetGesture): a finger-sized
+   hit area around the 36 x 4 bar. */
+.atlas-sheet-panel__grabber::before { content: ''; position: absolute; inset: -12px -48px; }
 @keyframes atlas-shell-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 /* Popovers: from scale(.96) and transparent, at the corner nearest the
    trigger (each panel sets its transform-origin). */
@@ -313,6 +317,8 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: var(--
 .atlas-palette__item { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 8px; border-radius: var(--r-sm); color: var(--text); font: var(--type-body); cursor: pointer; }
 .atlas-palette__item > svg { flex: none; width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
 .atlas-palette__item.is-active { background: var(--bg-muted); }
+/* Press: the instant muted fill (the tap flash is off app-wide). */
+:is(.atlas-notify__row, .atlas-palette__item):active { background: var(--bg-muted); transition-duration: 0ms; }
 .atlas-palette__label { flex: none; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .atlas-palette__meta { flex: 1; min-width: 0; color: var(--text-3); font-size: var(--fs-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .atlas-palette__hint { display: inline-flex; gap: 4px; margin-left: auto; flex: none; }
@@ -413,8 +419,13 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: var(--
   .atlas-topbar.is-scrolled { border-bottom-color: var(--line); }
   .atlas-topbar.is-scrolled::after { content: none; }
   .atlas-topbar > .atlas-loading-line { left: 0; right: 0; }
-  .atlas-topbar__title { display: block; flex: 1; }
-  .atlas-topbar__mark { display: inline-flex; align-items: center; flex: none; min-height: 44px; margin-right: 10px; border-radius: var(--r-sm); -webkit-tap-highlight-color: transparent; }
+  /* Large title: the page's own H1 is the name at the top of the screen;
+     the bar's title fades in only once that H1 has scrolled under the bar
+     (or when the page has no visible H1, or owns the bar with a back
+     button). atlas-chrome.js sets .is-titled. */
+  .atlas-topbar__title { display: block; flex: 1; opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
+  .atlas-topbar.is-titled .atlas-topbar__title { opacity: 1; }
+  .atlas-topbar__mark { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 44px; min-height: 44px; margin: 0 -2px 0 -12px; border-radius: var(--r-sm); -webkit-tap-highlight-color: transparent; }
   body.atlas-topbar-own .atlas-topbar__mark { display: none; }
   .atlas-topbar__spacer { display: none; }
   .atlas-topbar__phone { display: inline-grid; }

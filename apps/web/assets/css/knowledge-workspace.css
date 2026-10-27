@@ -10,7 +10,6 @@
  * ruled list you can tick, and required reading ends in a sign-off. */
 @layer atlas.modules {
 .kn-host { display: block; }
-.kn-tabs { margin-top: var(--s-5); }
 .kn-body { margin-top: var(--s-6); }
 .kn-alert { margin-top: var(--s-5); }
 .kn-muted { color: var(--text-3); }
@@ -46,7 +45,8 @@
 .kn-row { padding: 0; }
 .kn-row__link { display: flex; align-items: center; gap: var(--s-4); width: 100%; min-height: 64px; padding: var(--s-3) var(--s-4); color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: background-color var(--dur-1) ease; }
 .kn-row__link:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
-.kn-row .atlas-row__title { font: 500 15px/22px var(--font-sans); }
+.kn-row__link:active { background: var(--bg-muted); transition-duration: 0ms; }
+.kn-row .atlas-row__title { font: var(--type-row); }
 .kn-row__summary { margin: 2px 0 0; overflow: hidden; font: var(--type-body); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
 .kn-row .atlas-row__meta { margin-top: 4px; font: var(--type-caption); color: var(--text-3); }
 .kn-row .atlas-row__meta mark { padding: 0 2px; border-radius: 2px; background: var(--highlight-soft); color: var(--text); }
@@ -93,7 +93,7 @@
 .kn-crumb__sep { color: var(--line-strong); }
 .kn-crumb__here { color: var(--text-3); }
 .kn-article__head { display: grid; gap: var(--s-2); margin-bottom: var(--s-8); }
-.kn-article__title { margin: 0; font: 600 28px/34px var(--font-sans); letter-spacing: var(--track-title); color: var(--text); overflow-wrap: anywhere; }
+.kn-article__title { margin: 0; font: var(--type-display); letter-spacing: var(--track-display); color: var(--text); overflow-wrap: anywhere; }
 .kn-article__meta { margin: 0; font: var(--type-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .kn-article__state { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-1) 0 0; }
 .kn-article__manage { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
@@ -168,7 +168,6 @@
   .kn-split__aside .kn-progress { max-width: none; }
 }
 @media (max-width: 767px) {
-  .kn-tabs { margin-top: var(--s-3); }
   .kn-body { margin-top: var(--s-4); }
   .kn-searchbar { display: grid; grid-template-columns: 1fr; margin-bottom: var(--s-5); }
   .kn-category-select { width: 100%; }

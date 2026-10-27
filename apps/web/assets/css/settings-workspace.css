@@ -20,10 +20,13 @@
 .settings--single .settings-layout { grid-template-columns: minmax(0, 1fr); }
 .settings-content { display: flex; flex-direction: column; min-width: 0; max-width: 960px; }
 
-/* ---------- Area nav: vertical underline tabs ---------- */
+/* ---------- Area nav: the sidebar's own grammar ----------
+   Rows on a 34px pitch, label 14/400 in grey; the active area is the
+   neutral --bg-muted pill with its label in ink (doc §5 Nav: no coloured
+   bar). A press dips the row like every other pressable. */
 .settings-nav { position: sticky; top: calc(var(--topbar-h) + var(--s-6)); }
-.settings-nav ul { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--line); }
-.settings-nav__group { margin: var(--s-6) 0 var(--s-1); padding-left: var(--s-4); font: var(--type-caption); color: var(--text-3); }
+.settings-nav ul { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.settings-nav__group { margin: var(--s-6) 0 var(--s-1); padding-left: var(--s-2); font: var(--type-caption); color: var(--text-3); }
 .settings-nav__group:first-child { margin-top: 0; }
 .settings-nav__link {
   position: relative;
@@ -32,22 +35,21 @@
   gap: 10px;
   min-height: 32px;
   margin: 1px 0;
-  padding: 0 var(--s-3) 0 var(--s-4);
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-sm);
   color: var(--text-2);
   font: var(--type-body);
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
-  transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+  transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), transform var(--motion-press) var(--ease-out);
 }
-/* The indicator sits on the rule, as wide as the rule's stroke plus one. */
-.settings-nav__link::before { content: ''; position: absolute; top: 6px; bottom: 6px; left: -1px; width: 2px; border-radius: 1px; background: transparent; }
+.settings-nav__link:active { transform: scale(var(--press-scale)); }
 .settings-nav__link > svg { display: none; width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-2); }
-.settings-nav__link[aria-current="page"] { color: var(--text); font-weight: 500; }
-.settings-nav__link[aria-current="page"]::before { background: var(--text); }
+.settings-nav__link[aria-current="page"] { background: var(--bg-muted); color: var(--text); }
 .settings-nav__link:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
 @media (hover: hover) and (pointer: fine) {
   .settings-nav__link:hover { background: var(--bg-hover); color: var(--text); text-decoration: none; }
+  .settings-nav__link[aria-current="page"]:hover { background: var(--bg-muted); }
 }
 
 /* ---------- Area head ---------- */
@@ -185,13 +187,16 @@
 .settings-savebar__text { display: inline-flex; align-items: center; gap: var(--s-2); margin-right: auto; font: var(--type-label); color: var(--text-2); }
 .settings-savebar__text::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--highlight); }
 
-/* ---------- Venue: the letterhead preview ---------- */
+/* ---------- Venue: the letterhead preview ----------
+   A sheet of paper: the same 1px edge as every panel, a document's margin
+   (24px), the venue's name set as a section title and the legal lines under
+   it in meta grey. No accent rule: the preview is plain paper. */
 .settings-preview { min-width: 0; margin: var(--s-4) 0 0; padding: 0; }
 .settings-preview__caption { margin-bottom: var(--s-2); font: var(--type-caption); color: var(--text-3); }
-.settings-letterhead { display: grid; gap: 2px; padding: var(--s-4); border: 1px solid var(--line); border-top: 2px solid var(--text); border-radius: var(--r-sm); background: var(--surface); }
-.settings-letterhead__name { margin: 0 0 var(--s-1); font: var(--type-heading); color: var(--text); overflow-wrap: anywhere; }
+.settings-letterhead { display: grid; gap: 2px; padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
+.settings-letterhead__name { margin: 0 0 var(--s-2); font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); overflow-wrap: anywhere; }
 .settings-letterhead__place { font-weight: 400; color: var(--text-2); }
-.settings-letterhead__line { margin: 0; font: var(--type-caption); color: var(--text-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.settings-letterhead__line { margin: 0; font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .settings-letterhead :is(.settings-letterhead__name, .settings-letterhead__line).is-empty { color: var(--text-3); font-weight: 400; }
 
 /* ---------- Opening hours ---------- */
@@ -321,32 +326,9 @@
 .settings-capabilities span > span { display: block; font: var(--type-meta); color: var(--text-2); }
 .settings-row--mfa .settings-actions { padding-top: var(--s-1); }
 
-/* ---------- Two-factor enrolment (atlas-mfa-enroll.js) ----------
-   Shared by the Settings dialog and the sign-in step (both index.html). Three
-   numbered steps hang from one hairline; the key is the one mono string. */
+/* ---------- Two-factor setup dialog (the enrolment itself is atlas-components.css §6.39) ---------- */
 .settings-mfa-dialog__desc { margin: var(--s-1) 0 0; font: var(--type-body); color: var(--text-2); }
 .settings-mfa-dialog .atlas-dialog__body { margin-top: 0; }
-.atlas-mfa-enroll { min-width: 0; color: var(--text); text-align: left; }
-.atlas-mfa-enroll__steps { margin: var(--s-5) 0 0; padding: 0; list-style: none; counter-reset: atlas-mfa-step; }
-.atlas-mfa-enroll__step { position: relative; min-width: 0; padding: 0 0 var(--s-6) 36px; counter-increment: atlas-mfa-step; }
-.atlas-mfa-enroll__step:last-child { padding-bottom: 0; }
-.atlas-mfa-enroll__step::before { content: counter(atlas-mfa-step); position: absolute; top: 0; left: 0; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); font: 500 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); }
-.atlas-mfa-enroll__step:not(:last-child)::after { content: ''; position: absolute; top: 26px; bottom: 4px; left: 11px; width: 1px; background: var(--line); }
-.atlas-mfa-enroll__step-title { margin: 1px 0 0; font: 500 14px/20px var(--font-sans); color: var(--text); }
-.atlas-mfa-enroll__step-text { margin: 2px 0 0; font: var(--type-meta); color: var(--text-2); }
-.atlas-mfa-enroll__pair { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-5); margin-top: var(--s-3); }
-.atlas-mfa-enroll__qr { flex: none; padding: var(--s-2); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); line-height: 0; }
-.atlas-mfa-enroll__qr > img { display: block; width: 152px; height: 152px; image-rendering: pixelated; }
-.atlas-mfa-enroll__secret { display: grid; gap: var(--s-2); flex: 1 1 180px; min-width: 0; justify-items: start; }
-.atlas-mfa-enroll__secret-label { font: var(--type-caption); color: var(--text-3); }
-.atlas-mfa-enroll__key { display: flex; flex-wrap: wrap; gap: 2px 10px; max-width: 100%; padding: var(--s-2) var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font: 500 14px/22px var(--font-mono); color: var(--text); user-select: all; }
-.atlas-mfa-enroll__form { display: grid; gap: var(--s-4); max-width: 320px; margin-top: var(--s-3); }
-.atlas-mfa-enroll__step-title + .atlas-mfa-enroll__form { margin-top: var(--s-3); }
-.atlas-mfa-enroll__form > .atlas-field > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.atlas-mfa-enroll .atlas-input.atlas-mfa-enroll__code { width: 100%; height: var(--control-lg); padding: 0 var(--s-3); font: 500 20px/28px var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: .32em; }
-.atlas-mfa-enroll__code::placeholder { color: var(--text-3); letter-spacing: .32em; }
-.atlas-mfa-enroll__submit { width: 100%; }
-.atlas-mfa-enroll > .atlas-btn { margin-top: var(--s-3); }
 
 /* ---------- Activity ---------- */
 .settings-activity { margin: 0; padding: 0; list-style: none; }
@@ -372,12 +354,8 @@
 .sys-summary { display: flex; flex-direction: column; gap: var(--s-3); }
 .sys-summary__state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
 .sys-summary__checked { font: var(--type-caption); color: var(--text-3); font-variant-numeric: tabular-nums; }
-.sys-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); margin: 0; }
-.sys-facts > div { display: flex; flex-direction: column; gap: 2px; }
-.sys-facts dt { font: var(--type-caption); color: var(--text-2); }
-.sys-facts dd { margin: 0; font: var(--type-num); font-variant-numeric: tabular-nums; color: var(--text); }
-.sys-facts--list { grid-template-columns: minmax(0, 1fr); }
-.sys-facts--list > div { flex-direction: row; justify-content: space-between; gap: var(--s-3); }
+/* Key-value facts: the label reads as text, the value as a figure. */
+.sys-list .atlas-row__title { font-weight: 400; }
 .sys-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-3); }
 .sys-toolbar .atlas-tabs { flex: 1 1 auto; min-width: 0; }
 .sys-body { display: flex; flex-direction: column; gap: var(--s-4); }
@@ -396,7 +374,6 @@
   .settings-row { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); padding: var(--s-6) 0; }
   .settings-row__label { max-width: 64ch; padding-top: 0; }
   .settings-preview { max-width: 420px; }
-  .sys-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 1023px) {
   /* Opening hours: one block per day with labelled fields. */
@@ -433,15 +410,16 @@
   .settings.is-list .settings-content { display: none; }
   .settings.has-section .page-head { display: none; }
   .settings-nav { position: static; }
-  .settings-nav ul { border-left: 0; }
   .settings-nav__group { margin: var(--s-6) 0 var(--s-2); padding-left: 0; }
   .settings-nav__group:first-child { margin-top: 0; }
-  .settings-nav__link { min-height: 52px; margin: 0; padding: 0; border-radius: 0; border-top: 1px solid var(--line-subtle); color: var(--text); font-size: 15px; }
+  /* A list of screens: full-width rows on hairlines (the phone body size is
+     15px); a press greys the row instead of shrinking it. */
+  .settings-nav__link { min-height: 52px; margin: 0; padding: 0; border-radius: 0; border-top: 1px solid var(--line-subtle); color: var(--text); }
+  .settings-nav__link:active { transform: none; background: var(--bg-hover); }
   .settings-nav__group + li > .settings-nav__link { border-top: 0; }
-  .settings-nav__link::before { display: none; }
   .settings-nav__link > svg { display: block; }
   .settings-nav__link > svg:last-child { margin-left: auto; color: var(--text-3); }
-  .settings-nav__link[aria-current="page"] { font-weight: 400; }
+  .settings-nav__link[aria-current="page"] { background: transparent; }
   .settings-section__head { flex-direction: column; align-items: stretch; padding-bottom: var(--s-5); }
   .settings-section__actions > .atlas-btn { flex: 1 1 auto; }
   .settings-row { padding: var(--s-6) 0; }
@@ -473,7 +451,11 @@
   .settings-provider__name { grid-column: 1; align-self: center; }
   .settings-provider__status { grid-column: 1 / -1; margin-top: 0; }
   .sys-toolbar { flex-direction: column; align-items: stretch; }
-  .atlas-mfa-enroll__qr > img { width: 176px; height: 176px; }
-  .atlas-mfa-enroll__form { max-width: none; }
+  /* The summary as a 2 × 2 grid of figures rather than four stacked rows. */
+  .sys-stats { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sys-stats > .atlas-stat { display: block; padding: var(--s-3) var(--s-4); border-top: 0; border-left: 0; }
+  .sys-stats > .atlas-stat:nth-child(even) { border-left: 1px solid var(--line); }
+  .sys-stats > .atlas-stat:nth-child(n + 3) { border-top: 1px solid var(--line); }
+  .sys-stats .atlas-stat__value { margin-top: var(--s-1); }
 }
 }

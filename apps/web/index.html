@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <title>Alcedo</title>
 <!-- ALCEDO brand: kit files under assets/brand/alcedo/ swapped into the existing
      brand filenames (internal paths kept). See docs/brand/ALCEDO_REBRAND_INVENTORY.md. -->
@@ -34,32 +34,32 @@
        module sheets included, so config.js, runtime-module-guard.js and the
        bootstraps find them already present and inject nothing). There is no
        legacy layer and no inline style block. -->
-  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260930-polish1">
-  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260930-alcedo2">
-  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-polish1">
-  <link rel="stylesheet" href="assets/css/recipes.css?v=20261005-fi1">
-  <link rel="stylesheet" href="assets/css/operations.css?v=20260930-s90g">
-  <link rel="stylesheet" href="assets/css/home.css?v=20260930-alcedo3">
-  <link rel="stylesheet" href="assets/css/shifts-workspace.css">
-  <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
-  <link rel="stylesheet" href="assets/css/training-workspace.css?v=20261015-s98">
-  <link rel="stylesheet" href="assets/css/bookings-workspace.css?v=20261025-requests1">
-  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260930-polish1">
+  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/recipes.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/operations.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/home.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/shifts-workspace.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/knowledge-workspace.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/training-workspace.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/bookings-workspace.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20261026-redesign">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
        or data attribute); the five also named by runtime-module-guard.js use
-       exactly the href that guard names (unversioned, or team-messages.css with
-       its cache key). inventory.css and purchasing.css
+       exactly the href that guard names (with the redesign cache key; only
+       team-profile-photos.css is unversioned). inventory.css and purchasing.css
        are the rebuilt Inventory and Purchasing modules (@layer atlas.modules). -->
-  <link rel="stylesheet" href="assets/css/team-messages.css?v=20261002-s93r">
-  <link rel="stylesheet" href="assets/css/marketing-workspace.css?v=20261004-s94c">
+  <link rel="stylesheet" href="assets/css/team-messages.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/marketing-workspace.css?v=20261026-redesign">
   <link rel="stylesheet" href="assets/css/team-profile-photos.css">
-  <link rel="stylesheet" href="assets/css/reports-workspace.css?v=20260929-s90f">
-  <link rel="stylesheet" href="assets/css/data-workspace.css?v=20260930-s90g">
-  <link rel="stylesheet" href="assets/css/settings-workspace.css?v=20261004-s94">
-  <link rel="stylesheet" href="assets/css/atlas-ai.css?v=20261004-bot6">
-  <link rel="stylesheet" href="assets/css/inventory.css?v=20261011-s97">
-  <link rel="stylesheet" href="assets/css/purchasing.css?v=20261001-s92e">
+  <link rel="stylesheet" href="assets/css/reports-workspace.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/data-workspace.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/settings-workspace.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/atlas-ai.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/inventory.css?v=20261026-redesign">
+  <link rel="stylesheet" href="assets/css/purchasing.css?v=20261026-redesign">
 </head>
 <body>
 
@@ -104,7 +104,7 @@
            here; entry continues only once a factor is verified. -->
       <section id="login-mfa" class="atlas-auth__mfa" aria-labelledby="login-mfa-title" hidden>
         <h2 class="atlas-auth__title" id="login-mfa-title">Set up two-factor sign-in</h2>
-        <p class="atlas-auth__sub">Atlas now requires an authenticator app to sign in. Set it up once to continue.</p>
+        <p class="atlas-auth__sub">Alcedo now requires an authenticator app to sign in. Set it up once to continue.</p>
         <div id="login-mfa-host"></div>
       </section>
       <p class="atlas-auth__link"><a href="recovery.html">Forgot your password?</a></p>
@@ -120,10 +120,14 @@
     <div class="atlas-shell">
       <aside class="atlas-sidebar" id="atlas-sidebar" aria-label="Sidebar">
         <div class="atlas-brand">
-          <!-- The product's mark and name: the monochrome kit symbol beside the
-             wordmark, shown from the stacked logo-black.svg through a crop
-             window (atlas-shell.css). Never typed. -->
-          <a class="atlas-brand__link nav-home" href="#home" aria-label="Alcedo — Home"><img class="atlas-brand__mark" src="assets/brand/alcedo/symbol-black.svg" alt="Alcedo" width="34" height="34"><span class="atlas-brand__word"><img class="atlas-brand__lockup" src="assets/brand/alcedo/logo-black.svg" alt="Alcedo" width="186" height="151"></span><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
+          <!-- The product's mark and name. The mark is the kit symbol drawn
+             for small sizes: its three filled shapes (the open A and the
+             beak) exactly as in symbol-black.svg, without the hairline
+             horizon, which breaks up below the kit's 180 px lockup minimum.
+             The wordmark is the kit's outlined lettering, shown from the
+             stacked logo-black.svg through a crop window (atlas-shell.css).
+             Never typed. The venue, when set, is its own line below. -->
+          <a class="atlas-brand__link nav-home" href="#home" aria-label="Alcedo — Home"><svg class="atlas-brand__mark" viewBox="75 25 320 285" width="20" height="18" fill="currentColor" aria-hidden="true" focusable="false"><path d="M75 310Q150 255 220 170L270 110 235 25Z"/><path d="M395 112 285 153Q265 160 278 180L385 310 305 168Z"/><path d="M280 120H365L246 158Z"/></svg><span class="atlas-brand__word"><img class="atlas-brand__lockup" src="assets/brand/alcedo/logo-black.svg" alt="Alcedo" width="186" height="151"></span><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
         </div>
         <nav class="atlas-nav" aria-label="Main">
           <div class="atlas-nav__scroll">
@@ -178,7 +182,7 @@
         <header class="atlas-topbar" id="atlas-topbar">
           <button type="button" class="atlas-icon-btn atlas-topbar__toggle" id="atlas-sidebar-toggle" aria-controls="atlas-sidebar" aria-expanded="true" aria-label="Collapse sidebar"><i data-lucide="panel-left" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__back" id="atlas-topbar-back" aria-label="Back" hidden><i data-lucide="chevron-left" aria-hidden="true"></i></button>
-          <a class="atlas-topbar__mark" href="#home" aria-label="Alcedo — Home"><img src="assets/brand/alcedo/symbol-black.svg" alt="" width="34" height="34"></a>
+          <a class="atlas-topbar__mark" href="#home" aria-label="Alcedo — Home"><svg viewBox="75 25 320 285" width="20" height="18" fill="currentColor" aria-hidden="true" focusable="false"><path d="M75 310Q150 255 220 170L270 110 235 25Z"/><path d="M395 112 285 153Q265 160 278 180L385 310 305 168Z"/><path d="M280 120H365L246 158Z"/></svg></a>
           <div class="atlas-topbar__title" id="atlas-page-title">Home</div>
           <button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K /"><i data-lucide="search" aria-hidden="true"></i><span class="atlas-omni__label">Search or ask Alcedo</span><kbd class="kbd atlas-omni__kbd" data-shortcut-hint>⌘K</kbd></button>
           <span class="atlas-topbar__spacer"></span>
@@ -224,40 +228,40 @@
 
 
 
-<script src="assets/js/alcedo-icons.js?v=20261026-icons1"></script>
-<script src="assets/js/atlas-shell.js?v=20261025-bkres"></script>
+<script src="assets/js/alcedo-icons.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-shell.js?v=20261026-redesign"></script>
 <script src="config.js"></script>
-<script src="assets/js/runtime-module-guard.js?v=20261002-s93r"></script>
-<script src="assets/js/rehearsal-boundary.js"></script>
+<script src="assets/js/runtime-module-guard.js?v=20261026-redesign"></script>
+<script src="assets/js/rehearsal-boundary.js?v=20261026-redesign"></script>
 <script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
 <script src="assets/js/atlas-bot.js?v=20260930-glb2"></script>
-<script src="assets/js/atlas-mfa-enroll.js?v=20261016-s99"></script>
-<script src="assets/js/atlas-app.js?v=20261017-s99b"></script>
+<script src="assets/js/atlas-mfa-enroll.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-app.js?v=20261026-redesign"></script>
 <script src="assets/js/atlas-calculations.js?v=20260929-s90p"></script>
-<script src="assets/js/modal.js?v=20261001-s92e"></script>
-<script src="assets/js/recipes.js?v=20261005-fi1"></script>
-<script src="assets/js/flavor-map.js?v=20261005-fi1"></script>
-<script src="assets/js/operations.js?v=20260930-polish1"></script>
+<script src="assets/js/modal.js?v=20261026-redesign"></script>
+<script src="assets/js/recipes.js?v=20261026-redesign"></script>
+<script src="assets/js/flavor-map.js?v=20261026-redesign"></script>
+<script src="assets/js/operations.js?v=20261026-redesign"></script>
 <script src="assets/js/atlas-capture.js?v=20260929-s90u"></script>
-<script src="assets/js/atlas-inventory.js?v=20261016-spirits"></script>
-<script src="assets/js/stock-count-workspace.js?v=20261011-s97"></script>
-<script src="assets/js/atlas-purchasing.js?v=20260930-polish1"></script>
-<script src="assets/js/home.js?v=20261004-bot6"></script>
+<script src="assets/js/atlas-inventory.js?v=20261026-redesign"></script>
+<script src="assets/js/stock-count-workspace.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-purchasing.js?v=20261026-redesign"></script>
+<script src="assets/js/home.js?v=20261026-redesign"></script>
 <script src="assets/js/reports-overview.js?v=20260930-s90g"></script>
-<script src="assets/js/data-workspace.js?v=20260930-polish1"></script>
-<script src="assets/js/shifts-workspace.js?v=20261002-s103"></script>
-<script src="assets/js/knowledge-workspace.js?v=20261003-bot1"></script>
-<script src="assets/js/training-workspace.js?v=20260930-polish1"></script>
-<script src="assets/js/bookings-workspace.js?v=20261025-confirm-seats1"></script>
+<script src="assets/js/data-workspace.js?v=20261026-redesign"></script>
+<script src="assets/js/shifts-workspace.js?v=20261026-redesign"></script>
+<script src="assets/js/knowledge-workspace.js?v=20261026-redesign"></script>
+<script src="assets/js/training-workspace.js?v=20261026-redesign"></script>
+<script src="assets/js/bookings-workspace.js?v=20261026-redesign"></script>
 <script src="assets/js/s38-app-remediation.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-search.js?v=20260929-s90u"></script>
-<script src="assets/js/atlas-chrome.js?v=20261003-bot1"></script>
-<script src="assets/js/atlas-palette.js?v=20261006-s92r"></script>
+<script src="assets/js/atlas-chrome.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-palette.js?v=20261026-redesign"></script>
 <script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>
-<script src="assets/js/atlas-ai.js?v=20260930-polish1"></script>
+<script src="assets/js/atlas-ai.js?v=20261026-redesign"></script>
 <script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>
-<script src="assets/js/pwa.js?v=20261002-pwa2"></script>
+<script src="assets/js/pwa.js?v=20261026-redesign"></script>
 </body>
 </html>

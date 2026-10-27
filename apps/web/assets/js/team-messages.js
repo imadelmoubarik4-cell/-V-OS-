@@ -405,8 +405,18 @@
     return 'hash';
   }
 
+  // The newest message the row can vouch for: the summary's, or, when the
+  // summary has none but the open thread has loaded, the thread's own last
+  // message, so the list never says "No messages yet" above a full thread.
+  function lastMessageOf(channel) {
+    if (channel.last_message) return channel.last_message;
+    if (channel.key !== state.selectedChannel || snapshotChannelKey() !== channel.key) return null;
+    const loaded = messages();
+    return loaded.length ? loaded[loaded.length - 1] : null;
+  }
+
   function previewOf(channel) {
-    const last = channel.last_message;
+    const last = lastMessageOf(channel);
     if (!last) return channel.description || 'No messages yet';
     if (last.deleted) return 'Message deleted';
     // The same live identity as the thread (sender_id → roster name → …).
@@ -419,13 +429,14 @@
   function channelRowMarkup(channel) {
     const unread = Number(channel.unread_count || 0);
     const current = channel.key === state.selectedChannel && (!PHONE.matches || state.routeChannel);
-    const time = channel.last_message?.created_at ? formatStamp(channel.last_message.created_at) : '';
+    const newest = lastMessageOf(channel);
+    const time = newest?.created_at ? formatStamp(newest.created_at) : '';
     return `<a class="msg-channel${unread ? ' has-unread' : ''}" href="#messages/${encodeURIComponent(channel.key)}" data-team-channel="${escapeHtml(channel.key)}" ${current ? 'aria-current="page"' : ''} aria-label="${escapeHtml(channel.name)}${unread ? `, ${unread} unread` : ''}">
       <span class="msg-channel__icon">${icon(channelIcon(channel))}</span>
       <span class="msg-channel__body">
         <span class="msg-channel__line">
           <span class="msg-channel__name">${escapeHtml(channel.name)}${channel.starred ? `<span class="sr-only"> (pinned)</span>${icon('pin')}` : ''}</span>
-          ${time ? `<time class="msg-channel__time" datetime="${escapeHtml(isoOf(channel.last_message.created_at))}">${escapeHtml(time)}</time>` : ''}
+          ${time ? `<time class="msg-channel__time" datetime="${escapeHtml(isoOf(newest.created_at))}">${escapeHtml(time)}</time>` : ''}
         </span>
         <span class="msg-channel__line">
           <span class="msg-channel__preview">${escapeHtml(previewOf(channel))}</span>
@@ -576,7 +587,7 @@
       ? `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="sr-only"> (you)</span>${stamp}</header>`
       : `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="msg-item__role">${escapeHtml(roleText)}</span>${stamp}</header>`;
     return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${own ? ' is-own' : ''}${message.id === state.editingMessageId ? ' is-editing' : ''}" data-team-message="${escapeHtml(message.id)}" ${system ? '' : `data-msg-sender="${escapeHtml(identity.id || '')}"`}>
-      <span class="msg-item__gutter">${grouped ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
+      <span class="msg-item__gutter">${grouped ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('atlas-bot')}</span>` : avatarMarkup(identity)}</span>
       ${grouped ? '' : header}
       <div class="msg-item__body">
         <p class="msg-item__text">${messageBody(message.body)}</p>
@@ -694,8 +705,11 @@
     const channel = selectedChannel();
     if (!channel || !state.staff) return '';
     if (!canPostIn(channel)) {
+      // Posting rights are the server's (staff.can_post); a manager or owner
+      // without them is not told to ask a manager.
+      const lead = ['admin', 'owner', 'manager'].includes(String(state.staff?.role || ''));
       const text = !state.staff?.can_post
-        ? 'You can read messages. Ask a manager if you need to post.'
+        ? (lead ? 'Posting isn’t turned on for your account. You can read everything here.' : 'You can read messages. Ask a manager if you need to post.')
         : 'Only managers can post in Announcements. You can read everything here.';
       return `<p class="msg-composer__locked">${icon('lock')}<span>${escapeHtml(text)}</span></p>`;
     }

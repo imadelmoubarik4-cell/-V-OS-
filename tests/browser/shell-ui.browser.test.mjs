@@ -38,14 +38,14 @@ test('sidebar: spec groups and role visibility (admin sees 15 + Settings, barten
     try {
       assert.deepEqual(await visibleSidebar(page), expected, user.role);
       assert.deepEqual(await groupLabels(page), labels, `${user.role}: no empty group`);
-      // The active item carries the brand accent (pale teal wash, teal label), aria-current on one link.
+      // The active item is the neutral --bg-muted pill with its label in ink, aria-current on one link.
       const active = await page.evaluate(() => {
         const node = document.querySelector('.atlas-sidebar .nav-item[aria-current="page"]');
         const style = getComputedStyle(node);
         return { id: node.dataset.navId, bg: style.backgroundColor, color: style.color, count: document.querySelectorAll('.atlas-sidebar [aria-current="page"]').length };
       });
-      assert.deepEqual([active.id, active.bg, active.count], ['home', 'rgb(238, 244, 245)', 1]);
-      assert.equal(active.color, 'rgb(8, 73, 92)');
+      assert.deepEqual([active.id, active.bg, active.count], ['home', 'rgb(235, 237, 238)', 1]);
+      assert.equal(active.color, 'rgb(19, 20, 22)');
       // Landmarks: one Main navigation visible, banner top bar, main content.
       assert.equal(await page.evaluate(() => document.querySelector('.atlas-sidebar nav.atlas-nav').getAttribute('aria-label')), 'Main');
       assert.equal(await page.evaluate(() => document.querySelector('main#atlas-main') !== null && document.querySelector('header.atlas-topbar') !== null), true);
@@ -67,13 +67,13 @@ test('rail at 1024 and 768: 64 px icons with tooltips; toggle opens the full sid
       }));
       assert.equal(Math.round(rail.width), 64, `${width}: rail width`);
       assert.equal(rail.labels, 0, `${width}: labels hidden in the rail`);
-      assert.equal(Math.round(rail.omni), width < 1024 ? 280 : 360);
+      assert.equal(Math.round(rail.omni), width < 1024 ? 360 : 548);
       await page.hover('.atlas-sidebar .nav-item[data-nav-id="recipes"]');
       await page.waitForSelector('#atlas-tooltip:not([hidden])');
       assert.equal(await page.textContent('#atlas-tooltip'), 'Recipes');
       await page.click('#atlas-sidebar-toggle');
       const overlay = await page.evaluate(() => ({ width: document.getElementById('atlas-sidebar').getBoundingClientRect().width, scrim: !document.getElementById('atlas-sidebar-scrim').hidden, expanded: document.getElementById('atlas-sidebar-toggle').getAttribute('aria-expanded') }));
-      assert.deepEqual(overlay, { width: 240, scrim: true, expanded: 'true' });
+      assert.deepEqual(overlay, { width: 228, scrim: true, expanded: 'true' });
       await page.keyboard.press('Escape');
       assert.equal(await page.evaluate(() => document.body.classList.contains('atlas-sidebar-open')), false);
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'atlas-sidebar-toggle', 'focus returns to the toggle');
@@ -85,7 +85,7 @@ test('rail at 1024 and 768: 64 px icons with tooltips; toggle opens the full sid
 test('at 1440 the sidebar collapses to the rail and the choice survives a reload', { skip }, async () => {
   const { page, close } = await launch();
   try {
-    assert.equal(Math.round(await page.evaluate(() => document.getElementById('atlas-sidebar').getBoundingClientRect().width)), 240);
+    assert.equal(Math.round(await page.evaluate(() => document.getElementById('atlas-sidebar').getBoundingClientRect().width)), 228);
     await page.click('#atlas-sidebar-toggle');
     assert.equal(Math.round(await page.evaluate(() => document.getElementById('atlas-sidebar').getBoundingClientRect().width)), 64);
     assert.equal(await page.getAttribute('#atlas-sidebar-toggle', 'aria-label'), 'Expand sidebar');
@@ -112,7 +112,7 @@ test('phone (390 and 430): top bar title, 5-slot tab bar, More sheet with the re
         topbar: Math.round(document.getElementById('atlas-topbar').getBoundingClientRect().height),
         tabbar: Math.round(document.getElementById('atlas-tabbar').getBoundingClientRect().height)
       }));
-      assert.deepEqual(chrome, { sidebar: 0, title: 'Home', titleVisible: true, tabs: ['Home', 'Inventory', 'Alcedo', 'Recipes', 'More'], current: 'home', topbar: 52, tabbar: 56 });
+      assert.deepEqual(chrome, { sidebar: 0, title: 'Home', titleVisible: true, tabs: ['Home', 'Inventory', 'Alcedo', 'Recipes', 'More'], current: 'home', topbar: 48, tabbar: 56 });
       await page.click('.atlas-tabbar__item[data-nav-id="inventory"]');
       await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
       assert.equal(await page.textContent('#atlas-page-title'), 'Inventory');
@@ -293,7 +293,7 @@ test('notifications: popover on desktop, needs-action filter, mark read, full sc
     const panel = await page.evaluate(() => {
       const box = document.querySelector('.atlas-notify').getBoundingClientRect();
       const bell = document.getElementById('atlas-notifications-btn').getBoundingClientRect();
-      return { width: Math.round(box.width), below: box.top >= bell.bottom, rows: [...document.querySelectorAll('.atlas-notify__item-title')].map((node) => node.textContent), count: document.querySelector('.atlas-notify__count').textContent };
+      return { width: document.querySelector('.atlas-notify').offsetWidth, below: box.top >= bell.bottom, rows: [...document.querySelectorAll('.atlas-notify__item-title')].map((node) => node.textContent), count: document.querySelector('.atlas-notify__count').textContent };
     });
     assert.deepEqual({ ...panel, rows: [...panel.rows].sort() }, { width: 400, below: true, rows: ['Unread: Campari is below par', 'Unread: Globus order is waiting for your approval', 'Unread: Import finished'], count: '· 3 unread' });
     await page.click('[data-notify-filter="needs-action"]');
@@ -405,7 +405,7 @@ test('phone: every shell control is at least 44 px; zoom is allowed; focus is vi
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     const ring = await page.evaluate(() => { const style = getComputedStyle(document.activeElement); return `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`; });
-    assert.equal(ring, 'solid 2px rgb(8, 73, 92)');
+    assert.equal(ring, 'solid 2px rgb(31, 106, 165)');
   } finally { await close(); }
 });
 
@@ -449,7 +449,7 @@ test('brand line reads the venue from Settings, shows "Atlas" alone without one;
     assert.equal(await without.page.$eval('#atlas-brand-venue', (node) => node.hidden), true);
     // Brand v1.0: the supplied horizontal lockup, never typed text.
     const lockup = await without.page.$eval('.atlas-brand__lockup', (img) => ({ alt: img.alt, src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth > 0, width: img.getBoundingClientRect().width }));
-    assert.deepEqual({ ...lockup, width: undefined }, { alt: 'Alcedo', src: 'assets/brand/Atlas_Primary_Horizontal_Midnight.svg', loaded: true, width: undefined });
+    assert.deepEqual({ ...lockup, width: undefined }, { alt: 'Alcedo', src: 'assets/brand/alcedo/logo-black.svg', loaded: true, width: undefined });
     assert.ok(lockup.width >= 96, `lockup ${lockup.width}px is below the 96 px minimum`);
     assert.equal(await without.page.textContent('.atlas-brand__link'), '');
   } finally { await without.close(); }

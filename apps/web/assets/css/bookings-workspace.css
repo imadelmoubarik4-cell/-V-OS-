@@ -27,9 +27,42 @@
 
 /* ---------- day controls: the date (scope) left, the view right ---------- */
 .bk-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-top: var(--s-5); }
+/* The day pager: ‹ Today › as in Shifts, then the day itself as a quiet
+   button that opens the month calendar. */
 .bk-date { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
-.bk-date__input { width: 168px; flex: none; }
-.bk-date__day { margin: 0; font: var(--type-body); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-pager { display: inline-flex; flex: none; align-items: center; gap: 2px; }
+@media (pointer: fine) {
+  .bk-pager .atlas-icon-btn { width: var(--control-sm); height: var(--control-sm); }
+}
+.bk-date__anchor { position: relative; min-width: 0; }
+.bk-date__pick { display: inline-flex; align-items: center; gap: var(--s-2); max-width: 100%; height: var(--control-sm); margin: 0; padding: 0 var(--s-2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); font: var(--type-heading); white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background-color var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
+.bk-date__pick:active { transform: scale(var(--press-scale)); }
+.bk-date__pick:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.bk-date__pick[aria-expanded="true"] { background: var(--bg-muted); }
+.bk-date__pick > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
+.bk-date__short { display: none; }
+.bk-date__long, .bk-date__short { overflow: hidden; text-overflow: ellipsis; }
+.bk-date__rel { font: var(--type-meta); color: var(--text-3); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-date__pick:hover { background: var(--bg-hover); }
+}
+
+/* The calendar: a popover under the date, Monday first, 36 px days. The
+   chosen day is the one kingfisher fill; today wears a kingfisher ring. */
+.bk-cal { position: absolute; top: calc(100% + 6px); left: 0; width: 296px; max-width: calc(100vw - 2 * var(--s-4)); padding: var(--s-3); --atlas-origin: top left; }
+.bk-cal__head { display: flex; align-items: center; gap: 2px; margin: 0 0 var(--s-2); }
+.bk-cal__title { flex: 1 1 auto; margin: 0; padding-left: var(--s-1); font: var(--type-heading); color: var(--text); }
+.bk-cal__weekdays, .bk-cal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.bk-cal__weekdays span { font: var(--type-caption); line-height: 28px; color: var(--text-3); text-align: center; }
+.bk-cal__day { height: 36px; margin: 0; padding: 0; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--text); font: var(--type-body); font-variant-numeric: tabular-nums; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background-color var(--dur-1) ease, transform var(--motion-press) var(--ease-out); }
+.bk-cal__day:active { transform: scale(var(--press-scale)); }
+.bk-cal__day:focus-visible { outline: var(--focus-outline); outline-offset: 1px; }
+.bk-cal__day.is-outside { color: var(--text-3); }
+.bk-cal__day.is-today { border-color: var(--accent-brand); color: var(--accent-text); font-weight: 600; }
+.bk-cal__day.is-selected { border-color: var(--accent-brand); background: var(--accent-brand); color: var(--text-on-accent); font-weight: 600; }
+@media (hover: hover) and (pointer: fine) {
+  .bk-cal__day:not(.is-selected):hover { background: var(--bg-hover); }
+}
 .bk-viewtoggle { flex: none; }
 
 /* ---------- block heads (requests, areas) ---------- */
@@ -37,16 +70,20 @@
 .bk-block__title { display: inline-flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
 .bk-block__meta { margin-left: auto; font: var(--type-meta); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* ---------- area identity: a small dot in the area's section colour ---------- */
-.bk-c-teal { --bk-c: var(--accent-brand); }
-.bk-c-orange { --bk-c: var(--warning-icon); }
-.bk-c-sage { --bk-c: var(--positive); }
+/* ---------- area identity: a small dot in the area's section colour ----------
+   Identity is data, so it draws from the muted person palette and never from
+   a status hue: no positive green (it would read as "seated"), no amber, no
+   red and no kingfisher (the booked fill). The stored names stay; each maps
+   to the nearest muted hue ("sage" a teal-grey, "orange" a warm stone). */
+.bk-c-teal { --bk-c: var(--person-1); }
+.bk-c-orange { --bk-c: color-mix(in srgb, var(--person-6) 55%, var(--person-4)); }
+.bk-c-sage { --bk-c: color-mix(in srgb, var(--person-1) 55%, var(--person-2)); }
 .bk-c-ivory { --bk-c: var(--line-strong); }
 .bk-c-ink { --bk-c: var(--text); }
-.bk-c-plum { --bk-c: color-mix(in srgb, var(--danger) 50%, var(--accent-brand)); }
-.bk-c-sky { --bk-c: color-mix(in srgb, var(--accent-brand) 45%, var(--surface)); }
-.bk-c-clay { --bk-c: color-mix(in srgb, var(--danger) 55%, var(--warning-icon)); }
-.bk-swatch { display: inline-block; width: 8px; height: 8px; flex: none; border-radius: var(--r-pill); background: var(--bk-c, var(--accent-brand)); }
+.bk-c-plum { --bk-c: var(--person-3); }
+.bk-c-sky { --bk-c: color-mix(in srgb, var(--person-1) 55%, var(--surface)); }
+.bk-c-clay { --bk-c: var(--person-6); }
+.bk-swatch { display: inline-block; width: 8px; height: 8px; flex: none; border-radius: var(--r-pill); background: var(--bk-c, var(--person-1)); }
 
 /* ---------- requests waiting: a queue of decisions ----------
    Time leads in a fixed 64px column, the guest and their details follow, and
@@ -198,6 +235,7 @@
   transition: background-color var(--dur-1) ease;
 }
 .bk-res-row:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.bk-res-row:active { background: var(--bg-muted); transition-duration: 0ms; }
 .bk-res-row__time { font: 600 14px/20px var(--font-sans); font-variant-numeric: tabular-nums; }
 .bk-res-row__name { overflow: hidden; font: 500 14px/20px var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
 .bk-res-row__party { font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); text-align: right; white-space: nowrap; }
@@ -256,6 +294,7 @@
   transition: background-color var(--dur-1) ease;
 }
 .bk-row__btn:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.bk-row__btn:active { background: var(--bg-muted); transition-duration: 0ms; }
 .bk-row__id { display: grid; min-width: 0; }
 .bk-row__label { overflow: hidden; font: 500 14px/20px var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
 .bk-row__meta { overflow: hidden; font: var(--type-caption); color: var(--text-3); text-overflow: ellipsis; white-space: nowrap; }
@@ -445,12 +484,17 @@
   .page-head__actions > .bk-config-link { flex: none; width: var(--touch); padding: 0; }
   .bk-config-link__text { display: none; }
   .bk-config-link > svg { margin: 0; }
-  /* One row of controls: the date and the view. */
-  .bk-controls { gap: var(--s-2); margin-top: var(--s-3); }
-  .bk-date { flex: 1 1 auto; }
-  .bk-date__input { width: 100%; min-height: var(--touch); }
-  .bk-date__day { display: none; }
-  .bk-viewtoggle > button { min-height: var(--touch); }
+  /* Two rows of controls: the day pager with its date, then the view. */
+  .bk-controls { flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+  .bk-date { flex: 1 1 100%; gap: var(--s-2); }
+  .bk-date__anchor { margin-left: auto; }
+  .bk-date__pick { height: var(--touch); font: var(--type-body-lg); font-weight: 600; }
+  .bk-date__long { display: none; }
+  .bk-date__short { display: inline; }
+  .bk-date__rel { display: none; }
+  .bk-cal { right: 0; left: auto; --atlas-origin: top right; }
+  .bk-viewtoggle { flex: 1 1 100%; }
+  .bk-viewtoggle > button { flex: 1 1 0; min-height: var(--touch); }
   .bk-viewtoggle > button > svg { display: none; }
 
   .bk-req { grid-template-columns: minmax(0, 1fr) auto; }

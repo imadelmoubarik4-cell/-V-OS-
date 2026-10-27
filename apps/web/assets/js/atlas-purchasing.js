@@ -84,6 +84,9 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
   const qty = (value) => (num(value) === null ? '—' : num(value).toLocaleString('en-GB', { maximumFractionDigits: 3 }));
+  // A litre unit is stored as "l" and shown as "L" (a lone lowercase l reads
+  // as a stray glyph); every other unit is shown as stored.
+  const unitLabel = (unit) => { const text = String(unit || '').trim(); return text === 'l' ? 'L' : text; };
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
   const money = (value) => (num(value) === null ? '—' : (clock()?.formatKr ? clock().formatKr(num(value)) : `${Math.round(num(value))} kr`));
   const dateText = (value, options) => (value && clock()?.formatDate ? clock().formatDate(value, options || {}) : '');
@@ -322,7 +325,7 @@
     const n = list.length;
     const panelId = `po-excluded-panel-${++excludedPanelSeq}`;
     const rows = list.map((entry) => `<li>${esc(entry.name)} <span class="po__muted">(${esc(ON_ORDER_LABEL[entry.orderStatus] || 'on an open order')})</span></li>`).join('');
-    return `<div class="atlas-disclosure" data-po-on-order>
+    return `<div class="atlas-disclosure po-onorder" data-po-on-order>
         <p class="po__muted">${n} ${n === 1 ? 'item isn’t' : 'items aren’t'} suggested again.</p>
         <button type="button" class="atlas-disclosure__toggle" aria-expanded="false" aria-controls="${panelId}">Show details</button>
         <div class="atlas-disclosure__panel" id="${panelId}" hidden><ul class="po-excluded-list">${rows}</ul></div>
@@ -497,7 +500,7 @@
   function lineRowHtml(line = {}, index = 0) {
     const active = items().filter((item) => item.active !== false).sort((a, b) => String(a.name).localeCompare(String(b.name)));
     return `<div class="po-line" data-po-line>
-      <div class="atlas-field po-line__item"><label for="po-line-item-${index}">Item</label><select class="atlas-select" id="po-line-item-${index}" data-po-line-item required><option value="">Choose an item</option>${active.map((item) => `<option value="${esc(item.id)}" data-cost="${esc(item.cost_price ?? '')}" data-unit="${esc(item.unit || '')}"${String(item.id) === String(line.item_id) ? ' selected' : ''}>${esc(item.name)}${item.unit ? ` (${esc(item.unit)})` : ''}</option>`).join('')}</select></div>
+      <div class="atlas-field po-line__item"><label for="po-line-item-${index}">Item</label><select class="atlas-select" id="po-line-item-${index}" data-po-line-item required><option value="">Choose an item</option>${active.map((item) => `<option value="${esc(item.id)}" data-cost="${esc(item.cost_price ?? '')}" data-unit="${esc(item.unit || '')}"${String(item.id) === String(line.item_id) ? ' selected' : ''}>${esc(item.name)}${item.unit ? ` (${esc(unitLabel(item.unit))})` : ''}</option>`).join('')}</select></div>
       <div class="atlas-field po-line__qty"><label for="po-line-qty-${index}">Quantity</label><input class="atlas-input" id="po-line-qty-${index}" data-po-line-qty type="number" inputmode="decimal" min="0.001" step="any" value="${esc(line.quantity ?? 1)}" required></div>
       <div class="atlas-field po-line__cost"><label for="po-line-cost-${index}">Unit cost</label><div class="atlas-affix"><input class="atlas-input" id="po-line-cost-${index}" data-po-line-cost type="number" inputmode="decimal" min="0" step="any" value="${esc(line.unit_cost ?? '')}" required><span class="suffix">kr</span></div></div>
       <button type="button" class="atlas-icon-btn po-line__remove" data-po-remove-line aria-label="Remove line">${icon('trash-2')}</button>
@@ -616,8 +619,8 @@
       desc: 'Items below par, grouped by supplier. Change quantities before creating the orders.',
       body: `<form id="po-suggest-form" class="atlas-form" novalidate>${onOrderNote(suggestionsOnOrder())}${groups.map((group, gIndex) => `<fieldset class="po-group" data-po-group="${gIndex}"${group.supplier ? '' : ' disabled'}><legend class="po-group__title">${esc(group.name)} <span data-po-group-state></span></legend>
         ${group.supplier ? '' : '<p class="po__muted">These items aren’t linked to a supplier in Alcedo yet, so they can’t go on an order. Link a supplier in the item details.</p>'}
-        <div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact"><thead><tr><th class="col-check"><span class="sr-only">Include</span></th><th>Item</th><th class="is-num">On hand</th><th class="is-num">Par</th><th class="is-num">Order</th></tr></thead><tbody>
-        ${group.lines.map((line) => `<tr><td class="col-check"><input type="checkbox" class="atlas-check" data-po-include checked aria-label="Include ${esc(line.name)}" value="${esc(line.id)}"></td><td><span class="cell-primary">${esc(line.name)}</span><span class="cell-sub">${line.cases ? `${line.cases} ${line.cases === 1 ? 'case' : 'cases'} · ` : ''}${esc(line.unit)}</span></td><td class="is-num">${qty(line.item?.quantity)}</td><td class="is-num">${qty(line.item?.par_level)}</td><td class="is-num"><input class="atlas-input po-suggest__qty num" type="number" inputmode="decimal" min="0.001" step="any" value="${esc(line.orderQuantity)}" data-po-suggest-qty="${esc(line.id)}" aria-label="Quantity of ${esc(line.name)}"></td></tr>`).join('')}
+        <div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact po-suggest-table"><colgroup><col class="po-suggest-table__check"><col><col class="po-suggest-table__num"><col class="po-suggest-table__par"><col class="po-suggest-table__order"></colgroup><thead><tr><th class="col-check"><span class="sr-only">Include</span></th><th>Item</th><th class="is-num">On hand</th><th class="is-num">Par</th><th class="is-num">Order</th></tr></thead><tbody>
+        ${group.lines.map((line) => `<tr><td class="col-check"><input type="checkbox" class="atlas-check" data-po-include checked aria-label="Include ${esc(line.name)}" value="${esc(line.id)}"></td><td><span class="cell-primary">${esc(line.name)}</span><span class="cell-sub">${line.cases ? `${line.cases} ${line.cases === 1 ? 'case' : 'cases'} · ` : ''}${esc(unitLabel(line.unit))}</span></td><td class="is-num">${qty(line.item?.quantity)}</td><td class="is-num">${qty(line.item?.par_level)}</td><td class="is-num"><input class="atlas-input po-suggest__qty num" type="number" inputmode="decimal" min="0.001" step="any" value="${esc(line.orderQuantity)}" data-po-suggest-qty="${esc(line.id)}" aria-label="Quantity of ${esc(line.name)}"></td></tr>`).join('')}
         </tbody></table></div></fieldset>`).join('')}<div data-po-alert></div></form>`,
       foot: `<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="po-suggest-form" class="atlas-btn atlas-btn--primary" data-po-create-many>Create ${orderable} ${orderable === 1 ? 'order' : 'orders'}</button>`
     }), { label: 'Suggested order' });
@@ -729,7 +732,7 @@
   // Phone (<768): one row per order line (the table's columns as meta), so
   // the sheet never scrolls sideways.
   function orderLineRowHtml(order, line) {
-    const unit = String(line.unit || '').trim();
+    const unit = unitLabel(line.unit);
     const shown = ['ordered', 'partially_received', 'received'].includes(order.status) && line.received_quantity != null;
     const left = shown && order.status !== 'received' ? num(line.remaining_quantity) : 0;
     const meta = [
@@ -790,7 +793,7 @@
           ${order.close_reason ? `<div><dt>Closed short</dt><dd>${esc(order.close_reason)}</dd></div>` : ''}
         </dl>` : ''}
         <section><h3 class="po-detail__heading">Lines</h3><div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table atlas-table--compact"><thead><tr><th>Item</th><th class="is-num">Ordered</th><th class="is-num">Received</th><th class="is-num" data-priority="2">Unit cost</th><th class="is-num">Total</th></tr></thead>
-        <tbody>${lines.map((line) => `<tr><td><a class="cell-primary" href="#inventory/item/${encodeURIComponent(line.item_id)}">${esc(line.item_name || itemById(line.item_id)?.name || 'Item')}</a><span class="cell-sub">${esc(line.unit || '')}</span></td><td class="is-num">${qty(line.quantity)}</td><td class="is-num">${['ordered', 'partially_received', 'received'].includes(order.status) && line.received_quantity != null ? `${qty(line.received_quantity)}${num(line.remaining_quantity) && order.status !== 'received' ? ` <span class="po__muted">(${qty(line.remaining_quantity)} left)</span>` : ''}` : '—'}</td><td class="is-num" data-priority="2">${money(line.unit_cost)}</td><td class="is-num">${money((num(line.quantity) || 0) * (num(line.unit_cost) || 0))}</td></tr>`).join('')}</tbody></table></div>
+        <tbody>${lines.map((line) => `<tr><td><a class="cell-primary" href="#inventory/item/${encodeURIComponent(line.item_id)}">${esc(line.item_name || itemById(line.item_id)?.name || 'Item')}</a><span class="cell-sub">${esc(unitLabel(line.unit))}</span></td><td class="is-num">${qty(line.quantity)}</td><td class="is-num">${['ordered', 'partially_received', 'received'].includes(order.status) && line.received_quantity != null ? `${qty(line.received_quantity)}${num(line.remaining_quantity) && order.status !== 'received' ? ` <span class="po__muted">(${qty(line.remaining_quantity)} left)</span>` : ''}` : '—'}</td><td class="is-num" data-priority="2">${money(line.unit_cost)}</td><td class="is-num">${money((num(line.quantity) || 0) * (num(line.unit_cost) || 0))}</td></tr>`).join('')}</tbody></table></div>
         <ul class="atlas-table-list po-lines-list">${lines.map((line) => orderLineRowHtml(order, line)).join('')}</ul></section>
         ${order.note ? `<section><h3 class="po-detail__heading">Note</h3><p>${esc(order.note)}</p></section>` : ''}
         <section><h3 class="po-detail__heading">Activity</h3>${events.length ? `<ol class="po-timeline">${events.map((entry) => `<li><span class="po-timeline__dot" aria-hidden="true"></span><span class="po-timeline__what">${esc(EVENT_LABELS[entry.event_type] || String(entry.event_type || '').replace(/_/g, ' '))}${entry.payload?.reason ? ` · ${esc(entry.payload.reason)}` : ''}</span><span class="po-timeline__when">${esc(dateTimeText(entry.created_at))}</span></li>`).join('')}</ol>` : '<p class="po__muted">No activity recorded yet.</p>'}</section>`,
@@ -928,7 +931,7 @@
       body: `<div data-po-alert></div>
         <div class="atlas-upload po-photo"><div class="atlas-upload__thumb">${icon('camera')}</div><div class="atlas-upload__body"><p class="atlas-upload__title">Check with a photo <span class="optional">(optional)</span></p><p class="atlas-upload__help">Alcedo matches what it sees to this order. You still confirm every line.</p></div><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-scan>Scan delivery</button></div>
         <form id="po-receive-form" class="po-receive">${lines.map((line, index) => `<div class="po-receive__line" data-po-rline="${esc(line.item_id)}">
-          <div class="po-receive__head"><p class="po-receive__name">${esc(line.item_name || itemById(line.item_id)?.name || 'Item')}</p><p class="po__muted">Ordered ${qty(line.quantity)} ${esc(line.unit || '')}${num(line.received_quantity) ? ` · ${qty(line.received_quantity)} already received` : ''}</p><span class="po-receive__seen" data-po-seen hidden><span class="atlas-pill atlas-pill--positive">Seen in photo</span></span></div>
+          <div class="po-receive__head"><p class="po-receive__name">${esc(line.item_name || itemById(line.item_id)?.name || 'Item')}</p><p class="po__muted">Ordered ${qty(line.quantity)} ${esc(unitLabel(line.unit))}${num(line.received_quantity) ? ` · ${qty(line.received_quantity)} already received` : ''}</p><span class="po-receive__seen" data-po-seen hidden><span class="atlas-pill atlas-pill--positive">Seen in photo</span></span></div>
           <div class="po-receive__controls"><div class="po-stepper"><button type="button" class="atlas-icon-btn" data-po-step="-1" aria-label="One less">${icon('minus')}</button><label class="sr-only" for="po-rq-${index}">Received quantity</label><input class="atlas-input po-stepper__input num" id="po-rq-${index}" data-po-rqty type="text" inputmode="decimal" value="${esc(qty(line.remaining_quantity ?? line.quantity).replace(/,/g, ''))}"><button type="button" class="atlas-icon-btn" data-po-step="1" aria-label="One more">${icon('plus')}</button></div>
           <div class="atlas-chips po-receive__reasons" role="group" aria-label="Reason"><button type="button" class="atlas-chip" aria-pressed="false" data-po-reason="Short">Short</button><button type="button" class="atlas-chip" aria-pressed="false" data-po-reason="Damaged">Damaged</button></div></div>
         </div>`).join('')}</form>`,
@@ -1111,7 +1114,7 @@
         return;
       }
       overlay.close('done');
-      toast(`Received ${qty(quantity)} ${chosen.unit || ''} of ${chosen.name} · stock updated`);
+      toast(`Received ${qty(quantity)} ${unitLabel(chosen.unit)} of ${chosen.name} · stock updated`);
       root.atlasReloadData?.();
     });
   }
@@ -1274,7 +1277,7 @@
       // a silent jump to Home.
     });
     const actions = [
-      { id: 'purchasing.order.new', label: 'New order', icon: 'shopping-cart', keywords: ['order', 'purchase', 'buy'], roles: MANAGERS, contexts: ['home', 'purchasing', 'suppliers'], forRecord: 'inventory_item', recordLabel: 'Add {name} to an order', run: (ctx = {}) => { if (shell.current() !== 'suppliers') shell.navigate('#purchasing/orders'); openOrderSheet({ itemIds: ctx.record?.type === 'inventory_item' ? [ctx.record.id] : (ctx.itemIds || []) }); } },
+      { id: 'purchasing.order.new', label: 'New order', icon: 'truck', keywords: ['order', 'purchase', 'buy'], roles: MANAGERS, contexts: ['home', 'purchasing', 'suppliers'], forRecord: 'inventory_item', recordLabel: 'Add {name} to an order', run: (ctx = {}) => { if (shell.current() !== 'suppliers') shell.navigate('#purchasing/orders'); openOrderSheet({ itemIds: ctx.record?.type === 'inventory_item' ? [ctx.record.id] : (ctx.itemIds || []) }); } },
       { id: 'purchasing.delivery.receive', label: 'Receive a delivery', icon: 'truck', keywords: ['restock', 'delivery', 'receive'], roles: MANAGERS, contexts: ['home', 'inventory', 'purchasing', 'suppliers'], run: async () => { if (!state.ordersLoaded) await loadOrders(); openReceiveAny(); } },
       { id: 'purchasing.supplier.add', label: 'Add supplier', icon: 'store', keywords: ['supplier', 'vendor'], roles: MANAGERS, contexts: ['purchasing', 'suppliers'], run: () => { shell.navigate('#purchasing/suppliers'); openSupplierSheet(); } },
       { id: 'purchasing.suggestions.review', label: 'Review suggested order', icon: 'list-checks', keywords: ['suggested', 'below par', 'reorder'], roles: MANAGERS, contexts: ['home', 'purchasing', 'suppliers'], when: () => suggestions().length > 0, run: () => { shell.navigate('#purchasing/orders'); openSuggestionsSheet(); } }

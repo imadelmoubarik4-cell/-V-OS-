@@ -100,7 +100,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 .atlas-ai .ai-list__skel { display: grid; gap: var(--s-5); padding: var(--s-6) 10px; }
 .atlas-ai .ai-list__skel .atlas-skel { width: 72%; height: 12px; }
 .atlas-ai .ai-list__skel .atlas-skel:nth-child(even) { width: 48%; }
-.atlas-ai .ai-link { border: 0; background: none; padding: 0; color: var(--accent-text); font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.atlas-ai .ai-link { border: 0; background: none; padding: 0; color: var(--accent-text); font: inherit; font-weight: 500; text-decoration: none; text-underline-offset: 2px; }
 /* A row is the title in ink over a grey line of when or what; the open one
    is the neutral --bg-muted pill the sidebar uses. */
 .atlas-ai .ai-conv {
@@ -108,6 +108,9 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
   transition: background-color var(--dur-1) var(--ease-out);
 }
 .atlas-ai .ai-conv[aria-current="true"] { background: var(--bg-muted); }
+/* Press feedback on touch too (the global tap highlight is off): the row
+   greys while it is held. */
+.atlas-ai .ai-conv:active { background: var(--bg-muted); }
 .atlas-ai .ai-conv__t { display: block; font: var(--type-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .atlas-ai .ai-conv[aria-current="true"] .ai-conv__t { font-weight: 500; }
 .atlas-ai .ai-conv__m { display: block; margin-top: 1px; font: var(--type-caption); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -135,21 +138,24 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 /* The thread dissolves into the composer's edge rather than stopping on a line. */
 .atlas-ai .ai-scroll {
   flex: 1; overflow: auto; padding: 40px var(--ai-gutter) var(--s-8); overscroll-behavior: contain; scrollbar-gutter: stable both-edges;
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - var(--s-6)), transparent);
-  mask-image: linear-gradient(to bottom, black calc(100% - var(--s-6)), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - var(--s-6)), transparent); /* taste-skill-ignore: mask fade, paints nothing */
+  mask-image: linear-gradient(to bottom, black calc(100% - var(--s-6)), transparent); /* taste-skill-ignore: mask fade, paints nothing */
 }
 .atlas-ai.is-dragging .ai-scroll { background: var(--accent-soft); }
 .atlas-ai .ai-col { max-width: var(--ai-reading); margin: 0 auto; }
 
 /* ---------- empty state ---------- */
 
-/* The robot and the greeting read as one unit (the robot's transparent band
-   under its feet tucks under the greeting's top); the suggestions are a
-   two-column set of prompts under it. */
+/* The robot stands on the greeting: the whole bird, its feet 12px above the
+   line (the box's transparent band under the feet is taken back by the
+   negative margin, about a fifth of the box at every size, so nothing of
+   the bird ever sits under the text); the suggestions are a two-column set
+   of prompts under it. */
 .atlas-ai .ai-empty { min-height: 100%; display: grid; align-content: safe center; justify-items: center; gap: var(--s-3); padding: 10vh 0 var(--s-6); text-align: center; }
 .atlas-ai .ai-empty__greeting { position: relative; font: var(--type-display); letter-spacing: var(--track-display); color: var(--text); text-wrap: balance; }
 .atlas-ai .ai-empty__context { max-width: 440px; color: var(--text-2); font: var(--type-body); text-wrap: pretty; }
-.atlas-ai .ai-empty__chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); width: min(624px, 100%); margin-top: var(--s-4); }
+/* The prompts share the composer's edges: the reading column. */
+.atlas-ai .ai-empty__chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); width: 100%; max-width: var(--ai-reading); margin-top: var(--s-4); }
 .atlas-ai .ai-suggest {
   display: flex; align-items: center; gap: 10px; min-height: var(--touch); margin: 0; padding: 10px 14px;
   border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); color: var(--text);
@@ -164,8 +170,11 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 
 /* The Alcedo robot (atlas-bot.js): live in the empty state and the voice panel.
    Its sizes are the approved scale (176 / 136 phone / 96 short screen). */
-.atlas-ai .ai-empty__bot { margin-bottom: -18px; }
-.atlas-ai .ai-empty__bot .atlas-bot-live { width: 176px; height: 176px; }
+.atlas-ai .ai-empty__bot { --ai-bot: 176px; margin-bottom: calc(var(--ai-bot) * -.19); }
+.atlas-ai .ai-empty__bot .atlas-bot-live { width: var(--ai-bot); height: var(--ai-bot); }
+/* The poster of the whole bird fills the box like the 3D scene does, so the
+   still and the live robot stand on the same line. */
+.atlas-ai .ai-empty__bot .atlas-bot-live > .atlas-bot-live__poster { width: 100%; height: 100%; }
 .atlas-ai .voice__top .atlas-bot-live { width: 44px; height: 44px; margin: -8px -2px -8px -6px; }
 /* Short screens (phone landscape): a smaller robot and tighter spacing; when the
    empty state is still taller than the space, it scrolls instead of clipping the
@@ -174,9 +183,8 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
   /* The workspace fills the window instead of pushing the page into a scroll. */
   .atlas-ai .ai-layout { min-height: 0; }
   .atlas-ai .ai-empty { padding: var(--s-2) 0 var(--s-4); gap: var(--s-2); }
-  .atlas-ai .ai-empty__bot { margin-bottom: -12px; }
-  .atlas-ai .ai-empty__bot .atlas-bot-live { width: 96px; height: 96px; }
-  .atlas-ai .ai-empty__greeting { font-size: 22px; line-height: 28px; }
+  .atlas-ai .ai-empty__bot { --ai-bot: 96px; }
+  .atlas-ai .ai-empty__greeting { font: var(--type-title); letter-spacing: var(--track-title); }
   .atlas-ai .ai-empty__chips { margin-top: var(--s-1); }
   .atlas-ai .composer-hint { display: none; }
 }
@@ -390,7 +398,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 .atlas-ai .rec-dot { width: 8px; height: 8px; flex: none; border-radius: var(--r-pill); background: var(--danger); animation: ai-pulse 1.4s var(--ease-in-out) infinite; }
 .atlas-ai .rec-time { min-width: 36px; color: var(--text); font: 500 14px/20px var(--font-sans); font-variant-numeric: tabular-nums; }
 .atlas-ai .rec-level { display: flex; align-items: center; gap: 3px; height: 24px; }
-.atlas-ai .rec-level i { width: 3px; height: 4px; border-radius: 2px; background: var(--text-2); }
+.atlas-ai .rec-level i { width: 3px; height: 24px; border-radius: 2px; background: var(--text-2); transform: scaleY(.17); transform-origin: center; }
 
 /* ---------- live voice ---------- */
 
@@ -417,7 +425,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 .atlas-ai .voice__time { margin-left: auto; font: var(--type-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .atlas-ai .voice__toggle { min-height: var(--control-sm); margin: 0; padding: 0 var(--s-2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: var(--type-label); transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 .atlas-ai .voice__wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 40px; }
-.atlas-ai .voice__wave i { width: 3px; height: 5px; border-radius: 2px; background: var(--text); }
+.atlas-ai .voice__wave i { width: 3px; height: 28px; border-radius: 2px; background: var(--text); transform: scaleY(.18); transform-origin: center; }
 .atlas-ai .voice[data-state="speaking"] .voice__wave i { background: var(--accent-brand); }
 .atlas-ai :is(.voice[data-state="connecting"], .voice[data-state="thinking"], .voice[data-state="muted"], .voice[data-state="reconnecting"]) .voice__wave i { background: var(--line-strong); }
 .atlas-ai .voice__transcript { font: var(--type-body); color: var(--text-2); overflow-wrap: anywhere; }
@@ -453,6 +461,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
   transition: background-color var(--dur-1) var(--ease-out);
 }
 .atlas-ai .ai-dec-row[disabled] { cursor: default; }
+.atlas-ai .ai-dec-row:not([disabled]):not(.ai-dec-row--head):active { background: var(--bg-muted); }
 .atlas-ai .ai-dec-row.is-selected { background: var(--accent-soft); }
 .atlas-ai .ai-dec-row--head { min-height: 40px; border-top: 0; color: var(--text-3); font: var(--type-caption); }
 .atlas-ai .ai-dec-row--head + .ai-dec-row { border-top-color: var(--line); }
@@ -467,6 +476,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 /* ---------- hover (fine pointers only) ---------- */
 
 @media (hover: hover) and (pointer: fine) {
+  .atlas-ai .ai-link:hover { text-decoration: underline; }
   .atlas-ai .ai-conv:hover { background: var(--bg-hover); }
   .atlas-ai .ai-conv[aria-current="true"]:hover { background: var(--bg-muted); }
   .atlas-ai .ai-conv-row:hover .ai-conv__menu { opacity: 1; }
@@ -630,7 +640,7 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   /* The empty state keeps the phone tab bar; the composer sits above it. */
   .atlas-ai.has-tabbar .composer-wrap { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
   .atlas-ai .ai-empty { padding-top: 8vh; min-height: 0; }
-  .atlas-ai .ai-empty__bot .atlas-bot-live { width: 136px; height: 136px; }
+  .atlas-ai .ai-empty__bot { --ai-bot: 136px; }
   .atlas-ai .ai-empty__greeting { max-width: 320px; }
   .atlas-ai .ai-empty__chips { grid-template-columns: minmax(0, 1fr); width: 100%; margin-top: var(--s-3); }
   .atlas-ai .ai-decisions__inner { padding: var(--s-3) var(--ai-gutter) var(--s-20); }

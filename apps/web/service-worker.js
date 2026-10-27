@@ -4,13 +4,15 @@
 //   * App-shell cache so the installed app opens instantly and works offline.
 //   * Push + notification click handling (unchanged from the push build).
 // Bump CACHE whenever the precache list below changes.
-const CACHE = 'alcedo-shell-v2';
+const CACHE = 'alcedo-shell-v3';
 const SHELL = [
   './',
   './index.html',
   './site.webmanifest',
   './config.js',
-  './assets/js/alcedo-icons.js?v=20261026-icons1',
+  './assets/js/alcedo-icons.js?v=20261026-redesign',
+  './assets/fonts/IBMPlexSans-Latin-Variable.woff2',
+  './assets/fonts/IBMPlexSans-LatinExt-Variable.woff2',
   './assets/brand/favicon-192x192.png',
   './assets/brand/favicon-512x512.png',
   './assets/brand/favicon.svg',

@@ -77,7 +77,7 @@
   .mk-run__row:not(.is-first)::before { content: ''; position: absolute; top: -1px; right: 0; left: calc(var(--s-4) + 40px + var(--s-4)); border-top: 1px solid var(--line-subtle); }
   .mk-run__date { display: grid; align-content: center; justify-items: center; width: 40px; flex: none; align-self: stretch; }
   .mk-run__dow { font: var(--type-caption); color: var(--text-3); }
-  .mk-run__day { font: 600 20px/24px var(--font-sans); letter-spacing: -0.01em; color: var(--text); }
+  .mk-run__day { font: var(--type-figure); letter-spacing: var(--track-figure); font-variant-numeric: tabular-nums; color: var(--text); }
   .mk-run__row.is-today .mk-run__dow, .mk-run__row.is-today .mk-run__day { color: var(--accent-text); }
   .mk-run .atlas-row__meta .num { color: var(--text); font-weight: 500; }
   .mk-run__end { gap: var(--s-4); }
@@ -192,8 +192,6 @@
   .mk-activity__list .atlas-row { gap: var(--s-4); }
   .mk-activity__who { display: grid; justify-items: end; margin: 0; font: var(--type-meta); color: var(--text-2); text-align: right; }
   .mk-activity__who > .num { color: var(--text-3); }
-  /* New campaign dialog: the form's own gap spaces the fields. */
-  .mk-campaign-form > * + * { margin-top: 0; }
   .mk-history-detail + .mk-history-detail { margin-top: var(--s-5); padding-top: var(--s-5); border-top: 1px solid var(--line-subtle); }
   .mk-history-detail__head { display: flex; align-items: center; gap: var(--s-2); }
   .mk-history-detail__head > .atlas-label { margin: 0; font: var(--type-heading); color: var(--text); }
@@ -463,12 +461,15 @@
      under them; selection is the kingfisher ring (the selection hue). */
   .mk-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 176px), 1fr)); gap: var(--s-6) var(--s-4); margin: 0; padding: 0; list-style: none; }
   .mk-media-grid__cell { min-width: 0; }
-  .mk-asset, .mk-collection-tile { display: grid; gap: 2px; width: 100%; min-width: 0; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform var(--motion-press) var(--ease-out); }
+  /* A tile is a control, not a document: the phone's own long-press (text
+     selection, the image save/share callout, dragging the picture) would race
+     the 550 ms press that starts selecting (marketing-media.js). */
+  .mk-asset, .mk-collection-tile { display: grid; gap: 2px; width: 100%; min-width: 0; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform var(--motion-press) var(--ease-out); }
   .mk-asset:active:not(:disabled), .mk-collection-tile:active { transform: scale(var(--press-scale)); }
   .mk-asset:disabled { cursor: not-allowed; opacity: .55; }
   .mk-asset:focus-visible, .mk-collection-tile:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); border-radius: var(--r-lg); }
   .mk-asset__img { position: relative; display: grid; place-items: center; aspect-ratio: 1; margin-bottom: var(--s-2); overflow: hidden; border-radius: var(--r-lg); background: var(--bg-subtle); box-shadow: inset 0 0 0 1px var(--line-subtle); color: var(--text-3); }
-  .mk-asset__img > img { width: 100%; height: 100%; object-fit: cover; }
+  .mk-asset__img > img { width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
   .mk-asset__img > svg { width: var(--icon-lg); height: var(--icon-lg); }
   .mk-asset.is-selected .mk-asset__img { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-brand); }
   .mk-asset__badge { position: absolute; bottom: var(--s-2); left: var(--s-2); display: inline-flex; align-items: center; gap: 2px; background: var(--overlay); color: var(--text-on-accent); }

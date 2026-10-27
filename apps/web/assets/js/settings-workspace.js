@@ -29,7 +29,7 @@
     { key: 'venue', label: 'Venue', icon: 'building-2', roles: ['admin', 'manager'], group: 'The venue' },
     { key: 'hours', label: 'Opening hours', icon: 'clock', roles: ['admin', 'manager'] },
     { key: 'rules', label: 'Operational rules', icon: 'list-checks', roles: ['admin', 'manager'] },
-    { key: 'ai', label: 'Alcedo AI', icon: 'sparkles', roles: ['admin', 'manager'] },
+    { key: 'ai', label: 'Alcedo AI', icon: 'alcedo', roles: ['admin', 'manager'] },
     { key: 'integrations', label: 'Integrations', icon: 'plug', roles: ['admin', 'manager'] },
     { key: 'team-access', label: 'Team access', icon: 'users', roles: ['admin'], group: 'Access' },
     { key: 'security', label: 'Security', icon: 'shield', roles: ['admin'] },
@@ -1083,7 +1083,19 @@
     return `<details class="settings-provider__events"><summary>Recent activity</summary><ul>${events.map((event) => `<li>${escapeHtml(INTEGRATION_EVENTS[event.event_type])}${event.actor_label ? ` · ${escapeHtml(event.actor_label)}` : ''} · ${escapeHtml(formatDateTime(event.created_at))}</li>`).join('')}</ul></details>`;
   }
 
-  function providerMarkup(provider) {
+  // The provider's required next step (Allow publishing, Choose a page,
+  // Connect, Reconnect), or '' when it needs nothing.
+  function providerNextStep(provider) {
+    const view = integrationView(provider);
+    if (view.primary === 'allow-publishing' || view.primary === 'choose-resource') return view.primary;
+    if (!provider.can_connect) return '';
+    const connectionState = provider.connection_state;
+    return connectionState === 'ready' || connectionState === 'needs_reauthorization' || view.primary === 'start' ? 'start' : '';
+  }
+
+  // One primary per screen: only the first provider that needs a step shows
+  // it filled; the others show the same step as a secondary button.
+  function providerMarkup(provider, filled = true) {
     const key = provider.provider_key;
     const view = integrationView(provider);
     const busy = state.integrations.busy[key];
@@ -1094,14 +1106,15 @@
     if (provider.account_label) facts.push(`Account: ${provider.account_label}`);
     if (provider.connected_by_label && provider.connected_at) facts.push(`Connected by ${provider.connected_by_label} · ${formatDateTime(provider.connected_at)}`);
     if (provider.last_verified_at) facts.push(`Last checked ${formatDateTime(provider.last_verified_at)}`);
+    const strong = filled ? 'primary' : 'secondary';
     const button = (action, label, variant = 'secondary') => `<button type="button" class="atlas-btn atlas-btn--${variant} atlas-btn--sm${busy === action ? ' is-loading' : ''}" data-integration-action="${action}" data-provider="${escapeHtml(key)}"${busy ? ' disabled' : ''}${busy === action ? ' aria-busy="true"' : ''}>${escapeHtml(label)}</button>`;
     const actions = [];
-    if (view.primary === 'allow-publishing') actions.push(button('allow-publishing', 'Allow publishing', 'primary'));
-    if (view.primary === 'choose-resource') actions.push(button('choose-resource', words.choose, 'primary'));
+    if (view.primary === 'allow-publishing') actions.push(button('allow-publishing', 'Allow publishing', strong));
+    if (view.primary === 'choose-resource') actions.push(button('choose-resource', words.choose, strong));
     if (provider.can_connect) {
       const connectionState = provider.connection_state;
-      if (connectionState === 'ready') actions.push(button('start', 'Connect', 'primary'));
-      else if (connectionState === 'needs_reauthorization' || view.primary === 'start') actions.push(button('start', 'Reconnect', 'primary'));
+      if (connectionState === 'ready') actions.push(button('start', 'Connect', strong));
+      else if (connectionState === 'needs_reauthorization' || view.primary === 'start') actions.push(button('start', 'Reconnect', strong));
       else if (connectionState === 'verification_failed' || (connectionState === 'connected' && !publishing)) actions.push(button('start', 'Reconnect'));
       else if (connectionState === 'verifying') actions.push(button('start', 'Connect'));
     }
@@ -1297,7 +1310,8 @@
         : `<div class="settings-panel__inset"><div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Integrations couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(integrations.error?.status === 403 ? 'Only managers and administrators can see integrations.' : 'Nothing was changed. Try again.')}</p></div>${integrations.error?.status === 403 ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-integrations-retry>Try again</button></div>'}</div></div>`;
     } else if (!integrations.providers.length) body = '<p class="settings-empty">No integrations are available.</p>';
     else {
-      body = `<ul class="settings-providers">${integrations.providers.map(providerMarkup).join('')}</ul>`;
+      const first = integrations.providers.find((provider) => providerNextStep(provider));
+      body = `<ul class="settings-providers">${integrations.providers.map((provider) => providerMarkup(provider, provider === first)).join('')}</ul>`;
       // Counts follow the rows on screen: connected, and the ones a person must act on.
       const views = integrations.providers.map((provider) => ({ provider, view: integrationView(provider) }));
       const connected = views.filter(({ provider }) => provider.connection_state === 'connected').length;

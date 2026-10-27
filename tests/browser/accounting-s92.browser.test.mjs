@@ -489,6 +489,8 @@ test('unpaid: Mark paid records date, method and reference; Owed to team groups 
     assert.match(await page.textContent('#acc-pay .atlas-dialog__title'), new RegExp(`Reimburse ${MANAGER.display_name}`));
     await page.click('#acc-pay [type="submit"]');
     await until(() => backend.commands('mark_paid').length === 2, { message: 'reimburse' });
+    // The list reloads after the command answers: the reimbursed person's group leaves Owed.
+    await until(async () => (await page.$$eval('#accounting-view .atlas-section', (sections) => sections.length)) === 1, { message: 'one person left to reimburse' });
     await settle(page);
     assert.equal(await page.$$eval('#accounting-view .atlas-section', (sections) => sections.length), 1);
     noErrors(record);

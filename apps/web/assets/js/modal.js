@@ -142,6 +142,20 @@
     }
   }
 
+  // A scrim tap on a phone bottom sheet slides the sheet out by the edge it
+  // came in from (200 ms) before the layer closes; anywhere else (a dialog,
+  // a wider screen, reduced motion) it closes at once. Esc and the close
+  // buttons always close at once.
+  function dismissSheet(root) {
+    const panel = getPanel(root);
+    const slideOut = window.AtlasShell?.sheetGesture?.slideOut;
+    if (panel?.matches('.atlas-sheet:not(.atlas-sheet--full-phone)') && typeof slideOut === 'function') {
+      slideOut(panel, () => AtlasModal.close(root), root);
+      return;
+    }
+    AtlasModal.close(root);
+  }
+
   function resolveModal(modalOrId) {
     if (modalOrId instanceof HTMLElement) return modalOrId;
     return document.getElementById(String(modalOrId));
@@ -174,7 +188,15 @@
           AtlasModal.close(root);
           return;
         }
-        if (state.options.closeOnBackdrop && event.target === root) AtlasModal.close(root);
+        if (state.options.closeOnBackdrop && event.target === root) dismissSheet(root);
+      });
+      // A phone bottom sheet's grabber and head drag it down to dismiss it
+      // (AtlasShell.sheetGesture); a whole-screen sheet has no grabber.
+      window.AtlasShell?.sheetGesture?.(root, {
+        panel: '.atlas-sheet:not(.atlas-sheet--full-phone)',
+        handle: '.atlas-sheet__grabber, .atlas-sheet__head',
+        scrim: root,
+        dismiss: () => AtlasModal.close(root)
       });
 
       return root;

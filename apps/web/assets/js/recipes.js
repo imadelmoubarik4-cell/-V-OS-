@@ -364,14 +364,16 @@
     return 'Unknown until every ingredient is counted and linked';
   }
 
-  function stockPill(item) {
-    if (!item) return '<span class="atlas-pill">Not linked</span>';
-    // The canonical AtlasStockTruth.stockStatus.
+  // An ingredient's stock as a dot and a word on the line under its name
+  // (the canonical AtlasStockTruth.stockStatus); a healthy item is quiet.
+  function stockMark(item) {
+    const mark = (tone, word) => `<span class="recipe-build__stock" data-tone="${tone}">${word}</span>`;
+    if (!item) return mark('neutral', 'Not linked');
     const status = window.AtlasStockTruth?.stockStatus ? window.AtlasStockTruth.stockStatus(item) : 'unknown';
-    if (status === 'unknown') return '<span class="atlas-pill">Not counted</span>';
-    if (status === 'out') return '<span class="atlas-pill atlas-pill--danger">Out</span>';
-    if (status === 'below_par') return '<span class="atlas-pill atlas-pill--warning">Below par</span>';
-    return '<span class="atlas-pill atlas-pill--positive">In stock</span>';
+    if (status === 'unknown') return mark('neutral', 'Not counted');
+    if (status === 'out') return mark('danger', 'Out');
+    if (status === 'below_par') return mark('warning', 'Below par');
+    return '';
   }
 
   function quantityText(ingredient) {
@@ -571,13 +573,18 @@
     const manager = canManageCommercial();
     // Flavor Intelligence: managers create with Alcedo (ideas → draft →
     // approval); everyone can browse the Flavor Map.
+    // One header rule across modules: at most one secondary and the primary;
+    // the Alcedo action is always the ghost kingfisher-glyph button just
+    // before the primary; anything else (the public menu) is in the ⋯ menu.
     const flavor = Boolean(window.AtlasFlavorMap);
     const actions = manager
-      ? [{ label: 'Public menu', icon: 'qr-code', variant: 'secondary', attrs: { 'data-recipe-menu-link': '' } },
-        ...(flavor ? [{ label: 'Create with Alcedo', icon: 'atlas-bot', variant: 'secondary', attrs: { 'data-recipe-create-atlas': '' } }] : []),
+      ? [...(flavor ? [{ label: 'Create with Alcedo', icon: 'atlas-bot', variant: 'ghost', attrs: { 'data-recipe-create-atlas': '' } }] : []),
         { label: 'New recipe', icon: 'plus', variant: 'primary', attrs: { 'data-recipe-new': '' } }]
       : flavor ? [{ label: 'Flavor Map', icon: 'orbit', variant: 'secondary', attrs: { 'data-recipe-flavor-map': '' } }] : [];
-    const head = window.AtlasShell.pageHead({ title: 'Recipes', sub: headSub(), actions });
+    const more = manager
+      ? `<span class="recipe-more"><button type="button" class="atlas-icon-btn" id="recipe-more-trigger" aria-label="More recipe actions" aria-haspopup="menu" aria-expanded="false"><i data-lucide="ellipsis"></i></button><ul class="atlas-menu" role="menu" id="recipe-more-menu" aria-label="More recipe actions" hidden><li><button type="button" class="atlas-menu__item" role="menuitem" data-recipe-menu-link><i data-lucide="qr-code"></i>Public menu</button></li></ul></span>`
+      : '';
+    const head = window.AtlasShell.pageHead({ title: 'Recipes', sub: headSub(), actions }).replace('<div class="page-head__actions">', `<div class="page-head__actions">${more}`);
     if (recipesHealth() === 'failed' && !recipes.length) return `${head}${loadFailedMarkup()}`;
     if ((!dataLoaded() || recipesHealth() === 'loading') && !recipes.length) {
       return `${head}${toolbarMarkup(0)}<div class="recipe-grid" aria-busy="true" aria-label="Loading recipes">${Array.from({ length: 8 }, () => '<span class="recipe-tile recipe-tile--skeleton"><span class="recipe-tile__body"><span class="atlas-skel atlas-skel--title"></span><span class="atlas-skel atlas-skel--text"></span><span class="recipe-tile__build"><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--text"></span><span class="atlas-skel atlas-skel--text"></span></span></span></span>').join('')}</div>`;
@@ -619,23 +626,25 @@
     const costKnown = !financials.incomplete && Number.isFinite(financials.perServing);
     const price = recipe.menu_price == null || recipe.menu_price === '' ? NaN : number(recipe.menu_price, NaN);
     const blockers = view.status.key === 'incomplete' ? recipeBlockers(recipe) : [];
-    const alert = view.status.key === 'unavailable' || view.status.key === 'attention'
-      ? `<div class="atlas-alert atlas-alert--${view.status.key === 'unavailable' ? 'danger' : 'warning'}"><i data-lucide="${view.status.key === 'unavailable' ? 'circle-alert' : 'triangle-alert'}"></i><div class="atlas-alert__content"><p class="atlas-alert__body">${escape(view.line || view.pill)}</p></div></div>`
-      : blockers.length
+    // One status mark per recipe: the pill and one line beside it (for a low
+    // or unavailable recipe, the ingredient that limits it). Only the reasons
+    // availability is unknown need a block of their own.
+    const statusLine = (view.status.key === 'unavailable' || view.status.key === 'attention') && view.line ? view.line : servingsText(recipe);
+    const alert = blockers.length
         ? `<div class="atlas-alert atlas-alert--info"><i data-lucide="info"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Why availability is unknown</p><p class="atlas-alert__body">${blockers.map((entry) => `${escape(entry.name)}: ${escape(entry.reason)}`).join('<br>')}</p></div></div>`
         : '';
     // The build is the biggest thing on the sheet: the measure in a fixed
     // column, the ingredient beside it. Stock is marked only where it needs
-    // attention (below par, out, not counted); a counted, healthy item is
-    // quiet. Cost per ingredient is for managers.
+    // attention (below par, out, not counted), as a dot and a word under the
+    // ingredient; a counted, healthy item is quiet. Cost per ingredient is
+    // for managers, alone on the right.
     const build = rows.length
       ? `<ul class="recipe-build">${rows.map(({ ingredient, availability, cost }) => {
           const item = availability.item;
           const name = item?.name || ingredient.item_name || 'Ingredient';
           const link = item?.id ? `<a href="#inventory/item/${escape(encodeURIComponent(item.id))}">${escape(name)}</a>` : escape(name);
-          const stock = availability.reference ? '<span class="atlas-pill">Not stock-tracked</span>' : stockPill(item);
-          const quiet = !availability.reference && item && ['ok', 'no_par'].includes(window.AtlasStockTruth?.stockStatus?.(item));
-          return `<li class="recipe-build__row"><span class="recipe-build__qty num">${escape(quantityText(ingredient))}</span><span class="recipe-build__name">${link}</span><span class="recipe-build__end">${quiet ? '' : stock}${manager ? `<span class="recipe-build__cost num">${cost.value == null ? '<span title="No cost or package size">—</span>' : formatIsk(cost.value)}</span>` : ''}</span></li>`;
+          const stock = availability.reference ? '<span class="recipe-build__stock" data-tone="neutral">Not stock-tracked</span>' : stockMark(item);
+          return `<li class="recipe-build__row"><span class="recipe-build__qty num">${escape(quantityText(ingredient))}</span><span class="recipe-build__name">${link}${stock}</span><span class="recipe-build__end">${manager ? `<span class="recipe-build__cost num">${cost.value == null ? '<span title="No cost or package size">—</span>' : formatIsk(cost.value)}</span>` : ''}</span></li>`;
         }).join('')}</ul>`
       : '<p class="recipe-muted">No ingredients yet.</p>';
     // Glass and garnish come first: the bartender reaches for the glass
@@ -653,7 +662,7 @@
         <div class="atlas-stats recipe-stats">
           <div class="atlas-stat"><p class="atlas-stat__label">Cost per serve</p><p class="atlas-stat__value${costKnown ? '' : ' is-empty'}">${costKnown ? formatIsk(financials.perServing) : '—'}</p><p class="atlas-stat__detail">${costKnown ? 'From linked item costs' : `${financials.incomplete} ${financials.incomplete === 1 ? 'ingredient has' : 'ingredients have'} no cost or pack size`}</p></div>
           <div class="atlas-stat"><p class="atlas-stat__label">Menu price</p><p class="atlas-stat__value${Number.isFinite(price) ? '' : ' is-empty'}">${Number.isFinite(price) ? formatIsk(price) : '—'}</p><p class="atlas-stat__detail">${Number.isFinite(price) ? 'Set on this recipe' : 'Not set'}</p></div>
-          <div class="atlas-stat"><p class="atlas-stat__label">Theoretical margin</p><p class="atlas-stat__value${costKnown && Number.isFinite(financials.margin) ? '' : ' is-empty'}">${costKnown && Number.isFinite(financials.margin) ? formatPercent(financials.margin) : '—'}</p><p class="atlas-stat__detail">${costKnown && Number.isFinite(financials.profit) ? `${formatIsk(financials.profit)} per serve` : 'Needs costs and a price'}</p></div>
+          <div class="atlas-stat"><p class="atlas-stat__label">Theoretical margin</p><p class="atlas-stat__value${costKnown && Number.isFinite(financials.margin) ? '' : ' is-empty'}">${costKnown && Number.isFinite(financials.margin) ? formatPercent(financials.margin) : '—'}</p><p class="atlas-stat__detail">${costKnown && Number.isFinite(financials.profit) ? `${formatIsk(Math.round(price) - Math.round(financials.perServing))} per serve` : 'Needs costs and a price'}</p></div>
         </div>
         ${marginBar}
         <p class="recipe-muted">Theoretical margin comes from recipe costs. Realised margin needs sales data, and no sales system is connected.</p>
@@ -664,7 +673,7 @@
           : '<button type="button" class="atlas-btn atlas-btn--ghost" data-archive-recipe><i data-lucide="archive"></i>Archive</button>'}
       </section>` : '';
     return `${recipe.image_url ? `<img class="recipe-photo" src="${escape(recipe.image_url)}" alt="${escape(recipe.name)}">` : ''}
-      <div class="recipe-detail-status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span><span class="recipe-muted">${escape(servingsText(recipe))}</span></div>
+      <div class="recipe-detail-status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span><span class="recipe-muted">${escape(statusLine)}</span></div>
       ${alert}
       <dl class="recipe-facts">${facts.map(([label, value]) => `<div><dt>${label}</dt><dd${value ? '' : ' class="is-empty"'}>${escape(value || '—')}</dd></div>`).join('')}</dl>
       <section class="recipe-section" aria-labelledby="recipe-build-title"><h3 class="recipe-section__title" id="recipe-build-title">Build</h3>${build}</section>
@@ -700,7 +709,7 @@
   }
 
   function detailHeadActions(recipe) {
-    return `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-recipe-ask>${window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : '<i data-lucide="sparkles"></i>'}Ask Alcedo</button>${canManageCommercial() ? `<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#recipes/${escape(encodeURIComponent(recipe.id))}/edit"><i data-lucide="pencil"></i>Edit</a>` : ''}`;
+    return `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-recipe-ask><i data-lucide="atlas-bot" aria-hidden="true"></i>Ask Alcedo</button>${canManageCommercial() ? `<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#recipes/${escape(encodeURIComponent(recipe.id))}/edit"><i data-lucide="pencil"></i>Edit</a>` : ''}`;
   }
 
   function openDetail(recipeId) {
@@ -1172,7 +1181,9 @@
     set('calc-total-cost', has ? formatIsk(financials.total, '—') : '—');
     set('calc-cost-per-serving', has ? formatIsk(financials.perServing, '—') : '—');
     set('calc-cost-pct', Number.isFinite(financials.costPercent) ? formatPercent(financials.costPercent) : '—');
-    set('calc-profit', Number.isFinite(financials.profit) ? formatIsk(financials.profit) : '—');
+    // Profit from the figures as shown (rounded price − rounded cost), so the
+    // three numbers on screen always add up.
+    set('calc-profit', Number.isFinite(financials.profit) ? formatIsk(Math.round(financials.perServing + financials.profit) - Math.round(financials.perServing)) : '—');
     const note = document.getElementById('recipe-cost-note');
     if (note) {
       note.textContent = !has
@@ -1389,6 +1400,9 @@
       ? `<div class="atlas-alert atlas-alert--warning"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">That recipe isn't available</p><p class="atlas-alert__body">It may have been deleted or archived. The library below is up to date.</p></div></div>`
       : '';
     dom.view.innerHTML = `<div class="atlas-page recipes-page">${libraryMarkup().replace('</header>', `</header>${missing}`)}</div>`;
+    const moreTrigger = document.getElementById('recipe-more-trigger');
+    const moreMenu = document.getElementById('recipe-more-menu');
+    if (moreTrigger && moreMenu) window.AtlasShell?.menu?.(moreTrigger, moreMenu, {});
     const trigger = document.getElementById('recipe-category-trigger');
     const menu = document.getElementById('recipe-category-menu');
     if (trigger && menu) {

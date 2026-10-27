@@ -6,12 +6,9 @@
    miniature, one status mark at the foot). The detail is the spec sheet a
    bartender reads mid-service: glass and garnish first, then the build at
    reading size, then the method; managers get cost, price and the margin as
-   one split bar (cost in ink, margin in the kingfisher hue). */
+   one split bar (cost in grey, margin in the kingfisher hue). */
 @layer atlas.modules {
   .recipes-page .atlas-alert { margin-top: var(--s-4); }
-  /* The library re-renders on every keystroke and filter: its header stays
-     put instead of replaying the shared page entry. */
-  .recipes-page > .page-head { animation: none; }
   .recipe-toolbar .atlas-toolbar__end { gap: var(--s-3); }
   .recipe-search--phone { display: none; }
   .recipe-category-picker { position: relative; display: inline-flex; align-items: center; gap: var(--s-1); }
@@ -21,14 +18,22 @@
   .recipe-category-menu__head { display: none; }
   .recipe-category-menu__name { min-width: 0; overflow-wrap: anywhere; }
   .recipe-view-toggle button { display: inline-grid; place-items: center; }
+  /* The header's ⋯ menu (Public menu): AtlasShell.menu places it under the
+     button, right-aligned, so it grows from the button's corner. */
+  .recipe-more { display: inline-flex; }
+  .recipe-more .atlas-menu { min-width: 200px; transform-origin: top right; }
 
-  /* Library: spec cards, 4 columns ≥1280, 3 ≥1024, 2 below (spec §7.7).
-     One gutter (16 px) across and down. */
+  /* Library: spec cards on one 16 px gutter. The tracks fit the library:
+     as many 260 px+ columns as the sheet holds (4 at 1440), and a short
+     library (3 recipes) spans the row instead of stopping short of the edge.
+     One or two cards keep a card's width. Each card keeps its own height. */
   .recipe-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
     gap: var(--s-4);
   }
+  .recipe-grid:not(:has(> :nth-child(3))) { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
   .recipe-tile {
     display: flex;
     flex-direction: column;
@@ -65,7 +70,7 @@
   .recipe-tile__qty { color: var(--text); text-align: right; white-space: nowrap; }
   .recipe-tile__item { overflow: hidden; color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
   .recipe-tile__more { grid-column: 2; font: var(--type-caption); color: var(--text-3); }
-  .recipe-tile__status { margin-top: auto; }
+  .recipe-tile__status { margin-top: 0; }
   .recipe-tile__line { margin-top: var(--s-1); font: var(--type-caption); color: var(--text-2); }
   /* Long Icelandic names and reasons stay two lines; the tile's link keeps
      the full name for assistive tech and the detail shows it whole. */
@@ -74,7 +79,9 @@
   .recipe-tile--skeleton .recipe-tile__build { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
 
   /* Detail (sheet on desktop, full screen on phones). */
-  .recipe-sheet__actions { display: flex; align-items: center; gap: var(--s-2); }
+  /* The header's actions sit beside the close button at their own width
+     (the sheet head grows its first child, the title block, not this one). */
+  .recipe-sheet__actions { display: flex; flex: none; align-items: center; gap: var(--s-2); }
   .recipe-sheet .atlas-sheet__title[tabindex="-1"]:focus { outline: none; }
   .recipe-detail { display: grid; gap: var(--s-6); align-content: start; }
   .recipe-photo { display: block; width: 100%; max-height: 320px; object-fit: cover; border-radius: var(--r-lg); background: var(--bg-subtle); }
@@ -87,16 +94,24 @@
   .recipe-build__row {
     display: grid;
     grid-template-columns: minmax(88px, max-content) minmax(0, 1fr) auto;
-    align-items: center;
+    align-items: baseline;
     gap: var(--s-4);
     min-height: 52px;
-    padding: var(--s-2) 0;
+    padding: 14px 0;
     border-bottom: 1px solid var(--line-subtle);
     font: var(--type-body-lg);
   }
   .recipe-build__qty { font: 500 20px/24px var(--font-sans); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--text); text-align: right; white-space: nowrap; }
   .recipe-build__name { min-width: 0; overflow-wrap: anywhere; }
   .recipe-build__name a { color: var(--text); text-decoration: none; }
+  /* Stock that needs attention: a 6 px dot and a word under the ingredient,
+     in the status ink; no pill, so the row keeps one line of figures. */
+  .recipe-build__stock { display: flex; align-items: center; gap: 6px; margin-top: 2px; font: var(--type-meta); color: var(--text-2); }
+  .recipe-build__stock::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: var(--r-pill); background: var(--text-3); }
+  .recipe-build__stock[data-tone="warning"] { color: var(--warning); }
+  .recipe-build__stock[data-tone="warning"]::before { background: var(--warning-icon); }
+  .recipe-build__stock[data-tone="danger"] { color: var(--danger); }
+  .recipe-build__stock[data-tone="danger"]::before { background: var(--danger); }
   .recipe-build__end { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-3); }
   .recipe-build__cost { min-width: 64px; text-align: right; font: var(--type-meta); font-variant-numeric: tabular-nums; color: var(--text-2); }
   @media (hover: hover) and (pointer: fine) {
@@ -125,16 +140,17 @@
   .recipe-facts dd.is-empty { color: var(--text-3); font-weight: 400; }
   .recipe-stats { margin: 0; }
   .recipe-stats .atlas-stat__value.is-empty { color: var(--text-3); }
-  /* Cost against price: one 8 px bar, the cost in ink and the margin in the
-     hue, split by a 1 px seam; the labels are the legend. */
+  /* Cost against price: one 8 px bar split by a 1 px seam; the labels are
+     the legend. Chart key shared with Inventory and Reports: the measure (the
+     margin kept) in kingfisher, the context (the cost) in mid grey. */
   .recipe-margin { display: grid; gap: var(--s-2); margin: 0; }
   .recipe-margin__bar { display: block; width: 100%; height: 8px; border-radius: var(--r-xs); }
-  .recipe-margin__cost { fill: var(--text); }
+  .recipe-margin__cost { fill: var(--line-hover); }
   .recipe-margin__keep { fill: var(--accent-brand); }
   .recipe-margin__legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); font: var(--type-meta); color: var(--text-2); }
   .recipe-margin__legend > span { display: inline-flex; align-items: center; gap: 6px; }
   .recipe-margin__key { width: 8px; height: 8px; border-radius: 2px; }
-  .recipe-margin__key--cost { background: var(--text); }
+  .recipe-margin__key--cost { background: var(--line-hover); }
   .recipe-margin__key--keep { background: var(--accent-brand); }
   .recipe-margin__price { margin-left: auto; color: var(--text-3); }
   .recipe-manage { display: flex; flex-wrap: wrap; gap: var(--s-2); padding-top: var(--s-4); border-top: 1px solid var(--line-subtle); }
@@ -172,23 +188,21 @@
   .recipe-cost-figures > div { min-width: 0; padding: var(--s-3) var(--s-4); }
   .recipe-cost-figures > div + div { border-left: 1px solid var(--line); }
   .recipe-cost-figures dt { font: var(--type-meta); color: var(--text-2); }
-  .recipe-cost-figures dd { margin: 2px 0 0; font: 500 18px/24px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); }
+  .recipe-cost-figures dd { margin: 2px 0 0; font: var(--type-figure); letter-spacing: var(--track-figure); font-variant-numeric: tabular-nums; color: var(--text); }
   .recipe-save-state { font: var(--type-meta); color: var(--text-2); }
   .recipe-save-state.is-error { color: var(--danger); }
   .recipe-editor-more { position: relative; }
   .recipe-editor-more .atlas-menu { position: absolute; top: calc(100% + var(--s-1)); right: 0; z-index: 2; min-width: 200px; }
 
-  @media (max-width: 1279px) { .recipe-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (max-width: 1023px) { .recipe-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   /* Phone recipe lookup (spec §8.3): two-column tiles with square photos;
      the detail reads at the bar — build and method 17/26, the measure 20. */
   @media (max-width: 767px) {
-    .recipe-grid { gap: var(--s-3); }
+    .recipe-grid, .recipe-grid:not(:has(> :nth-child(3))) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
     /* Search on its own row; the toolbar keeps the filters (spec §8.3). */
     .recipe-search--phone { display: block; margin-top: var(--s-3); }
     .recipe-search--desktop { display: none; }
-    .recipes-page .page-head__actions [data-recipe-menu-link] { display: none; }
+    .recipes-page .page-head__actions .recipe-more { display: none; }
     .recipe-tile__media { aspect-ratio: 1 / 1; }
     .recipe-tile__body { padding: var(--s-2) var(--s-3) var(--s-3); }
     .recipe-tile__build { display: none; }
@@ -221,7 +235,7 @@
     .recipe-category-menu .atlas-menu__item { height: auto; min-height: var(--touch); }
     /* Without photos the library is a one-column list of compact rows, so a
        bartender sees most of the menu on one screen. */
-    .recipe-grid--plain { grid-template-columns: minmax(0, 1fr); gap: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); }
+    .recipe-grid.recipe-grid--plain { grid-template-columns: minmax(0, 1fr); gap: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); }
     .recipe-tile--plain { min-height: var(--touch); border: 0; border-radius: 0; }
     .recipe-tile--plain + .recipe-tile--plain { border-top: 1px solid var(--line-subtle); }
     .recipe-tile--plain .recipe-tile__body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--s-3); row-gap: 2px; padding: var(--s-2) var(--s-3); }
@@ -231,8 +245,7 @@
     .recipe-tile--plain .recipe-tile__line { display: block; min-width: 0; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .recipe-view-toggle { display: none; }
     .recipe-build__row, .recipe-method { font: 400 17px/26px var(--font-sans); }
-    .recipe-build__row { grid-template-columns: minmax(72px, max-content) minmax(0, 1fr); column-gap: var(--s-3); }
-    .recipe-build__end { grid-column: 2; justify-content: flex-start; }
+    .recipe-build__row { grid-template-columns: minmax(72px, max-content) minmax(0, 1fr) auto; column-gap: var(--s-3); }
     .recipe-build__end:empty { display: none; }
     .recipe-method li { padding-left: calc(72px + var(--s-3)); }
     .recipe-method li::before { width: 72px; }
@@ -375,8 +388,14 @@
     text-align: center;
     cursor: pointer;
     transform: translate(-50%, -10px);
-    animation: flavor-node-in var(--dur-2) var(--ease-out) both;
     -webkit-tap-highlight-color: transparent;
+  }
+  /* The entrance plays once per new ring (flavor-map.js sets .is-entering
+     only when the centre or its pairings change), never on a selection,
+     keystroke or arrow key that rebuilds the same ring; and only when motion
+     is welcome (the OS setting and the app's own reduce-motion switch). */
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.atlas-reduce-motion) .flavor-map.is-entering .flavor-map__node { animation: flavor-node-in var(--dur-2) var(--ease-out) both; }
   }
   .flavor-map__node:focus-visible { outline: var(--focus-outline); outline-offset: 2px; }
   .flavor-map__label {

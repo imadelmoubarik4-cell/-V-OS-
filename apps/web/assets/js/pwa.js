@@ -25,8 +25,9 @@
     if (el) el.remove();
   }
   // The iOS share glyph (box with an up-arrow), drawn inline so the hint reads
-  // as the exact button to look for in Safari.
-  var SHARE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+  // as the exact button to look for in Safari: the ALCEDO set's 'export'
+  // glyph (alcedo-icons.js loads first on index.html), else a plain fallback.
+  var SHARE_SVG = window.AlcedoIcons ? window.AlcedoIcons.svg('export', { size: 18 }) : '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
 
   function showBanner(message, actionLabel, onAction, iconSvg) {
     if (dismissed() || isStandalone() || document.getElementById('pwa-install') || !document.body) return;
@@ -62,7 +63,8 @@
     close.type = 'button';
     close.className = 'pwa-install__close';
     close.setAttribute('aria-label', 'Dismiss');
-    close.textContent = '×';
+    if (window.AlcedoIcons) close.innerHTML = window.AlcedoIcons.svg('x', { size: 18 }); // static, trusted markup
+    else close.textContent = '×';
     close.addEventListener('click', function () { remember(); removeBanner(); });
     bar.appendChild(close);
 

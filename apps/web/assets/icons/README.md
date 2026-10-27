@@ -45,6 +45,37 @@ weight and corner treatment. Badges sit in the lower-right corner, centred on
 | file-sheet (`file-spreadsheet`) | Phosphor file + a 2x2 grid 88-168 x 128-200. |
 | sidebar-simple-right (`panel-right-open`) | Phosphor sidebar-simple mirrored. |
 
+## The navigation family
+
+The sixteen destinations (sidebar, rail, tab bar, More sheet, palette) and
+their close relatives are drawn for ALCEDO, not taken from the kit, so the
+icons a person sees on every screen belong to the product. Built by
+`scripts/build_alcedo_nav_icons.py` (skia-pathops; it writes the glyph paths as JSON) from 16-unit centre lines on the 256 grid: round caps
+and joins (the Phosphor weight, so the rest of the set stays one family),
+12-unit centre-line corner radius, and one signature, **the beak corner**:
+every container keeps a single sharp corner at the top right, where the
+ALCEDO symbol's beak points; a roof, a glass bowl or a tag that already comes
+to a point keeps that point sharp. One glyph per module, everywhere.
+
+| Glyph id (app names) | Drawing |
+| --- | --- |
+| house (`home`) | A roof with a sharp apex, the symbol's open A; a door. |
+| chats (`messages-square`) | A front bubble with the beak corner, a second bubble behind. |
+| clipboard-text (`clipboard-check`) | Clipboard with clip and a check: a done task. |
+| package (`package`) | A bottle (cap with the beak corner, shoulders, label band): a bar's stock is bottles. `archive` stays the box. |
+| package-plus, package-x | The bottle with a plus / x badge (16-unit knockout). |
+| martini | The glass, its bowl a sharp V, with an olive. |
+| truck (Purchasing everywhere) | Box body; the cab's windscreen is the beak diagonal. |
+| calendar-blank / -check / -dots / -plus | One calendar (beak corner top right) with nothing, a check (Bookings), the days (Shifts) or a plus. |
+| users (`users`) | Two people, the nearer one whole. |
+| book-open | An open book; the right page has the beak corner. |
+| chart-bar (`chart-no-axes-column`) | Three bars on a base line; the tallest has the beak corner. |
+| megaphone-simple (`megaphone`) | A megaphone with its handle; the mouth ends in the beak corner. |
+| receipt-tall (`receipt-text`) | An upright slip with a torn foot and three lines. |
+| seal-percent (`badge-percent`) | A price tag (its point the beak) with its hole and a percent. |
+| database | Three stored layers of a cylinder. |
+| gear-six (`settings`) | Six teeth around a hub. |
+
 ## Name map (app name -> glyph)
 
 | App name | Glyph |
@@ -69,6 +100,7 @@ weight and corner treatment. Badges sit in the lower-right corner, centred on
 | book-check | book-bookmark |
 | book-open | book-open |
 | book-x | book-x |
+| bookmark | bookmark-simple |
 | briefcase-business | briefcase |
 | building-2 | building-office |
 | cake-slice | cake |
@@ -107,6 +139,7 @@ weight and corner treatment. Badges sit in the lower-right corner, centred on
 | door-open | door-open |
 | download | download-simple |
 | ellipsis | dots-three |
+| export | export |
 | external-link | arrow-square-out |
 | eye | eye |
 | eye-off | eye-slash |
@@ -127,11 +160,13 @@ weight and corner treatment. Badges sit in the lower-right corner, centred on
 | gauge | gauge |
 | git-compare | git-diff |
 | glass-water | pint-glass |
+| globe | globe |
 | graduation-cap | graduation-cap |
 | grip-vertical | dots-six-vertical |
 | hand-coins | hand-coins |
 | hand-heart | hand-heart |
 | hash | hash |
+| heart | heart |
 | history | clock-counter-clockwise |
 | home | house |
 | house | house |
@@ -205,6 +240,7 @@ weight and corner treatment. Badges sit in the lower-right corner, centred on
 | server | hard-drives |
 | server-off | hard-drives-slash |
 | settings | gear-six |
+| share | share-fat |
 | shield | shield |
 | shield-alert | shield-warning |
 | shield-check | shield-check |
@@ -221,6 +257,7 @@ weight and corner treatment. Badges sit in the lower-right corner, centred on
 | target | target |
 | thermometer | thermometer-simple |
 | thumbs-down | thumbs-down |
+| thumbs-up | thumbs-up |
 | trash-2 | trash |
 | triangle-alert | warning |
 | truck | truck |

@@ -44,7 +44,7 @@
   const banner = document.createElement('div');
   banner.id = 'atlas-connection-status';
   banner.setAttribute('role', 'status');
-  banner.style.cssText = 'position:sticky;top:0;z-index:10000;padding:10px 18px;background:#fff2c9;color:#372900;text-align:center';
+  banner.className = 'atlas-connection-status'; // styled in atlas-shell.css
   document.body.prepend(banner);
   const update = () => {
     banner.hidden = !failure && root.navigator.onLine && config.MODE !== 'isolated-rehearsal';

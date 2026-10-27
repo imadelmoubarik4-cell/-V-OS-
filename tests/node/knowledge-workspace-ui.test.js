@@ -126,7 +126,8 @@ test('browser has no direct private database or Drive API access', () => {
 test('article reading layout: 720 column, 16/26 body, 17/28 and a sticky bar on phones', () => {
   assert.match(css, /\.kn-reading \{ max-width: var\(--reading-max\); margin: 0 auto; \}/);
   assert.match(css, /\.kn-prose \{ font: 400 16px\/26px var\(--font-sans\);/);
-  assert.match(css, /\.kn-article__title \{ margin: 0; font: 600 28px\/34px var\(--font-sans\);/);
+  // The article title is the display step of the type scale (26/32, 22/28 on phones).
+  assert.match(css, /\.kn-article__title \{ margin: 0; font: var\(--type-display\); letter-spacing: var\(--track-display\);/);
   assert.match(css, /\.kn-prose \{ font-size: 17px; line-height: 28px; \}/);
   assert.match(css, /\.kn-bar \{ position: fixed;/);
   assert.match(ui, /AtlasAI\?\.askAbout\?\.\(\{ type: 'knowledge_article', id: detail\.article\.id/);
@@ -146,6 +147,6 @@ test('module stylesheet: one atlas.modules layer, tokens only, nothing under 12 
 });
 
 test('production loads the Knowledge assets with a cache key', () => {
-  assert.match(index, /knowledge-workspace\.js\?v=20261003-bot1/);
+  assert.match(index, /knowledge-workspace\.js\?v=20261026-redesign/);
   assert.match(index, /assets\/css\/knowledge-workspace\.css/);
 });

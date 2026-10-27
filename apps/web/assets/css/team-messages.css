@@ -10,7 +10,13 @@
  * a 720px reading column; each speaker's name line sits beside the avatar
  * and the bubble under it: stone for others, pale kingfisher for your own,
  * the corner nearest the speaker cut to 4px. Colour stays on the unread mark,
- * the New line, read receipts and the one primary (Send). */
+ * the New line, read receipts and the one primary (Send).
+ *
+ * Messages is a workspace page, not a document page: like Alcedo AI it fills
+ * the sheet edge to edge, so its page head is the 64px band (the page title
+ * in --type-title at the list pane's 20px inset, the meta line under it)
+ * rather than the 24px-gutter .page-head the other modules use. The band's
+ * single rule is the workspace's tab rule. */
 @layer atlas.modules {
 
 /* The page is a full-height page (.page--full-height, atlas-shell.css): the
@@ -196,7 +202,7 @@
 /* ---------- composer ---------- */
 /* One floating card (it floats, so it carries the pop shadow) on the thread's
    white band; what the message is about sits inside it, above the input row. */
-.msg-composer { flex: none; padding: var(--s-2) var(--s-6) var(--s-4); background: var(--bg); }
+.msg-composer { flex: none; padding: var(--s-2) var(--s-6) var(--s-4); background: transparent; }
 .msg-composer:empty { display: none; }
 .msg-compose { width: 100%; max-width: 720px; margin: 0 auto; }
 .msg-compose__box { display: grid; border: 1px solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-pop); transition: border-color var(--dur-1) ease, box-shadow var(--dur-1) ease; }
@@ -255,10 +261,10 @@
   .msg-side__group { margin: var(--s-5) var(--page-gutter) var(--s-1); }
   .msg-side__empty { margin: var(--s-4) var(--page-gutter); }
   .msg-channel { gap: var(--s-4); min-height: 68px; padding: var(--s-3) var(--page-gutter); border-radius: 0; touch-action: manipulation; }
-  .msg-channel:active { background: var(--bg-hover); }
+  .msg-channel:active { background: var(--bg-muted); transition-duration: 0ms; }
   .msg-channel__icon { width: 20px; height: 22px; }
   .msg-channel__icon svg { width: var(--icon-lg); height: var(--icon-lg); }
-  .msg-channel__name { font: 500 15px/22px var(--font-sans); }
+  .msg-channel__name { font: var(--type-row); }
   .msg-channel__preview { font: 400 14px/20px var(--font-sans); }
   .msg-skel-row { height: 68px; padding: var(--s-3) var(--page-gutter); }
 

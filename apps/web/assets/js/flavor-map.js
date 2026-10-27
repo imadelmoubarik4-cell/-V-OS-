@@ -220,6 +220,7 @@
     state.data = null;
     state.error = null;
     state.selected = null;
+    state.ringKey = '';
     state.previousCenter = null;
     state.filters = { use: '', inStock: false, evidence: [] };
     state.search = { query: '', results: [], open: false, timer: 0, seq: state.search.seq + 1, error: null, active: -1 };
@@ -457,8 +458,13 @@
       body = `<div class="atlas-alert atlas-alert--warning" role="alert"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__body">${escape(state.error.text)}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-flavor-retry>Try again</button></div></div>`;
     } else if (state.data) {
       const empty = !(state.data.edges || []).length;
+      // The ring's entrance plays once per new centre or result set, never
+      // when the same ring is rebuilt for a selection, keystroke or arrow key.
+      const ringKey = `${state.data.center?.slug || ''}|${(state.data.edges || []).map((edge) => edge.target).join(',')}`;
+      const entering = !state.loading && !empty && ringKey !== state.ringKey;
+      if (!state.loading) state.ringKey = ringKey;
       body = `${filtersMarkup()}
-        <div class="flavor-map${state.loading ? ' is-loading' : ''}${empty ? ' flavor-map--empty' : ''}" aria-busy="${state.loading}">
+        <div class="flavor-map${state.loading ? ' is-loading' : ''}${empty ? ' flavor-map--empty' : ''}${entering ? ' is-entering' : ''}" aria-busy="${state.loading}">
           ${empty ? `<div class="atlas-empty flavor-map__empty"><div class="atlas-empty__icon"><i data-lucide="orbit"></i></div><h3 class="atlas-empty__title">No pairings match these filters</h3><p class="atlas-empty__text">${escape(state.data.center.name)} has no recorded pairings with these filters.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-flavor-clear>Clear filters</button></div></div>` : `${ringMarkup()}${detailMarkup()}${listMarkup()}`}
         </div>
         <p class="recipe-muted flavor-map__basis">Pairings are Alcedo-curated culinary knowledge and ingredients used together in your recipes, not laboratory data. Stock shows only verified current counts; unknown is never counted as zero.</p>`;
@@ -808,7 +814,7 @@
     const risk = inventory.low_stock_risk || {};
     const ingredients = (candidate.ingredients || []).map((part) => `<li class="flavor-idea__ingredient"><span class="flavor-idea__role">${escape(ROLE_LABELS[part.role] || part.role || '')}</span><span class="flavor-idea__name">${escape(part.name)}${part.preparation ? ` <span class="recipe-muted">(${escape(part.preparation.name || part.preparation)})</span>` : ''}${part.item?.name ? `<span class="recipe-muted"> · ${escape(part.item.name)}</span>` : ''}</span>${part.to_buy ? '<span class="atlas-pill atlas-pill--warning">To buy</span>' : stockPill(part.stock_status)}</li>`).join('');
     const lines = (candidate.lines || []).map((line) => `<li>${escape(line.display || `${line.quantity} ${line.unit} ${line.item_name}`)}${line.to_buy ? ' <span class="atlas-pill atlas-pill--warning">To buy</span>' : ''}</li>`).join('');
-    const toBuy = Array.isArray(candidate.to_buy) && candidate.to_buy.length ? `<p class="flavor-idea__buy"><i data-lucide="shopping-cart"></i>To buy: ${escape(candidate.to_buy.map((entry) => (typeof entry === 'string' ? entry : entry?.name || '')).filter(Boolean).join(', '))}. Nothing is ordered.</p>` : '';
+    const toBuy = Array.isArray(candidate.to_buy) && candidate.to_buy.length ? `<p class="flavor-idea__buy"><i data-lucide="truck"></i>To buy: ${escape(candidate.to_buy.map((entry) => (typeof entry === 'string' ? entry : entry?.name || '')).filter(Boolean).join(', '))}. Nothing is ordered.</p>` : '';
     const economy = economics ? `<div class="flavor-idea__group"><h4>Economics <span class="recipe-muted">(theoretical)</span></h4><dl>
         ${scoreRow('Cost per serve', economics.cost_per_serve == null ? '—' : money(economics.cost_per_serve), economics.cost_per_serve == null && economics.missing ? String(economics.missing.reason || economics.missing) : '')}
         ${scoreRow('Margin', economics.margin_at_price == null ? '—' : `${Math.round(economics.margin_at_price)}%`, economics.price_support?.reference_price ? `at ${money(economics.price_support.reference_price)}` : '')}

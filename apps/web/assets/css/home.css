@@ -51,10 +51,30 @@
 
 /* ---------- needs attention ---------- */
 .home-attention .atlas-section__head { align-items: center; min-height: 32px; margin-bottom: var(--s-3); }
-.home-attention__all { margin-right: calc(-1 * var(--s-2)); color: var(--text-2); }
+/* Section-header links (Needs attention › View all, Tonight › View shifts):
+   one quiet treatment, grey 13/500 with an underline on hover. Colour stays
+   on data and the one primary. */
+.home-section-link {
+  display: inline-flex; align-items: center; margin: 0; padding: 0; border: 0; background: none;
+  font: var(--type-label); color: var(--text-2); white-space: nowrap; text-decoration: none; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.home-section-link:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); border-radius: var(--r-xs); }
+@media (hover: hover) and (pointer: fine) {
+  .home-section-link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+}
+@media (pointer: coarse) { .home-section-link { min-height: var(--touch); } }
+/* Attention rows: the glyph stays grey ink; the status is a small dot on its
+   corner (amber for attention, red for critical), never an orange glyph. */
+.home-row .atlas-row__icon { position: relative; color: var(--text-2); }
+.home-row :is(.atlas-row__icon--warning, .atlas-row__icon--danger)::after {
+  content: ''; position: absolute; top: -1px; right: -2px; width: 7px; height: 7px;
+  border-radius: var(--r-pill); background: var(--warning-icon); box-shadow: 0 0 0 2px var(--surface);
+}
+.home-row .atlas-row__icon--danger::after { background: var(--danger); }
 /* The answer block: two-line rows on a 60 px pitch, the title one step up. */
 .home-attention .atlas-row { min-height: 60px; padding: 10px var(--s-4); }
-.home-row .home-row__open { font: 500 15px/22px var(--font-sans); }
+.home-row .home-row__open { font: var(--type-row); }
 .home-row .atlas-row__meta { margin-top: 1px; }
 .home-row .atlas-row__end > .atlas-btn { min-width: 112px; }
 .home-skel-title { width: 36%; }
@@ -134,7 +154,7 @@
 .home-glance__item:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
 .home-glance__top { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 20px; }
 .home-glance__label { font: var(--type-label); color: var(--text-2); }
-.home-glance__link { display: inline-flex; align-items: center; gap: 4px; font: var(--type-meta); color: var(--text-3); white-space: nowrap; }
+.home-glance__link { display: inline-flex; align-items: center; gap: 4px; font: var(--type-label); color: var(--text-2); white-space: nowrap; }
 .home-glance__link > svg { width: 14px; height: 14px; transition: transform var(--dur-1) var(--ease-out); }
 .home-glance__value { margin-top: var(--s-2); font: var(--type-kpi); letter-spacing: var(--track-kpi); font-variant-numeric: tabular-nums; color: var(--text); }
 .home-glance__value small { margin-left: 6px; font: var(--type-body); letter-spacing: 0; color: var(--text-2); }

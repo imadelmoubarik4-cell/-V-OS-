@@ -473,7 +473,7 @@
     const percent = all ? Math.round((filled / all) * 100) : (complete ? 100 : 0);
     const finished = complete || (all > 0 && filled === all);
     const aria = `role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-label="${escape(label)}"`;
-    if (!all || all > 24) return `<span class="ops-progress atlas-progress${finished ? ' is-complete' : ''}" ${aria}><span style="width:${percent}%"></span></span>`;
+    if (!all || all > 24) return `<span class="ops-progress atlas-progress${finished ? ' is-complete' : ''}" ${aria}><span style="--ratio:${percent / 100}"></span></span>`;
     const segments = Array.isArray(marks) && marks.length === all ? marks : Array.from({ length: all }, (_, index) => (index < filled ? 'is-done' : ''));
     return `<span class="ops-progress ops-ticks${finished ? ' is-complete' : ''}" ${aria}>${segments.map((mark) => `<i${mark ? ` class="${mark}"` : ''}></i>`).join('')}</span>`;
   }

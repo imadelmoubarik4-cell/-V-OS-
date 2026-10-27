@@ -197,7 +197,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261025-bkres"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261026-redesign"><\/script>\s*<script src="config\.js"><\/script>/);
   // S99: atlas-mfa-enroll.js loads between atlas-bot.js and atlas-app.js.
   assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-mfa-enroll\.js\?v=[^"]+"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
@@ -233,18 +233,17 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
   // Alcedo polish pass: data-workspace.js changed (import dialog a11y) and carries the polish key.
-  assert.ok(index.includes('<script src="assets/js/data-workspace.js?v=20260930-polish1"></script>'), 'data-workspace.js');
+  assert.ok(index.includes('<script src="assets/js/data-workspace.js?v=20261026-redesign"></script>'), 'data-workspace.js');
   // S92 Accounting: dialogs labelled when they open (modal). The shell (the
   // admin-only Accounting destination and route) and the palette (its group)
   // changed on both sides of the S92/robot merge and carry the merge key.
-  for (const file of ['modal.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261001-s92e"></script>`), file);
-  }
-  for (const file of ['atlas-palette.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261006-s92r"></script>`), file);
+  // The 2026 redesign (Basalt & Kingfisher, self-hosted icons) changed the palette,
+  // and modal.js again (phone sheets drag down to dismiss).
+  for (const file of ['atlas-palette.js', 'modal.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // Bookings deep link carries the visit day (#bookings/res/<id>/<date>).
-  assert.ok(index.includes('<script src="assets/js/atlas-shell.js?v=20261025-bkres"></script>'), 'atlas-shell.js');
+  assert.ok(index.includes('<script src="assets/js/atlas-shell.js?v=20261026-redesign"></script>'), 'atlas-shell.js');
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['s38-app-remediation.js', 'atlas-venue-clock.js']) {
@@ -252,7 +251,7 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // Shift plan: colour by person (a remembered toolbar toggle colours each
   // teammate's chips, avatar ring and rows); shifts-workspace.js carries the key.
-  assert.ok(index.includes('<script src="assets/js/shifts-workspace.js?v=20261002-s103"></script>'), 'shifts-workspace.js');
+  assert.ok(index.includes('<script src="assets/js/shifts-workspace.js?v=20261026-redesign"></script>'), 'shifts-workspace.js');
   // ALCEDO rebrand: atlas-stock-truth.js changed (Atlas->Alcedo comment) and carries the rebrand key.
   assert.ok(index.includes('<script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>'), 'atlas-stock-truth.js');
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
@@ -263,34 +262,35 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // Alcedo polish pass: atlas-purchasing.js (exclusion disclosure) and operations.js ((optional) label) carry the polish key.
   for (const file of ['atlas-purchasing.js', 'operations.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-polish1"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // S97 Inventory Storage Locations: managed locations with chips, filters, a
   // Manage Locations page and primary-location stock-count scoping.
   for (const file of ['stock-count-workspace.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261011-s97"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // Spirits taxonomy fix: stored-first canonical Spirits classification
   // (Liqueurs / Aperitifs / Vermouth split; no "ori(gin)al" → Gin false match).
   // Inventory workspace only; the cache key must change so browsers reload it.
   for (const file of ['atlas-inventory.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261016-spirits"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
   for (const file of ['atlas-chrome.js', 'knowledge-workspace.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
   for (const file of ['recipes.js', 'flavor-map.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261005-fi1"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // Alcedo polish pass: atlas-ai.js changed ((optional) label, Decisions subtitle) and carries the polish key.
-  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20260930-polish1"></script>'), 'atlas-ai.js');
-  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261005-fi1"></script>\n<script src="assets/js/flavor-map.js?v=20261005-fi1"></script>'), 'flavor-map.js right after recipes.js');
+  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20261026-redesign"></script>'), 'atlas-ai.js');
+  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261026-redesign"></script>\n<script src="assets/js/flavor-map.js?v=20261026-redesign"></script>'), 'flavor-map.js right after recipes.js');
   // Accounting (S92): the offline quick answer keeps the sparkles icon (atlas-palette.js).
+  // The 2026 redesign (Basalt & Kingfisher, self-hosted icons) changed the palette.
   for (const file of ['atlas-palette.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261006-s92r"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // Robot refinement: one state controller for every AI surface (sleep,
   // wake, listening, thinking, answering, success, attention, error), the
@@ -302,55 +302,63 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
 
-  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20261005-fi1">'), 'recipes.css');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20261026-redesign">'), 'recipes.css');
   const config = read('apps/web/config.js');
   // The Atlas AI robot replaced the assistant icon in these lazily loaded scripts.
   // (marketing-workspace.js carries the same change under its S94 key below.)
   for (const file of ['reports-workspace.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261003-bot1'`), file);
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
   }
   // S92: every message shows its sender's real name and photo (own on the
   // right with the viewer's name and avatar); photos load when Messages opens.
-  for (const file of ['team-messages.js', 'team-unread-badge.js', 'team-profile-photos.js']) {
+  for (const file of ['team-unread-badge.js', 'team-profile-photos.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261002-s93r'`), file);
   }
+  // The 2026 redesign (Basalt & Kingfisher) changed these and they carry its key.
+  for (const file of ['team-messages.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
+  }
   // The guarded stylesheet keeps one href in index.html, config.js and the guard.
-  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20261002-s93r">'), 'team-messages.css');
-  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93r'"), 'team-messages.css loader');
-  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93r'"), 'team-messages.css guard');
-  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93r"></script>'), 'runtime-module-guard.js');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20261026-redesign">'), 'team-messages.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261026-redesign'"), 'team-messages.css loader');
+  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261026-redesign'"), 'team-messages.css guard');
+  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261026-redesign"></script>'), 'runtime-module-guard.js');
   // S93: the Home/bell message item names the sender by the live name; the
   // daily briefing header shows the Atlas AI robot (thinking while the
   // briefing is prepared).
-  assert.ok(index.includes('<script src="assets/js/home.js?v=20261004-bot6"></script>'), 'home.js');
+  assert.ok(index.includes('<script src="assets/js/home.js?v=20261026-redesign"></script>'), 'home.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
   }
   // Shift plan colour-by-person: shifts-workspace.js lazy-load key matches index.html.
-  assert.ok(config.includes("scriptPath: 'assets/js/shifts-workspace.js?v=20261002-s103'"), 'shifts-workspace.js config key');
+  assert.ok(config.includes("scriptPath: 'assets/js/shifts-workspace.js?v=20261026-redesign'"), 'shifts-workspace.js config key');
   // S91: the Settings sign-in message; S91b: owner copy for integrations
   // that are not set up, with admin-only setup details.
   // S94: Settings publishing connections and the Marketing composer, media
   // library and platform checks; S94b: review fixes in the composer (asap,
   // partial save, radios), the media picker and the platform checks.
   // S99: Settings Security now manages the current user's authenticator (2FA).
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261016-s99'"), 'settings-workspace.js');
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261026-redesign'"), 'settings-workspace.js');
   // S99: the TOTP enrolment module loads statically before atlas-app.js and is
   // reused by the invitation wizard and the login gate.
-  assert.ok(index.includes('<script src="assets/js/atlas-mfa-enroll.js?v=20261016-s99"></script>'), 'atlas-mfa-enroll.js');
+  assert.ok(index.includes('<script src="assets/js/atlas-mfa-enroll.js?v=20261026-redesign"></script>'), 'atlas-mfa-enroll.js');
   assert.ok(index.indexOf('assets/js/atlas-mfa-enroll.js') < index.indexOf('assets/js/atlas-app.js'), 'atlas-mfa-enroll.js loads before atlas-app.js');
   // marketing-workspace.js also carries the robot's Ask Atlas icon (bot1
   // content); the S94 key supersedes 20261003-bot1 so production caches refresh.
   assert.ok(!config.includes("scriptPath: 'assets/js/marketing-workspace.js?v=20261003-bot1'"), 'marketing-workspace.js not on the pre-S94 key');
-  for (const file of ['marketing-workspace.js', 'marketing-platform-rules.js']) {
+  for (const file of ['marketing-platform-rules.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94b'`), file);
   }
-  // S94c: Media end-to-end fixes (phone toolbar, unreachable media service copy).
-  assert.ok(config.includes("scriptPath: 'assets/js/marketing-media.js?v=20261004-s94c'"), 'marketing-media.js');
-  assert.ok(config.includes("stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c'"), 'marketing-workspace.css');
-  assert.ok(index.includes('href="assets/css/marketing-workspace.css?v=20261004-s94c"'), 'marketing-workspace.css');
-  assert.ok(config.includes("stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94'"), 'settings-workspace.css');
-  assert.ok(index.includes('href="assets/css/settings-workspace.css?v=20261004-s94"'), 'settings-workspace.css');
+  // The 2026 redesign (Basalt & Kingfisher) changed these and they carry its key.
+  for (const file of ['marketing-workspace.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
+  }
+  // S94c Media fixes; the redesign moved the upload bar to scaleX (--ratio).
+  assert.ok(config.includes("scriptPath: 'assets/js/marketing-media.js?v=20261026-redesign'"), 'marketing-media.js');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/marketing-workspace.css?v=20261026-redesign'"), 'marketing-workspace.css');
+  assert.ok(index.includes('href="assets/css/marketing-workspace.css?v=20261026-redesign"'), 'marketing-workspace.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/settings-workspace.css?v=20261026-redesign'"), 'settings-workspace.css');
+  assert.ok(index.includes('href="assets/css/settings-workspace.css?v=20261026-redesign"'), 'settings-workspace.css');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });
 

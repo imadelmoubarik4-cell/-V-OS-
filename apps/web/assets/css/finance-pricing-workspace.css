@@ -28,20 +28,25 @@
 .fp-muted { color: var(--text-3); }
 
 /* ---------- the answer figure ----------
-   The one figure each tab leads with: 32/400 in ink, 1.3x the 24px siblings;
-   the semibold goes on nothing but the ladder's subtotals. A negative bottom
-   line is the one place the danger colour reaches a number. */
+   The one figure a panel leads with: the shared KPI tier (28/400, 24 on a
+   phone) in ink; the semibold goes on nothing but the ladder's subtotals. A
+   negative bottom line is the one place the danger colour reaches a number. */
 .fp-figure__label { margin: 0; font: var(--type-label); color: var(--text-2); }
-.fp-figure { margin: var(--s-1) 0 0; font: 400 32px/40px var(--font-sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text); }
+.fp-figure { margin: var(--s-1) 0 0; font: var(--type-kpi); letter-spacing: var(--track-kpi); font-variant-numeric: tabular-nums; color: var(--text); }
 .fp-figure.is-negative { color: var(--danger); }
 
-/* ---------- monthly model: the lead figure beside its ladder ---------- */
+/* ---------- monthly model: the lead figure beside its ladder ----------
+   The figure heads the left column and the facts sit on its floor, so both
+   columns end on the same line as the ladder's "Cash left". */
 .fp-model { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-.fp-model__lead { padding: var(--s-6); }
+.fp-model__lead { display: flex; flex-direction: column; padding: var(--s-6) var(--s-6) var(--s-4); }
 .fp-model__note { margin: var(--s-2) 0 0; max-width: 40ch; font: var(--type-meta); color: var(--text-2); }
 .fp-model__ladder { padding: var(--s-3) var(--s-6) var(--s-4); border-left: 1px solid var(--line); }
-.fp-facts { display: grid; gap: 0; margin: var(--s-6) 0 0; }
-.fp-facts > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4); padding: var(--s-2) 0; border-top: 1px solid var(--line-subtle); }
+.fp-facts { display: grid; gap: 0; margin: auto 0 0; padding-top: var(--s-6); }
+.fp-facts > div { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); min-height: 34px; padding: 0; border-top: 1px solid var(--line-subtle); }
+/* The facts keep the ladder's row pitch (34, the last 40), so on a wide
+   screen their rules run level with the ladder's last four lines. */
+.fp-facts > div:last-child { min-height: 40px; }
 .fp-facts dt { font: var(--type-meta); color: var(--text-2); }
 .fp-facts dd { margin: 0; font: var(--type-body); color: var(--text); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .fp-facts__sub { margin-left: var(--s-2); font: var(--type-meta); color: var(--text-3); }
@@ -55,7 +60,7 @@
 .fp-ladder td { padding: 0; white-space: nowrap; }
 .fp-ladder tr > :is(th, td) { height: 34px; }
 .fp-ladder .fp-ladder__value { text-align: right; }
-.fp-ladder .fp-ladder__share { width: 72px; text-align: right; color: var(--text-3); }
+.fp-ladder .fp-ladder__share { width: 72px; padding-left: var(--s-2); text-align: right; color: var(--text-3); }
 .fp-ladder__step > :is(th, td) { color: var(--text-2); }
 .fp-ladder__sub { margin-left: var(--s-2); font: var(--type-caption); color: var(--text-3); }
 .fp-ladder__total > :is(th, td) { border-top: 1px solid var(--line); color: var(--text); font-weight: 500; }
@@ -125,18 +130,20 @@
 @media (max-width: 1023px) {
   .fp-quick, .fp-model { grid-template-columns: minmax(0, 1fr); }
   .fp-model__ladder { border-left: 0; border-top: 1px solid var(--line); }
-  .fp-facts { margin-top: var(--s-5); padding-top: 0; }
+  .fp-model__lead { padding-bottom: var(--s-4); }
+  .fp-facts { padding-top: var(--s-5); }
+  /* Tablet: the item column gives way so the status column stays in view. */
+  .fp-table th.fp-item { width: auto; min-width: 160px; }
 }
 @media (max-width: 767px) {
   .fp-body { margin-top: var(--s-5); }
   .fp-model__lead, .fp-form, .fp-result { padding: var(--s-4); }
   .fp-model__ladder { padding: var(--s-2) var(--s-4) var(--s-3); }
-  .fp-figure { font-size: 28px; line-height: 36px; }
   .fp-form__row { grid-template-columns: minmax(0, 1fr); }
-  .fp-ladder .fp-ladder__share { width: 60px; }
+  .fp-ladder .fp-ladder__share { width: 68px; }
   .fp-ladder__sub { display: block; margin: 0; }
   .fp-strip { height: 14px; gap: 1px; }
-  .fp-facts > div { align-items: flex-start; }
+  .fp-facts > div { align-items: flex-start; padding: var(--s-2) 0; }
   .fp-facts__sub { display: block; margin: 0; }
   .fp-section__meta { margin-left: 0; flex-basis: 100%; }
   .fp-list .atlas-table-list__meta { font-variant-numeric: tabular-nums; }

@@ -1108,6 +1108,7 @@
   }
   // The base shell chrome for every destination. AtlasShell.show() runs it once
   // per navigation, before the view's render and onShow hooks.
+  // No page-entry animation: navigation is the most frequent action.
   function layoutAtlasView(view, entry, context) {
     activeView = view;
     document.body.dataset.atlasView = view;

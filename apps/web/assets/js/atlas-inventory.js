@@ -64,8 +64,8 @@
   const role = () => shell.profile?.()?.role || root.atlasCurrentProfile?.role || null;
   const isManager = () => MANAGERS.includes(role());
   const canCount = () => STAFF.includes(role());
-  // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), the assistant's face.
-  const icon = (name) => (name === 'atlas-bot' && window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : `<i data-lucide="${esc(name)}" aria-hidden="true"></i>`);
+  // 'atlas-bot' is the kingfisher glyph in the ALCEDO icon set (alcedo-icons.js).
+  const icon = (name) => `<i data-lucide="${esc(name)}" aria-hidden="true"></i>`;
   const lucide = () => root.lucide?.createIcons?.();
   const uuid = () => (root.AtlasCapture?.uuid ? root.AtlasCapture.uuid() : root.crypto.randomUUID());
   const toast = (message, options) => shell.toast?.(message, options);
@@ -195,8 +195,10 @@
     const pack = item.package_size || (size ? (size >= 1000 && size % 100 === 0 ? `${size / 1000} L` : `${size} ml`) : weight ? (weight >= 1000 && weight % 100 === 0 ? `${weight / 1000} kg` : `${weight} g`) : '');
     return [pack, item.bin_location].filter(Boolean).join(' · ');
   }
+  // A litre unit is stored as "l" but shown as "L": a lone lowercase l under
+  // a name reads as a stray glyph.
   function unitWord(item, quantity = null) {
-    const unit = item.unit || 'units';
+    const unit = item.unit === 'l' ? 'L' : item.unit || 'units';
     if (num(quantity) !== 1) return unit;
     if (/^(boxes|glasses)$/i.test(unit)) return unit.slice(0, -2);
     return /^(bottles|cans|cases|bags|packs|jars|kegs|litres|units|cartons)$/i.test(unit) ? unit.slice(0, -1) : unit;
@@ -611,20 +613,25 @@
   }
 
   // The par track: on hand against par at the true ratio (capped at full). It
-  // is always neutral ink; the row's status pill is its one status mark. The
+  // is drawn in the data hue (kingfisher) at or above par and in the
+  // attention hue below it, the same key as the stock-health partition. The
   // width is applied after render through the CSSOM (no inline style markup).
   function parBar(item, { wide = false } = {}) {
     const par = num(item.par_level);
     if (!par || !truth()?.known(item)) return '';
     const ratio = Math.max(0, Math.min(1, (num(item.quantity) || 0) / par));
-    return `<span class="atlas-par inv-par${wide ? ' inv-par--wide' : ''}" aria-hidden="true"><i data-inv-ratio="${Math.round(ratio * 1000) / 10}"></i></span>`;
+    return `<span class="atlas-par inv-par${wide ? ' inv-par--wide' : ''}" data-level="${ratio < 1 ? 'below' : 'ok'}" aria-hidden="true"><i data-inv-ratio="${Math.round(ratio * 1000) / 10}"></i></span>`;
   }
   function applyRatios(scope) {
     scope?.querySelectorAll?.('[data-inv-ratio]').forEach((node) => { node.style.width = `${Number(node.dataset.invRatio) || 0}%`; });
     scope?.querySelectorAll?.('[data-inv-grow]').forEach((node) => { node.style.flexGrow = String(Number(node.dataset.invGrow) || 0); });
   }
 
-  function rowHtml(item) {
+  // The Location column shows only once an item is stored somewhere: a
+  // column that is a dash in every row is left out (the filter chip stays).
+  function showLocationColumn() { return itemLocationRows().length > 0; }
+
+  function rowHtml(item, withLocation = showLocationColumn()) {
     const status = stockStatus(item);
     const known = truth()?.known(item);
     const selected = state.selected.has(String(item.id));
@@ -632,13 +639,15 @@
     const counted = num(item.stock_baseline_at);
     // On hand: the figure in ink, the unit muted, the par track under it.
     const onHand = known ? `<span class="inv-qty"><span class="inv-qty__n">${qty(item.quantity)}</span><span class="inv-qty__unit">${esc(unitWord(item, item.quantity))}</span></span>${parBar(item)}` : '<span class="inv__muted" title="No verified count yet">—</span>';
-    const sub = known ? packLine(item) || unitWord(item) : [unitWord(item), packLine(item)].filter(Boolean).join(' · ');
+    // Under the name the unit is a word ("litres"), never a lone "L".
+    const unitName = item.unit === 'l' ? 'litres' : unitWord(item);
+    const sub = known ? packLine(item) || unitName : [unitName, packLine(item)].filter(Boolean).join(' · ');
     return `<tr data-inv-row="${esc(item.id)}"${selected ? ' class="is-selected"' : ''}>
       ${manager ? `<td class="col-check"><input type="checkbox" class="atlas-check" data-inv-select="${esc(item.id)}" aria-label="Select ${esc(item.name)}"${selected ? ' checked' : ''}></td>` : ''}
       <td class="inv-col--name"><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}" title="${esc(item.name)}"><span class="cell-primary cell-clip">${esc(item.name)}</span><span class="cell-sub cell-clip">${esc(sub)}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
       <td class="inv-col--text" data-priority="3">${item.category ? `<span class="cell-clip" title="${esc(item.category)}">${esc(item.category)}</span>` : '<span class="inv__muted">—</span>'}</td>
       ${manager ? `<td class="inv-col--text" data-priority="2">${item.supplier ? `<span class="cell-clip" title="${esc(item.supplier)}">${esc(item.supplier)}</span>` : '<span class="inv__muted">—</span>'}</td>` : ''}
-      <td class="inv-col--text" data-priority="3">${locationCellHtml(item)}</td>
+      ${withLocation ? `<td class="inv-col--text" data-priority="3">${locationCellHtml(item)}</td>` : ''}
       <td class="is-num inv-cell--qty">${onHand}</td>
       <td class="is-num inv-cell--par" data-priority="2">${num(item.par_level) ? qty(item.par_level) : '—'}</td>
       <td class="inv-col--status">${statusPill(status)}</td>
@@ -698,6 +707,7 @@
       <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-bulk="order">${icon('truck')}Add to order</button>
       <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-bulk="count">${icon('list-checks')}Count these</button>
       <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm inv__bulk-clear" data-inv-bulk="clear">Clear</button></div>` : '';
+    const withLocation = showLocationColumn();
     const allChecked = visible.length && visible.every((item) => state.selected.has(String(item.id)));
     const someChecked = !allChecked && visible.some((item) => state.selected.has(String(item.id)));
     const table = `<div class="atlas-table-wrap atlas-table-wrap--responsive inv__table"><table class="atlas-table">
@@ -706,7 +716,7 @@
         ${thSort('name', 'Item', ' class="inv-col--name"')}
         <th class="inv-col--category" data-priority="3">Category</th>
         ${manager ? '<th class="inv-col--supplier" data-priority="2">Supplier</th>' : ''}
-        <th class="inv-col--text" data-priority="3">Location</th>
+        ${withLocation ? '<th class="inv-col--text" data-priority="3">Location</th>' : ''}
         ${thSort('onhand', 'On hand', ' class="is-num inv-col--qty"')}
         ${thSort('par', 'Par', ' class="is-num inv-col--par" data-priority="2"')}
         ${thSort('status', 'Status', ' class="inv-col--status"')}
@@ -714,7 +724,7 @@
         ${thSort('counted', 'Counted', ' class="inv-col--date" data-priority="3"')}
         <th class="col-actions"><span class="sr-only">Actions</span></th>
       </tr></thead>
-      <tbody>${visible.map(rowHtml).join('')}</tbody></table>
+      <tbody>${visible.map((item) => rowHtml(item, withLocation)).join('')}</tbody></table>
       ${visible.length ? '' : emptyItemsHtml(scopeTotal)}</div>`;
     const list = `<ul class="atlas-table-list inv__list" aria-label="Items">${visible.map(listRowHtml).join('')}</ul>${visible.length ? '' : `<div class="inv__list-empty">${emptyItemsHtml(scopeTotal)}</div>`}`;
     const foot = `<div class="atlas-table-foot"><span>${state.status === 'below-par' ? `Showing ${visible.length} below-par ${visible.length === 1 ? 'item' : 'items'}` : `${visible.length} ${visible.length === 1 ? 'item' : 'items'}`}</span><span>Quantities are from the last verified count plus recorded movements.</span></div>`;

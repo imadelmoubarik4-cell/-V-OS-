@@ -90,8 +90,12 @@
   --positive: #1e7b4f;           /* 5.3:1 on white */
   --positive-soft: #dcfae5;
   --positive-ink: #04250e;
-  --warning: #92400e;            /* text: 7.1:1 on white */
-  --warning-icon: #b45309;       /* icons only */
+  /* Attention is one amber that reads as amber, never the retired brand
+     orange: dots, icons and thin rules only, never a wide fill (a bar shows
+     "below par" as a hatched or ink-tint segment and keeps the hue for its
+     label). */
+  --warning: #7c5a10;            /* text: 6.3:1 on white */
+  --warning-icon: #9a6a0a;       /* dots, icons, thin rules: 4.7:1 on white */
   --warning-soft: #fffbeb;
   --warning-line: #fde68a;
   --danger: #c4242a;             /* 5.6:1 on white */
@@ -99,6 +103,18 @@
   --danger-ink: #831c1e;
   --danger-ring: rgba(196, 36, 42, .14);
   --neutral-soft: #ebedee;
+
+  /* ---------- Colour: identity (data, never chrome) ----------
+     Six muted hues that tell people apart in the Shifts rota and the
+     Today/Tomorrow strip, used only as a 14 % tint, a 3 px edge or an 8 px
+     dot. No orange and no teal; kingfisher stays the one UI hue ("today",
+     selection). Each reads at 4.5:1 or better on white. */
+  --person-1: #4f6d94;           /* slate blue */
+  --person-2: #5f7d45;           /* moss */
+  --person-3: #85577e;           /* plum */
+  --person-4: #77706a;           /* stone */
+  --person-5: #6b62a8;           /* iris */
+  --person-6: #9a5d5f;           /* rosewood */
 
   /* ---------- Typography ----------
      One grotesk: IBM Plex Sans for every role (display included). IBM Plex
@@ -120,6 +136,12 @@
   --type-caption: 400 12px/16px var(--font-sans);     /* the minimum size */
   --type-kpi:     400 28px/32px var(--font-sans);     --track-kpi: -0.02em;
   --type-num:     500 14px/20px var(--font-sans);
+  /* Figures tier: designed once, reused by every module. A phone list row's
+     title, a figure that leads a row or a card, and the one big count on a
+     counting screen. Tabular figures, tightened as they grow. */
+  --type-row:     500 15px/22px var(--font-sans);
+  --type-figure:  500 18px/24px var(--font-sans);     --track-figure: -0.01em;
+  --type-count:   500 40px/48px var(--font-sans);     --track-count: -0.025em;
 
   --fs-display: 26px;
   --fs-title: 22px;
@@ -167,9 +189,6 @@
   --icon-md: 18px;
   --icon-lg: 20px;
   --icon-xl: 22px;
-  --icon-stroke: 1.5;
-  --icon-stroke-xl: 1.5;
-  --icon-stroke-strong: 2;
 
   /* ---------- Shell geometry (framed sheet) ---------- */
   --sidebar-w: 228px;
@@ -350,10 +369,11 @@
   }
 }
 /* Reduced motion: the movement tokens collapse to 0, so every transform that
-   reads --move-sm / --move-md (button press, drawer/menu/toast slide, page
-   entry) resolves to no movement while colour, shadow and opacity states stay
-   intact. Durations/looping are additionally neutralized in atlas-base.css
-   (global) and per-component reduced-motion blocks. Defined here because tokens
+   reads --move-sm / --move-md (button press, drawer/menu/toast slide)
+   resolves to no movement while colour, shadow and opacity states stay
+   intact. atlas-base.css lets only opacity and colour transition (fades
+   stay, movement goes) and ends keyframe loops; components drop the
+   transforms that read no token. Defined here because tokens
    may only be declared in this file. The mascot is unaffected — it reads none
    of these tokens and keeps its own reduced-motion handling. */
 @media (prefers-reduced-motion: reduce) {

@@ -692,7 +692,9 @@
   function readBanner(doc) {
     const canRead = doc.status === 'to_review' && doc.has_file && Number(doc.byte_size || 0) <= 5 * 1024 * 1024 && /pdf|jpeg|png|webp/.test(doc.mime_type || '') && state.workspace?.ai_enabled;
     const again = canRead ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-read>Read again</button>' : '';
-    const alert = (tone, head, text, actions = '') => `<div class="atlas-alert atlas-alert--${tone}" role="status">${icon(tone === 'info' ? 'sparkles' : 'circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(head)}</p>${text ? `<p class="atlas-alert__body">${escapeHtml(text)}</p>` : ''}</div>${actions ? `<div class="atlas-alert__actions">${actions}</div>` : ''}</div>`;
+    // An info note about Alcedo's own work carries the kingfisher glyph; any
+    // other note the plain info glyph.
+    const alert = (tone, head, text, actions = '') => `<div class="atlas-alert atlas-alert--${tone}" role="status">${icon(tone === 'info' ? (/Alcedo/.test(head) ? 'atlas-bot' : 'info') : 'circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(head)}</p>${text ? `<p class="atlas-alert__body">${escapeHtml(text)}</p>` : ''}</div>${actions ? `<div class="atlas-alert__actions">${actions}</div>` : ''}</div>`;
     switch (doc.extraction_status) {
       case 'read': return doc.status === 'to_review' ? alert('info', 'Alcedo read this document', 'It filled in the empty fields, marked “Filled by Alcedo”. Check every value against the document before approving.') : '';
       case 'reading': return alert('info', 'Alcedo is reading it…', 'If this takes more than a minute, try again.', again);
@@ -874,7 +876,7 @@
     const out = [];
     const keys = key === 'supplier' ? ['supplier_id', 'supplier_name'] : [key];
     if (keys.some((name) => Object.prototype.hasOwnProperty.call(prefill, name) && same(prefill[name], doc[name]))) {
-      out.push(`<p class="atlas-field__help acc-filled">${icon('sparkles')}Filled by Alcedo</p>`);
+      out.push(`<p class="atlas-field__help acc-filled">${icon('atlas-bot')}Filled by Alcedo</p>`);
     }
     const readKey = key === 'supplier' ? 'supplier_name' : key;
     if (['supplier', 'issue_date', 'total_amount'].includes(key) && read[readKey] !== null && read[readKey] !== undefined && read[readKey] !== ''

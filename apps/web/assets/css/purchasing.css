@@ -15,14 +15,11 @@
 .po a.cell-primary { color: var(--text); }
 
 .po { display: block; min-width: 0; }
-/* Filters and stage cells re-render the page: the header stays put instead
-   of replaying the shared page entry each time. */
-.po > .page-head { animation: none; }
 .po > .atlas-tabs { margin-top: var(--s-4); }
 .po__body { display: grid; gap: var(--s-4); min-width: 0; margin-top: var(--s-5); }
 .po__body > * { min-width: 0; }
 .po__body > .atlas-alert { margin: 0; }
-.po__body > .atlas-toolbar { margin: 0; }
+.po__body > .atlas-toolbar { margin-block: 0; }
 .po__muted { color: var(--text-2); }
 .po__caption { margin: var(--s-2) 0 0; font: var(--type-meta); color: var(--text-2); }
 .po__chev { display: inline-flex; color: var(--text-3); }
@@ -90,14 +87,27 @@
 .po-suggest__text .po-suggest__groups { display: flex; flex-wrap: wrap; gap: 0 var(--s-4); font: var(--type-meta); color: var(--text-2); }
 .po-suggest__groups > span { white-space: nowrap; }
 .po-suggest__groups .num { color: var(--text); font-weight: 500; }
-.po-suggest .atlas-disclosure { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-2); margin: 0; padding: 0; border: 0; }
-.po-suggest .atlas-disclosure > .po__muted { margin: 0; font: var(--type-meta); color: var(--text-2); }
-.po-suggest .atlas-disclosure__toggle { font: var(--type-meta); font-weight: 500; }
-.po-suggest .atlas-disclosure__panel { flex-basis: 100%; }
+/* "N items aren't suggested again · Show details": one meta line, on the
+   Purchasing card and at the top of the suggested-order sheet alike. */
+.po-onorder { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-2); margin: 0; padding: 0; border: 0; }
+.po-onorder > .po__muted { margin: 0; font: var(--type-meta); color: var(--text-2); }
+.po-onorder > .atlas-disclosure__toggle { font: var(--type-meta); font-weight: 500; }
+.po-onorder > .atlas-disclosure__panel { flex-basis: 100%; }
 .po-excluded-list { margin: var(--s-2) 0 0; padding-left: var(--s-5); font: var(--type-meta); color: var(--text); }
 .po-excluded-list li + li { margin-top: 2px; }
 .po .atlas-table .po-col--text { max-width: 0; width: 38%; }
 .po-suggest__qty { width: 96px; height: 32px; text-align: right; }
+/* The suggested-order sheet stacks one table per supplier: fixed columns
+   keep On hand, Par and Order on the same lines in every group, and the
+   order input sits flush with the right edge. */
+.po-suggest-table { table-layout: fixed; }
+.po-suggest-table__check { width: 40px; }
+.po-suggest-table__num { width: 88px; }
+.po-suggest-table__par { width: 72px; }
+.po-suggest-table__order { width: 112px; }
+.po-suggest-table .po-suggest__qty { display: block; margin-left: auto; }
+.po-suggest-table td { overflow: hidden; }
+.po-suggest-table :is(.cell-primary, .cell-sub) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .po-group { display: grid; gap: var(--s-3); min-width: 0; margin: 0; padding: 0; border: 0; }
 .po-group + .po-group { margin-top: var(--s-6); }
 .po-group__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; padding: 0; font: var(--type-heading); }
@@ -147,6 +157,7 @@
 }
 .po-week__order:hover { text-decoration: none; }
 .po-week__order:focus-visible { outline: var(--focus-outline); outline-offset: 0; }
+.po-week__order:active { background: var(--bg-muted); transition-duration: 0ms; }
 .po-week__supplier { overflow: hidden; font: 500 13px/18px var(--font-sans); white-space: nowrap; text-overflow: ellipsis; }
 .po-week__meta { overflow: hidden; font: var(--type-caption); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
 .po-week__day.is-late .po-week__order { box-shadow: inset 2px 0 0 var(--danger); }
@@ -174,10 +185,15 @@
 .po-detail__facts > div + div { border-left: 1px solid var(--line); }
 .po-detail__facts dt, .po-detail__more dt { font: var(--type-meta); color: var(--text-2); }
 .po-detail__facts dd { margin: var(--s-1) 0 0; overflow-wrap: anywhere; }
-.po-detail__figure { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); font: 500 18px/24px var(--font-sans); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--text); }
+.po-detail__figure { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); font: var(--type-figure); letter-spacing: var(--track-figure); font-variant-numeric: tabular-nums; color: var(--text); }
 .po-detail__figure .po__muted { font: var(--type-body); }
 .po-detail__of { font: var(--type-meta); letter-spacing: 0; color: var(--text-2); }
-.po-detail__change { height: 24px; margin-left: calc(-1 * var(--s-2)); padding: 0 var(--s-2); font: var(--type-label); }
+.po-detail__change { position: relative; height: 24px; margin-left: calc(-1 * var(--s-2)); padding: 0 var(--s-2); font: var(--type-label); }
+/* The 24 px text button keeps its line in the fact strip; on touch it gets a
+   44 px hit area around it. */
+@media (pointer: coarse) {
+  .po-detail__change::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 44px; transform: translateY(-50%); }
+}
 .po-detail__more { display: grid; gap: var(--s-2); margin: 0; }
 .po-detail__more > div { display: flex; flex-wrap: wrap; gap: 0 var(--s-3); }
 .po-detail__more dt { flex: none; width: 128px; }
@@ -246,6 +262,7 @@
 .po-noorder > form { margin-top: var(--s-3); }
 .po-row-btn { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 56px; padding: var(--s-2) var(--s-4); border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .po-row-btn:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.po-row-btn:active { background: var(--bg-muted); }
 @media (hover: hover) and (pointer: fine) {
   .po-row-btn:hover { background: var(--bg-hover); }
 }
@@ -260,6 +277,11 @@
   .po-stage:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .po-stage__value { font: var(--type-kpi); }
   .po-suggest { flex-direction: column; align-items: stretch; gap: var(--s-3); padding: var(--s-4); }
+  .po-suggest-table__check { width: 36px; }
+  .po-suggest-table__num { width: 64px; }
+  .po-suggest-table__par { width: 44px; }
+  .po-suggest-table__order { width: 84px; }
+  .po-suggest-table .po-suggest__qty { width: 72px; }
   /* The week becomes an agenda: only the days with a delivery, as rows. */
   .po-week__days { grid-template-columns: minmax(0, 1fr); }
   .po-week__day { grid-template-columns: 88px minmax(0, 1fr); align-items: start; min-height: 0; padding: var(--s-3) var(--s-4); }
@@ -279,14 +301,17 @@
 
 }
 
-/* S92 Accounting (#accounting, .acc-*): the document sheet layout, the VAT grid
-   and small helpers. Kept here with Purchasing (spend and suppliers) so the
-   stylesheet count does not grow. */
+/* S92 Accounting (#accounting, .acc-*): the document ledger rows, the month
+   ledger, the document sheet layout, the VAT grid and small helpers. Kept here
+   with Purchasing (spend and suppliers) so the stylesheet count does not grow.
+   Basalt & Kingfisher: money reads as a ledger — the amount in its own
+   right-aligned tabular column on one right edge, the sign in the text (a
+   credit note is a minus amount in ink, never red), one status pill per row. */
 @layer atlas.modules {
-  .acc-lead { margin: 0 0 var(--s-4); font: var(--type-body); color: var(--text-2); max-width: 68ch; }
+  .acc-lead { margin: 0 0 var(--s-5); font: var(--type-body); color: var(--text-2); max-width: 68ch; }
   .acc-muted { margin: var(--s-3) 0 0; font: var(--type-caption); color: var(--text-2); }
-  .acc-body { margin-top: var(--s-5); }
-  .acc-stats { margin-bottom: var(--s-5); }
+  .acc-body { margin-top: var(--s-6); }
+  .acc-stats { margin-bottom: var(--s-6); }
   .acc-row__end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
   .acc-toolbar { flex-wrap: wrap; gap: var(--s-3); }
   .acc-filter { overflow-x: auto; max-width: 100%; }
@@ -296,11 +321,39 @@
   .acc-owed__head { align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
   .acc-owed__head > .atlas-section__title { flex: 1 1 auto; min-width: 0; }
   .acc-owed__end { display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
+  .acc-owed .atlas-section__meta { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
   .acc-other-currency { margin-top: 2px; }
-  /* Field hints: what Atlas filled in, and where what it read differs. */
+
+  /* Ledger rows. The amount sits in the meta line (it reads whole on a phone);
+     from 600 px it takes its own right-aligned column. Every list keeps one
+     fixed end column (status and the row action), so the amounts share a
+     right edge down the list. */
+  .acc-list { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line-subtle); }
+  /* Loading: the list's frame with flat grey rows at the real row height. */
+  .acc-skeleton { display: grid; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); }
+  .acc-skeleton > .atlas-skel { height: 56px; background: var(--bg-subtle); }
+  .acc-skeleton > .atlas-skel + .atlas-skel { border-top: 1px solid var(--line); }
+  .acc-row__amount { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .acc-row__amount.is-empty { display: none; }
+  @media (min-width: 600px) {
+    /* The list is one framed block, like the figures above it. */
+    .acc-list { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+    .acc-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 136px 216px; grid-template-rows: auto auto; align-content: center; align-items: center; column-gap: var(--s-4); row-gap: 2px; padding-inline: var(--s-5); }
+    .acc-list--plain .acc-row { grid-template-columns: 20px minmax(0, 1fr) 136px 248px; }
+    .acc-row > .atlas-row__icon { grid-column: 1; grid-row: 1 / span 2; }
+    .acc-row > .atlas-row__body, .acc-row .atlas-row__meta { display: contents; }
+    .acc-row .atlas-row__title { grid-column: 2; grid-row: 1; align-self: end; }
+    .acc-row__facts { grid-column: 2; grid-row: 2; align-self: start; font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; }
+    .acc-row__amount, .acc-row__amount.is-empty { display: block; grid-column: 3; grid-row: 1 / span 2; font: 500 15px/20px var(--font-sans); font-variant-numeric: tabular-nums; text-align: right; }
+    .acc-row__amount.is-empty::before { content: '—'; color: var(--text-3); font-weight: 400; }
+    .acc-row__sep { display: none; }
+    .acc-row > .acc-row__end { grid-column: 4; grid-row: 1 / span 2; flex-wrap: nowrap; }
+  }
+
+  /* Field hints: what Alcedo filled in, and where what it read differs. */
   .acc-filled, .acc-differs { display: flex; align-items: flex-start; gap: var(--s-1); }
   .acc-filled > svg, .acc-differs > svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
-  .acc-filled > svg { color: var(--accent); }
+  .acc-filled > svg { color: var(--accent-brand); }
   .acc-differs { color: var(--warning); }
   .acc-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .acc-drop { position: relative; cursor: pointer; }
@@ -316,39 +369,70 @@
   /* The sheet body is a scrolling column: its children keep their height
      (the photo button stays 44 px however long the queue grows). */
   .acc-upload > * { flex: none; }
+  .acc-queue { border-top: 1px solid var(--line-subtle); }
   .acc-queue:empty { display: none; }
   .acc-payer { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
-  .acc-payer .atlas-chips { flex-wrap: wrap; }
+  .acc-payer .atlas-chips { flex-wrap: wrap; gap: var(--s-2) var(--s-6); }
 
   /* The file beside the form needs more room than a 640 px wide sheet. */
   @media (min-width: 768px) { .atlas-sheet.acc-sheet { width: min(1000px, calc(100% - 16px)); } }
   .acc-doc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-6); align-items: start; }
   .acc-doc__file { position: sticky; top: 0; display: grid; gap: var(--s-3); min-width: 0; }
   .acc-file { display: grid; gap: var(--s-3); justify-items: start; }
-  .acc-file__img { display: block; width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); border-radius: var(--radius-md, 8px); background: var(--bg-subtle); }
+  .acc-file__img { display: block; width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--bg-subtle); }
   .acc-doc__form { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
-  .acc-paid { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-body); color: var(--positive, var(--text)); }
-  .acc-paid > svg, .acc-paid > i { width: var(--icon-sm, 16px); height: var(--icon-sm, 16px); flex: none; }
+  .acc-paid { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-body); color: var(--text); }
+  .acc-paid > svg, .acc-paid > i { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--positive); }
 
-  .acc-vat { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
+  .acc-vat { border: 0; margin: 0; padding: var(--s-4) 0 0; border-top: 1px solid var(--line-subtle); display: grid; gap: var(--s-3); min-width: 0; }
   .acc-vat__row { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-3); align-items: end; }
   .acc-vat__row .atlas-field { min-width: 0; }
   .acc-vat__remove { margin-bottom: 2px; }
   .acc-vat__tools { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-  .acc-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 88px; gap: var(--s-3); }
-  .acc-amounts .atlas-input, .acc-vat .atlas-input { font-variant-numeric: tabular-nums; }
+  .acc-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 88px; gap: var(--s-3); padding-bottom: var(--s-4); border-bottom: 1px solid var(--line-subtle); }
+  /* Amounts are typed and read as figures: tabular, on the right edge. */
+  .acc-amounts .atlas-input, .acc-vat .atlas-input { font-variant-numeric: tabular-nums; text-align: right; }
   /* A hint under one field must not stretch its neighbours' label and control apart. */
   .acc-doc__form .atlas-field { align-content: start; }
 
-  .acc-details { border-top: 1px solid var(--line); padding-top: var(--s-3); }
-  .acc-details > summary { cursor: pointer; font: var(--type-label); color: var(--text-2); min-height: 44px; display: flex; align-items: center; }
+  .acc-details { border-top: 1px solid var(--line); padding-top: var(--s-1); }
+  .acc-details > summary { cursor: pointer; font: var(--type-label); color: var(--text); min-height: 44px; display: flex; align-items: center; }
   .acc-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-2) var(--s-4); margin: var(--s-2) 0; }
   .acc-kv dt { font: var(--type-caption); color: var(--text-2); }
-  .acc-kv dd { margin: 0; font: var(--type-body); overflow-wrap: anywhere; }
+  .acc-kv dd { margin: 0; font: var(--type-body); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  /* The approved document's facts read as a statement: label left, value on
+     the right edge, one rule between lines. */
+  .acc-kv.acc-facts { grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; border-bottom: 1px solid var(--line-subtle); }
+  .acc-facts > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4); min-height: 40px; padding: var(--s-2) 0; border-top: 1px solid var(--line-subtle); }
+  .acc-facts dt { flex: none; font: var(--type-meta); color: var(--text-2); }
+  .acc-facts dd { text-align: right; }
 
-  .acc-export { max-width: 880px; }
-  .acc-export__month { max-width: 240px; }
-  .acc-export__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+  /* Export: the month and its three downloads on one bar, the strip, then the
+     month as the accountant will read it. */
+  .acc-export { --stack-gap: var(--s-5); }
+  .acc-export__bar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-4); }
+  .acc-export__month { width: 240px; max-width: 100%; }
+  .acc-export__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .acc-export__status { margin: calc(-1 * var(--s-2)) 0 0; }
+  .acc-export__status:empty { display: none; }
+  .acc-export > .acc-stats { margin-bottom: 0; }
+  .acc-export__note { margin: 0; font: var(--type-meta); }
+  .acc-ledger { margin-top: var(--s-3); }
+  .acc-ledger__head { align-items: baseline; }
+  .acc-ledger__table .acc-ledger__date { width: 120px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .acc-ledger__table .acc-ledger__who { white-space: normal; }
+  .acc-ledger__open { font-weight: 500; color: var(--text); }
+  .acc-ledger__table .is-num { width: 136px; color: var(--text-2); }
+  .acc-ledger__table .acc-ledger__total { color: var(--text); font-weight: 500; }
+  .acc-ledger__table tbody td { height: 52px; }
+  .acc-ledger__table tfoot td { height: 48px; border-top: 1px solid var(--line); color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .acc-ledger__table tfoot .acc-ledger__foot-label { font-weight: 500; }
+  .acc-ledger__void td, .acc-ledger__void .acc-ledger__open, .acc-ledger__table .acc-ledger__void .acc-ledger__total { color: var(--text-3); }
+  .acc-ledger__row p { margin: 0; }
+  .acc-dash { color: var(--text-3); font-weight: 400; }
+  @media (hover: hover) and (pointer: fine) {
+    .acc-ledger__open:hover { color: var(--accent-text); }
+  }
 
   @media (max-width: 899px) {
     .acc-doc { grid-template-columns: minmax(0, 1fr); }
@@ -360,14 +444,23 @@
     .acc-vat__row { grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-2); }
     /* A grid: the icon in its own column beside the title, the pills under
        the title and aligned with it, however long the supplier name is. */
-    .acc-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: var(--s-3); row-gap: var(--s-2); align-items: start; }
+    .acc-list { margin-inline: calc(-1 * var(--page-gutter)); }
+    .acc-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: var(--s-3); row-gap: var(--s-2); align-items: start; padding-inline: var(--page-gutter); }
     .acc-row > .atlas-row__icon { grid-column: 1; grid-row: 1 / span 2; }
     .acc-row > .atlas-row__body { grid-column: 2; grid-row: 1; }
     .acc-row > .acc-row__end { grid-column: 2; grid-row: 2; justify-content: flex-start; }
     .acc-row > .acc-row__end:empty { display: none; }
+    /* The amount takes its own line under the facts, in ink. */
+    .acc-row__sep { display: none; }
+    .acc-row__amount { display: block; margin-top: var(--s-1); font: 500 15px/20px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text); }
+    .acc-row__amount.is-empty { display: none; }
+    .acc-ledger__sum { border-top: 1px solid var(--line); }
+    .acc-ledger__sum .atlas-table-list__title, .acc-ledger__sum .atlas-table-list__value { font-weight: 600; }
     /* Owed header: the name on its own line, the amount and action below it. */
     .acc-owed__head > .atlas-section__title { flex-basis: 100%; }
     .acc-owed__end { margin-left: 0; width: 100%; justify-content: space-between; }
+    .acc-export__month { width: 100%; }
+    .acc-export__actions { width: 100%; }
     .acc-export__actions .atlas-btn { width: 100%; }
     /* All: search and a filter select, each the full width (six segments don't fit). */
     .acc-toolbar { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
