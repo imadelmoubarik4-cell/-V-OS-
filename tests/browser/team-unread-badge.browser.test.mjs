@@ -22,6 +22,11 @@ function messagesGateway() {
 // Page-clock time of each badge request (its lightweight limit=1 snapshot).
 function recordBadgeFetches() {
   window.__badgeFetches = [];
+  // Page-clock time of every event that refreshes the badge at once, so a
+  // short gap in a cadence check can name what caused it.
+  window.__badgeTriggers = [];
+  for (const type of ['focus', 'online', 'pageshow']) window.addEventListener(type, () => window.__badgeTriggers.push(`${type}@${Date.now()}`));
+  document.addEventListener('visibilitychange', () => window.__badgeTriggers.push(`visibilitychange@${Date.now()}`));
   const original = window.fetch;
   window.fetch = function (input, init) {
     const url = String(input && input.url ? input.url : input);
@@ -50,7 +55,8 @@ test('healthy: one badge poll every 8 s', { skip }, async () => {
     await advanceTimers(page, 40000, { step: 1000 });
     const times = (await fetches(page)).filter((time) => time >= from);
     assert.ok(times.length >= 4 && times.length <= 6, `expected about 5 polls in 40 s, got ${times.length}`);
-    for (const gap of gaps(times)) assert.ok(gap >= 7900 && gap <= 9000, `healthy gap ${gap} ms`);
+    const triggers = await page.evaluate(() => window.__badgeTriggers.slice());
+    for (const gap of gaps(times)) assert.ok(gap >= 7900 && gap <= 9000, `healthy gap ${gap} ms (requests ${times.join(', ')}; refresh events ${triggers.join(', ') || 'none'})`);
   } finally { await close(); }
 });
 
