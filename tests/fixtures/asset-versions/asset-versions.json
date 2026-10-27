@@ -439,9 +439,9 @@
   },
   "apps/web/assets/js/team-unread-badge.js": {
     "keys": [
-      "20261027-audit"
+      "20261027-trail"
     ],
-    "sha256": "317936bab8b0771deb20ad2378f58947fa5224a8546dacb739a7c3a9dc40c536"
+    "sha256": "c244c949da4d814278b1eab2fcebb3d0a55203e5d6a8b056aa2512e4aed866c3"
   },
   "apps/web/assets/js/training-workspace.js": {
     "keys": [

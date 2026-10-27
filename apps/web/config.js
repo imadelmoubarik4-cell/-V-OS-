@@ -169,7 +169,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-unread-badge.js?v=20261027-audit',
+  scriptPath: 'assets/js/team-unread-badge.js?v=20261027-trail',
   globalName: 'AtlasTeamUnreadBadge',
   dataAttribute: 'atlasTeamUnreadBadge',
 }));

@@ -146,3 +146,34 @@ test('focus refreshes are throttled; a hidden tab does not poll; a Messages push
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
+
+test('a Messages push during a refresh in flight is not lost: one more refresh follows it', { skip }, async () => {
+  const { page, record, close } = await boot(messagesGateway());
+  try {
+    await advanceTimers(page, 10000, { step: 1000 });
+    await settle(page);
+    // Hold the next badge request so a refresh stays in flight.
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    let holding = true;
+    await page.route('**/functions/v1/atlas-team-messages**', async (route) => {
+      if (holding && route.request().url().includes('limit=1')) { holding = false; await held; }
+      return route.fallback();
+    });
+    const count = (await fetches(page)).length;
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await until(async () => (await fetches(page)).length === count + 1, { message: 'the first refresh in flight' });
+    const relayed = await page.evaluate(() => {
+      if (!navigator.serviceWorker) return false;
+      navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'atlas:push', route: 'team' } }));
+      return true;
+    });
+    assert.ok(relayed, 'the page relays service-worker messages');
+    assert.equal((await fetches(page)).length, count + 1, 'still one request while it is in flight');
+    release();
+    await until(async () => (await fetches(page)).length === count + 2, { timeout: 4000, message: 'the push refresh after the one in flight' });
+    await settle(page);
+    assert.equal((await fetches(page)).length, count + 2, 'exactly one more, not a burst');
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});

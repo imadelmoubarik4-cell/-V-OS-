@@ -24,6 +24,9 @@
   const REQUEST_TIMEOUT_MS = 12000;
   const state = {
     inFlight: false,
+    // An explicit refresh (push, focus, back online) asked for while one was
+    // in flight: that response may predate the news, so one more follows.
+    refreshAgain: false,
     timer: null,
     polling: false,
     failures: 0,
@@ -169,6 +172,7 @@
   }
 
   async function refreshUnread(options = {}) {
+    if (state.inFlight && options.now) state.refreshAgain = true;
     if (state.inFlight || document.hidden || !appIsSignedIn()) {
       if (!appIsSignedIn()) setUnread(0, []);
       return;
@@ -191,6 +195,10 @@
       if (!options.silent) console.warn('Messages unread count could not refresh.');
     } finally {
       state.inFlight = false;
+    }
+    if (state.refreshAgain) {
+      state.refreshAgain = false;
+      await refreshUnread({ silent: true });
     }
   }
 
@@ -234,7 +242,7 @@
       state.timer = null;
       schedulePoll(POLL_MS);
     }
-    return refreshUnread(options);
+    return refreshUnread({ ...options, now: true });
   }
 
   function handleFocus() {
