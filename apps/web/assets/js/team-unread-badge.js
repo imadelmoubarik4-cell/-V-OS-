@@ -198,6 +198,7 @@
     }
     if (state.refreshAgain) {
       state.refreshAgain = false;
+      restartPoll();
       await refreshUnread({ silent: true });
     }
   }
@@ -235,13 +236,18 @@
 
   // A fresh signal (tab visible again, back online, focus, a push): forget the
   // backoff, refresh now and restart the chain at the normal cadence.
-  function refreshNow(options = {}) {
-    state.failures = 0;
+  // The next poll counts from this refresh.
+  function restartPoll() {
     if (state.polling && state.timer) {
       window.clearTimeout(state.timer);
       state.timer = null;
       schedulePoll(POLL_MS);
     }
+  }
+
+  function refreshNow(options = {}) {
+    state.failures = 0;
+    restartPoll();
     return refreshUnread({ ...options, now: true });
   }
 

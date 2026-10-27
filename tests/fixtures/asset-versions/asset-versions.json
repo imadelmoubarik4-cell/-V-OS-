@@ -439,9 +439,9 @@
   },
   "apps/web/assets/js/team-unread-badge.js": {
     "keys": [
-      "20261027-trail"
+      "20261027-poll"
     ],
-    "sha256": "c244c949da4d814278b1eab2fcebb3d0a55203e5d6a8b056aa2512e4aed866c3"
+    "sha256": "351fd305aec60583d2b5ae7e6bd3833656e22a4a9cdd2b156a8fcfb349560ead"
   },
   "apps/web/assets/js/training-workspace.js": {
     "keys": [

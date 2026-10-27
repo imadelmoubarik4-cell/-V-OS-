@@ -320,7 +320,7 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261002-s93r'`), file);
   }
   // Platform audit M11/L20: the unread worker backs off and survives the back-forward cache.
-  assert.ok(config.includes("scriptPath: 'assets/js/team-unread-badge.js?v=20261027-trail'"), 'team-unread-badge.js');
+  assert.ok(config.includes("scriptPath: 'assets/js/team-unread-badge.js?v=20261027-poll'"), 'team-unread-badge.js');
   // The 2026 redesign (Basalt & Kingfisher) changed these and they carry its key.
   for (const file of ['team-messages.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);

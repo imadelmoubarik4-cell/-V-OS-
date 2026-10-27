@@ -170,10 +170,17 @@ test('a Messages push during a refresh in flight is not lost: one more refresh f
     });
     assert.ok(relayed, 'the page relays service-worker messages');
     assert.equal((await fetches(page)).length, count + 1, 'still one request while it is in flight');
+    // The request stays in flight for a second of page time.
+    await page.clock.runFor(1000);
     release();
     await until(async () => (await fetches(page)).length === count + 2, { timeout: 4000, message: 'the push refresh after the one in flight' });
     await settle(page);
     assert.equal((await fetches(page)).length, count + 2, 'exactly one more, not a burst');
+    // The 8 s poll counts from that last refresh, not from the dropped one.
+    const trailing = (await fetches(page))[count + 1];
+    await advanceTimers(page, 9000, { step: 500 });
+    const next = (await fetches(page)).find((time) => time > trailing);
+    assert.ok(next && next - trailing >= 7900 && next - trailing <= 9000, `the next poll ${next - trailing} ms after the last refresh`);
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
