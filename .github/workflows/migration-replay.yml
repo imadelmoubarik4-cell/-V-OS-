@@ -94,5 +94,7 @@ jobs:
         run: bash scripts/verify_s112_public_direct_booking.sh
       - name: Run S113 guest booking email acceptance (owner switch off by default, site language stored, emails rendered in it with stools, test email to the sender only, earlier emails discarded, sent once, retry back-off, never late or after an interrupted send)
         run: bash scripts/verify_s113_booking_guest_email.sh
+      - name: Run S114 staff access state acceptance (service-role-only access history; fresh invitation audited and never active; removed, demoted and directly changed profiles stay ever_active; pre-audit profiles not audited; two booleans only)
+        run: bash scripts/verify_s114_staff_access_state.sh
       - name: Prove the S113, S112, S111, S110b, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S113 via the reviewed bundles)
         run: bash scripts/release/verify_kanel_bookings_rollback.sh

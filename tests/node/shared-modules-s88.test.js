@@ -51,7 +51,8 @@ test('shared modules are dependency-free ESM without Deno APIs', () => {
   // S94B: integrations/ holds the shared integration crypto, provider refresh
   // and publishing credential modules.
   // S94C: publishing/ holds the provider publishing adapters the worker uses.
-  assert.deepEqual(shared.sort(), ['ai-tools', 'atlas-domain.mjs', 'auth.mjs', 'integrations', 'product-identity.mjs', 'publishing', 'recognition', 'stock-provenance.mjs']);
+  // S114: staff-access.mjs holds the account-setup access guards.
+  assert.deepEqual(shared.sort(), ['ai-tools', 'atlas-domain.mjs', 'auth.mjs', 'integrations', 'product-identity.mjs', 'publishing', 'recognition', 'staff-access.mjs', 'stock-provenance.mjs']);
   const files = [
     ...shared.filter((name) => name.endsWith('.mjs')),
     ...fs.readdirSync(path.join(FUNCTIONS, '_shared', 'recognition')).map((name) => `recognition/${name}`),

@@ -247,6 +247,8 @@ function fakeBackend({ rangeSupported = true } = {}) {
       const user = USERS[token];
       return user ? json({ id: user.id }) : json({ message: 'bad jwt' }, 401);
     }
+    // S114: the staff MFA policy read (both flags off, as production today).
+    if (url.pathname === '/rest/v1/rpc/atlas_auth_policy') return json({ require_privileged_mfa: false, require_all_staff_mfa: false, must_enroll: false });
     if (url.pathname === '/rest/v1/profiles') {
       const id = url.searchParams.get('id').replace(/^eq\./, '');
       const profile = PROFILE_BY_ID[id];

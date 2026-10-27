@@ -14,7 +14,8 @@ EXPECTED = json.loads((ROOT / "scripts/release/kanel_pre_s106_expected.json").re
 ROLLBACK = (ROOT / "docs/release/sql/KANEL_S106_S109_rollback.sql").read_text(encoding="utf-8")
 PREFLIGHT = (ROOT / "docs/release/sql/KANEL_preflight_readonly.sql").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github/workflows/migration-replay.yml").read_text(encoding="utf-8")
-RELEASE_MIGRATIONS = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if p.name.split("_")[0] > "20261022090000")
+# The KANEL bookings release is S106–S113 (later migrations ship with their own bundles).
+RELEASE_MIGRATIONS = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if "20261022090000" < p.name.split("_")[0] <= "20261030090000")
 S106_S109 = [p for p in RELEASE_MIGRATIONS if p.name.split("_")[0] < "20261027000000"]
 BUNDLES = sorted((ROOT / "docs/release/sql").glob("KANEL_apply_[1-9]_*.sql"))
 EXPECTED_110 = json.loads((ROOT / "scripts/release/kanel_pre_s110_expected.json").read_text(encoding="utf-8"))

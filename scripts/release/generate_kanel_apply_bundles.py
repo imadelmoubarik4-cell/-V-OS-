@@ -24,7 +24,8 @@ S105 = "20261022090000"
 BEGIN = "-- >>> migration file (verbatim) >>>"
 END = "-- <<< end of migration file <<<"
 
-files = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if p.name.split("_")[0] > S105)
+# The KANEL bookings release ends at S113; later migrations ship with their own bundles.
+files = sorted(p for p in (ROOT / "supabase/migrations").glob("*.sql") if S105 < p.name.split("_")[0] <= "20261030090000")
 assert [p.name.split("_")[0] for p in files] == ["20261023090000", "20261024090000", "20261025090000", "20261026090000", "20261027090000", "20261027120000", "20261028090000", "20261029090000", "20261030090000"], files
 
 prev = S105

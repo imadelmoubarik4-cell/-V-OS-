@@ -145,9 +145,9 @@
   },
   "apps/web/assets/js/account-invitation.js": {
     "keys": [
-      "20261016-s99"
+      "20261031-s114"
     ],
-    "sha256": "63f9e2403d41d4eb1e2f0b863d4d9307369dd9483c0aec134fb59cec3a35a36e"
+    "sha256": "4a9de0a33a09def4a90814194fb5d343440ffd48117f8dc405ac93d5170f1a8c"
   },
   "apps/web/assets/js/accounting-workspace.js": {
     "keys": [

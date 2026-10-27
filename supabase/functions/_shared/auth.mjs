@@ -111,13 +111,62 @@ function hasVerifiedFactor(user) {
   return Array.isArray(user?.factors) && user.factors.some((factor) => factor?.status === "verified");
 }
 
-// S96 MFA policy for privileged roles (admin, manager). A privileged caller
-// who has a verified second factor must present an aal2 session. With
-// ATLAS_REQUIRE_PRIVILEGED_MFA=true every privileged caller must be aal2
-// (switch it on only after every administrator and manager has enrolled and
-// the app's TOTP challenge step is live). Staff roles are unaffected.
+// S96 MFA policy for privileged roles (admin, manager), kept as a deployment
+// override: ATLAS_REQUIRE_PRIVILEGED_MFA=true makes aal2 mandatory for every
+// privileged caller, whatever the database policy says.
 function privilegedMfaMandatory(env) {
   return String(envValue(env, "ATLAS_REQUIRE_PRIVILEGED_MFA") ?? "").trim().toLowerCase() === "true";
+}
+
+// S114 staff MFA at the edge, the same rule as the database's
+// private.staff_session_ok() / privileged_session_ok() (S96, S99). Service-role
+// RPCs called from gateways skip those database checks, so the gateway applies
+// them here for every active staff member:
+//   * anyone with a verified second factor must present an aal2 session;
+//   * private.auth_policy.require_all_staff_mfa: aal2 for every staff member;
+//   * private.auth_policy.require_privileged_mfa: aal2 for admin and manager.
+// The flags are read through the existing atlas_auth_policy RPC with the
+// caller's own token, only when a password-only session would otherwise pass,
+// and cached briefly per isolate. An unreachable, missing (404) or malformed
+// policy fails closed (503) and is not cached.
+const AUTH_POLICY_TTL_MS = 30_000;
+let authPolicyCache = null;
+
+export function resetAuthPolicyCache() {
+  authPolicyCache = null;
+}
+
+async function readAuthPolicy(projectUrl, headers, fetchImpl, signalInit, nowMs) {
+  if (authPolicyCache && nowMs - authPolicyCache.at < AUTH_POLICY_TTL_MS) return authPolicyCache.value;
+  let response;
+  try {
+    response = await fetchImpl(`${projectUrl}/rest/v1/rpc/atlas_auth_policy`, {
+      ...signalInit(),
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: "{}",
+    });
+  } catch {
+    throw new AuthError(503, "Atlas authentication is temporarily unavailable.");
+  }
+  // Every failure refuses (fails closed), including a missing policy function:
+  // S99 is a prerequisite of this code (the S114 pre-flight checks it).
+  if (response?.status === 401) throw new AuthError(401, "Your Atlas session has expired.");
+  if (!response?.ok) throw new AuthError(503, "Atlas authentication is temporarily unavailable.");
+  const body = await readJson(response);
+  if (!body || typeof body !== "object" || Array.isArray(body)
+      || typeof body.require_all_staff_mfa !== "boolean" || typeof body.require_privileged_mfa !== "boolean") {
+    throw new AuthError(503, "Atlas authentication is temporarily unavailable.");
+  }
+  const value = { allStaff: body.require_all_staff_mfa, privileged: body.require_privileged_mfa };
+  authPolicyCache = { at: nowMs, value };
+  return value;
+}
+
+function mfaRequired(message) {
+  const error = new AuthError(403, message);
+  error.code = "mfa_required";
+  return error;
 }
 
 // Resolves the calling user to an Atlas actor:
@@ -199,11 +248,24 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
   const aal = claims.aal === "aal2" ? "aal2" : "aal1";
   const amr = Array.isArray(claims.amr) ? claims.amr.filter((entry) => entry && typeof entry.method === "string") : [];
   const mfaEnrolled = hasVerifiedFactor(user);
-  if (MANAGER_ROLES.includes(profile.role) && active && aal !== "aal2"
-      && (mfaEnrolled || privilegedMfaMandatory(env))) {
-    const error = new AuthError(403, "Confirm your sign-in with your authenticator app to use manager tools.");
-    error.code = "mfa_required";
-    throw error;
+  // S114: every active staff role. An inactive caller (allowInactive: an
+  // invitee mid-setup, before their authenticator exists) is not staff yet;
+  // the setup actions apply their own checks (_shared/staff-access.mjs).
+  if (active && aal !== "aal2") {
+    if (mfaEnrolled) {
+      throw mfaRequired("Confirm your sign-in with your authenticator app to continue.");
+    }
+    const privileged = MANAGER_ROLES.includes(profile.role);
+    if (privileged && privilegedMfaMandatory(env)) {
+      throw mfaRequired("Confirm your sign-in with your authenticator app to use manager tools.");
+    }
+    const policy = await readAuthPolicy(projectUrl, headers, fetchImpl, () => {
+      const init = requestInit();
+      return init.signal ? { signal: init.signal } : {};
+    }, Date.now());
+    if (policy.allStaff || (privileged && policy.privileged)) {
+      throw mfaRequired("Set up two-factor sign-in with an authenticator app to continue using Alcedo.");
+    }
   }
 
   const displayName = safeDisplayName(profile.display_name);
@@ -222,6 +284,11 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
     amr,
     mfaEnrolled,
     sessionId: typeof claims.session_id === "string" ? claims.session_id : null,
+    // Auth's own app_metadata for this user (server-controlled; users cannot
+    // write it). The account-setup guards read their markers from it.
+    appMetadata: user.app_metadata && typeof user.app_metadata === "object" && !Array.isArray(user.app_metadata)
+      ? user.app_metadata
+      : {},
     profile: { ...profile, active },
   };
 }

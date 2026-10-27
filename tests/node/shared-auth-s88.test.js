@@ -16,7 +16,11 @@ import {
   requireRole,
   resolveActor,
   safeDisplayName,
+  resetAuthPolicyCache,
 } from '../../supabase/functions/_shared/auth.mjs';
+
+// The staff MFA policy read is cached per isolate; each test starts cold.
+test.beforeEach(() => resetAuthPolicyCache());
 
 const ENV = { ATLAS_AUTH_PROJECT_URL: 'https://auth.test/', ATLAS_AUTH_PUBLISHABLE_KEY: 'sb_publishable_test' };
 const USER_ID = '6b7f1c2e-4a1d-4c55-9f0e-2d3a4b5c6d7e';
@@ -30,6 +34,8 @@ function auth({ user = { id: USER_ID, email: 'Staff@Example.test' }, userStatus 
   const fetchImpl = async (url, init) => {
     calls.push({ url: String(url), headers: init.headers });
     if (String(url) === 'https://auth.test/auth/v1/user') return json(user, userStatus);
+    // S114: the staff MFA policy read (both flags off, as production today).
+    if (String(url) === 'https://auth.test/rest/v1/rpc/atlas_auth_policy') return json({ require_privileged_mfa: false, require_all_staff_mfa: false, must_enroll: false });
     if (String(url).startsWith('https://auth.test/rest/v1/profiles?')) {
       return json(profile === undefined ? [{ id: USER_ID, email: 'staff@example.test', display_name: ' Anna ', role: 'bartender', active: true }] : profile, profileStatus);
     }
@@ -63,9 +69,12 @@ test('resolveActor verifies the session, then reads the caller’s own profile w
     amr: [],
     mfaEnrolled: false,
     sessionId: null,
+    appMetadata: {},
     profile: { id: USER_ID, email: 'staff@example.test', display_name: ' Anna ', role: 'bartender', active: true },
   });
-  assert.equal(calls.length, 2);
+  // S114: a password-only (aal1) staff session also reads the staff MFA policy.
+  assert.equal(calls.length, 3);
+  assert.equal(calls[2].url, 'https://auth.test/rest/v1/rpc/atlas_auth_policy');
   const profileUrl = new URL(calls[1].url);
   assert.equal(profileUrl.searchParams.get('id'), `eq.${USER_ID}`);
   assert.equal(profileUrl.searchParams.get('select'), 'id,email,display_name,role,active');

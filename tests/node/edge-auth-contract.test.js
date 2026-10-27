@@ -174,6 +174,8 @@ function backend(profile, calls) {
     const url = new URL(input instanceof Request ? input.url : String(input));
     calls.push({ url: url.href, body: typeof init.body === 'string' ? init.body : '' });
     if (url.pathname === '/auth/v1/user') return json({ id: USER_ID, email: 'person@example.test' });
+    // S114: the staff MFA policy read (both flags off, as on main today).
+    if (url.pathname === '/rest/v1/rpc/atlas_auth_policy') return json({ require_privileged_mfa: false, require_all_staff_mfa: false, must_enroll: false });
     if (url.pathname === '/rest/v1/profiles' && (url.searchParams.get('id') || '').startsWith('eq.')) {
       return json(profile ? [{ id: USER_ID, email: 'person@example.test', updated_at: '2026-09-01T00:00:00Z', ...profile }] : []);
     }

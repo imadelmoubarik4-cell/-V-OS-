@@ -7,7 +7,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AuthError, requireRecentAuth, resolveActor, verifiedTokenClaims } from '../../supabase/functions/_shared/auth.mjs';
+import { AuthError, requireRecentAuth, resetAuthPolicyCache, resolveActor, verifiedTokenClaims } from '../../supabase/functions/_shared/auth.mjs';
+
+// The policy read is cached per isolate; each test starts cold.
+test.beforeEach(() => resetAuthPolicyCache());
 
 const ENV = { ATLAS_AUTH_PROJECT_URL: 'https://auth.test', ATLAS_AUTH_PUBLISHABLE_KEY: 'sb_publishable_test' };
 const USER_ID = '6b7f1c2e-4a1d-4c55-9f0e-2d3a4b5c6d7e';
@@ -18,11 +21,12 @@ const token = (claims) => `${b64u({ alg: 'ES256', typ: 'JWT' })}.${b64u({ sub: U
 const request = (jwt) => new Request('https://fn.test/x', { headers: { authorization: `Bearer ${jwt}` } });
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status });
 
-function fetchFor({ role = 'admin', factors, userStatus = 200 } = {}) {
+function fetchFor({ role = 'admin', factors, userStatus = 200, policy = { require_privileged_mfa: false, require_all_staff_mfa: false } } = {}) {
   return async (url) => {
     if (String(url) === 'https://auth.test/auth/v1/user') {
       return json(userStatus === 200 ? { id: USER_ID, ...(factors ? { factors } : {}) } : { msg: 'x' }, userStatus);
     }
+    if (String(url) === 'https://auth.test/rest/v1/rpc/atlas_auth_policy') return json({ ...policy, must_enroll: false });
     return json([{ id: USER_ID, email: 'a@example.test', display_name: 'Anna', role, active: true }]);
   };
 }
