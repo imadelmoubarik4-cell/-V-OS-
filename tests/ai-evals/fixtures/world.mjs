@@ -1204,6 +1204,14 @@ export function createWorld({ hours = false, catalog = false, env = ENV, visionE
       calls.push({ kind: 'auth', name: 'user', role: actor?.role ?? null });
       return actor ? json({ id: actor.id, email: actor.email }) : json({ message: 'invalid JWT' }, 401);
     }
+    // S114: the staff MFA policy resolveActor reads with the caller's token
+    // (both switches off, as in production). Not recorded in `calls`, so the
+    // evaluated call sequences stay those of the Atlas AI work itself.
+    if (url.origin === authOrigin && path === '/rest/v1/rpc/atlas_auth_policy') {
+      return actor
+        ? json({ require_privileged_mfa: false, require_all_staff_mfa: false, must_enroll: false })
+        : json({ message: 'invalid JWT' }, 401);
+    }
 
     // Private Atlas AI media (service key) and the vision model (canned
     // extraction per photo; the catalogue is never part of the request).
