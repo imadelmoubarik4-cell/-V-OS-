@@ -395,6 +395,14 @@
 
   // ---------- sections ----------
 
+  // The venue language has no runtime yet (Alcedo is in English), so it is
+  // shown read-only, like Currency, and saved unchanged. A stored Icelandic
+  // choice stays visible rather than being silently dropped.
+  function venueLanguageFact(stored) {
+    const saved = { is: 'Íslenska' }[stored];
+    return saved ? `English, fixed for now (saved: ${saved})` : 'English, fixed for now';
+  }
+
   function venueMarkup() {
     const data = section('venue');
     const value = data?.value || {};
@@ -418,9 +426,8 @@
           ${field('Phone', input('phone', value.phone, { type: 'tel', disabled, autocomplete: 'tel' }), { optional: true })}
           ${field('Website', input('website', value.website, { type: 'url', disabled }), { optional: true })}
           ${field('Booking link', input('booking_url', value.booking_url, { type: 'url', disabled }), { optional: true })}
-          ${field('Language', select('primary_language', value.primary_language || 'en', [['en', 'English'], ['is', 'Íslenska']], { disabled }))}
         </div>
-        <dl class="settings-facts"><div><dt>Currency</dt><dd>ISK, fixed</dd></div><div><dt>Time zone</dt><dd>${escapeHtml(value.timezone || clock()?.timeZone?.() || '')} · <a href="#settings/hours">Change in Opening hours</a></dd></div></dl>
+        <dl class="settings-facts"><div><dt>Currency</dt><dd>ISK, fixed</dd></div><div><dt>Language</dt><dd data-settings-venue-language>${escapeHtml(venueLanguageFact(value.primary_language))}</dd></div><div><dt>Time zone</dt><dd>${escapeHtml(value.timezone || clock()?.timeZone?.() || '')} · <a href="#settings/hours">Change in Opening hours</a></dd></div></dl>
         ${feedback('section:venue')}
         ${disabled ? '' : saveBar('section:venue')}
       </div>
@@ -1743,7 +1750,8 @@
         country_code: fieldValue(form, 'country_code').trim().toUpperCase(),
         location_label: fieldValue(form, 'location_label').trim(),
         currency: 'ISK',
-        primary_language: fieldValue(form, 'primary_language') || current.primary_language || 'en',
+        // Read-only until it has an effect: the stored value goes back unchanged.
+        primary_language: current.primary_language || 'en',
         supported_languages: current.supported_languages || ['en', 'is'],
         email: fieldValue(form, 'email').trim(),
         phone: fieldValue(form, 'phone').trim(),

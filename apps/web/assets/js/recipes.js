@@ -58,6 +58,12 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  // Search ignores case, accents and þ/ð/æ (audit L31) and names sort in the
+  // venue language on every device (L34), through AtlasFormat
+  // (atlas-venue-clock.js). The fallbacks keep the module usable alone.
+  const fold = (value) => (window.AtlasFormat?.fold ? window.AtlasFormat.fold(value) : String(value ?? '').toLowerCase());
+  const compareNames = (a, b) => (window.AtlasFormat?.compareNames ? window.AtlasFormat.compareNames(a, b) : String(a ?? '').localeCompare(String(b ?? ''), 'is', { sensitivity: 'base', numeric: true }));
+
   // Money is "3.900 kr" (spec §11 decision 5) through the venue clock's formatter.
   function formatIsk(value, empty = '—') {
     if (!Number.isFinite(value)) return empty;
@@ -402,18 +408,18 @@
 
   function searchText(recipe) {
     const ingredients = (recipe.recipe_ingredients || []).map((ingredient) => ingredient.item_name).join(' ');
-    return [recipe.name, categoryFor(recipe).name, recipe.glassware, recipe.garnish, ingredients].filter(Boolean).join(' ').toLowerCase();
+    return fold([recipe.name, categoryFor(recipe).name, recipe.glassware, recipe.garnish, ingredients].filter(Boolean).join(' '));
   }
 
   function filteredRecipes() {
-    const query = state.search.trim().toLowerCase();
+    const query = fold(state.search.trim());
     return recipes
       .filter((recipe) => {
         if (state.category !== 'all' && categoryFor(recipe).slug !== state.category) return false;
         if (!matchesSegment(recipeStatus(recipe).key)) return false;
         return !query || searchText(recipe).includes(query);
       })
-      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      .sort((a, b) => compareNames(a.name || '', b.name || ''));
   }
 
   function headSub() {
@@ -476,7 +482,7 @@
     const selected = state.category === 'all' ? null : state.categories.find((category) => category.slug === state.category) || categoryFor({ type: state.category });
     const options = [...counts.entries()]
       .map(([slug, count]) => ({ slug, count, name: (state.categoryBySlug.get(slug) || categoryFor({ type: slug })).name, order: state.categoryBySlug.get(slug)?.display_order ?? 999 }))
-      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+      .sort((a, b) => a.order - b.order || compareNames(a.name, b.name));
     const item = (slug, label) => `<li role="none"><button type="button" class="atlas-menu__item" role="menuitemradio" aria-checked="${state.category === slug}" data-recipe-category="${escape(slug)}">${label}</button></li>`;
     // The menu is rendered outside the toolbar (categoryMenuMarkup): on phones
     // the toolbar scrolls sideways under a fade mask, and a mask clips every
@@ -1006,11 +1012,11 @@
 
   function populateIngredientSelect(query = '') {
     if (!dom.ingredientSelect) return;
-    const text = String(query || '').trim().toLowerCase();
+    const text = fold(String(query || '').trim());
     const available = items
       .filter((item) => item.active !== false)
-      .filter((item) => !text || `${item.name} ${item.category || ''}`.toLowerCase().includes(text))
-      .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      .filter((item) => !text || fold(`${item.name} ${item.category || ''}`).includes(text))
+      .sort((a, b) => compareNames(a.name, b.name))
       .slice(0, 200);
     dom.ingredientSelect.innerHTML = available.length
       ? available.map((item) => `<option value="${escape(item.id)}">${escape(item.name)} · ${escape(stockLabel(item))}</option>`).join('')

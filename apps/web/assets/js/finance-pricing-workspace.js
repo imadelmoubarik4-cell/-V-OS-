@@ -4,8 +4,10 @@
  * A self-contained shell view ('pricing') for #pricing (overview) and
  * #pricing/quick (Quick Price Calculator). It is a CLIENT-SIDE calculation
  * surface over the shared engine (window.KanelPricing): it never writes to live
- * POS/menu prices, invoices or accounting records, and it reads only the
- * published baseline. Admin/manager only (the nav already gates it; this adds a
+ * POS/menu prices, invoices or accounting records, and its baseline is the
+ * engine's built-in launch baseline (DEFAULT_PROFILE, October 2026 planning
+ * figures): nothing is read from a saved profile yet (audit L42), so the copy
+ * never calls it "saved". Admin/manager only (the nav already gates it; this adds a
  * defence-in-depth permission state for anyone who reaches the route directly).
  *
  * Margins shown here are computed on NET sales (ex 11% output VAT), never on the
@@ -294,7 +296,7 @@
     return `<div class="fp-quick">
       <form class="fp-panel fp-form" data-fp-form novalidate aria-labelledby="fp-q-title">
         <h2 class="fp-panel__title" id="fp-q-title">What are you pricing?</h2>
-        <p class="fp-panel__sub">Enter what one serving costs you. KANEL’s saved baseline (rent, card fees, loan, overhead, VAT) does the rest.</p>
+        <p class="fp-panel__sub">Enter what one serving costs you. KANEL’s built-in launch baseline (October 2026 planning figures for rent, card fees, loan, overhead and VAT) does the rest.</p>
         <div class="atlas-field"><label for="fp-q-name">Product name</label><input class="atlas-input" id="fp-q-name" data-fp="name" value="${escapeHtml(q.name)}" maxlength="120"></div>
         <div class="fp-form__row">
           <div class="atlas-field"><label for="fp-q-cat">Category</label><select class="atlas-select" id="fp-q-cat" data-fp="category">${catOptions}</select></div>
@@ -404,7 +406,7 @@
     return `<section class="atlas-section fp-section" aria-labelledby="fp-examples-title">
       ${sectionHead('Worked examples', navLink('quick', 'Price a new item'), 'fp-examples-title')}
       ${tableBlock({ head, body, list, caption: 'Worked examples' })}
-      <p class="fp-note">${icon('info')}Illustrative calculations over the saved baseline, not live menu prices. Operating and cash are per serving, before fixed overhead. Recipe costs come from Inventory and Recipes once connected.</p>
+      <p class="fp-note">${icon('info')}Illustrative calculations over the built-in launch baseline (October 2026 planning figures), not live menu prices. Operating and cash are per serving, before fixed overhead. Recipe costs come from Inventory and Recipes once connected.</p>
     </section>`;
   }
 

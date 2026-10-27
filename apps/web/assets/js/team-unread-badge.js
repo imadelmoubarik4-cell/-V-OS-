@@ -7,15 +7,27 @@
 // lastMessage: { id, sender, body, deleted } | null }]
 // · activeMembers() · refresh() · clear(). Each change is announced on the
 // shell as 'messages:unread' { total, conversations }.
+//
+// Cadence: one poll every POLL_MS while the tab is visible, as a setTimeout
+// chain. Consecutive failures back off exponentially (with jitter, capped at
+// BACKOFF_MAX_MS) so an outage is not hit every 8 s from every open tab; a
+// success, the tab coming back, the network coming back or a focus resets it.
+// Focus refreshes are throttled to one per FOCUS_MIN_GAP_MS. A relayed push
+// for Messages ('atlas:push', route 'team') refreshes at once.
 (function () {
   'use strict';
 
   const cfg = window.VABAR_CONFIG || {};
   const POLL_MS = 8000;
+  const BACKOFF_MAX_MS = 180000;
+  const FOCUS_MIN_GAP_MS = 15000;
   const REQUEST_TIMEOUT_MS = 12000;
   const state = {
     inFlight: false,
     timer: null,
+    polling: false,
+    failures: 0,
+    lastFocusRefreshAt: 0,
     authSubscription: null,
     lastTotal: 0,
     conversations: [],
@@ -173,22 +185,63 @@
     try {
       const result = await fetchUnread();
       setUnread(result.total, result.conversations, { fromSnapshot: result.fromSnapshot });
+      state.failures = 0;
     } catch (error) {
+      state.failures = Math.min(state.failures + 1, 16);
       if (!options.silent) console.warn('Messages unread count could not refresh.');
     } finally {
       state.inFlight = false;
     }
   }
 
+  // The next poll: POLL_MS while healthy; after consecutive failures it
+  // doubles (16 s, 32 s, 64 s ...) up to BACKOFF_MAX_MS, less up to 20 %
+  // jitter so open tabs do not retry in step.
+  function nextDelay() {
+    if (!state.failures) return POLL_MS;
+    const backoff = Math.min(BACKOFF_MAX_MS, POLL_MS * (2 ** state.failures));
+    return Math.round(backoff * (1 - Math.random() * 0.2));
+  }
+
+  function schedulePoll(delay = nextDelay()) {
+    if (!state.polling || state.timer) return;
+    state.timer = window.setTimeout(async () => {
+      state.timer = null;
+      await refreshUnread({ silent: true });
+      schedulePoll();
+    }, delay);
+  }
+
   function startPolling() {
-    if (state.timer) return;
-    state.timer = window.setInterval(() => refreshUnread({ silent: true }), POLL_MS);
+    if (state.polling) return;
+    state.polling = true;
+    schedulePoll();
   }
 
   function stopPolling() {
+    state.polling = false;
     if (!state.timer) return;
-    window.clearInterval(state.timer);
+    window.clearTimeout(state.timer);
     state.timer = null;
+  }
+
+  // A fresh signal (tab visible again, back online, focus, a push): forget the
+  // backoff, refresh now and restart the chain at the normal cadence.
+  function refreshNow(options = {}) {
+    state.failures = 0;
+    if (state.polling && state.timer) {
+      window.clearTimeout(state.timer);
+      state.timer = null;
+      schedulePoll(POLL_MS);
+    }
+    return refreshUnread(options);
+  }
+
+  function handleFocus() {
+    const now = Date.now();
+    if (now - state.lastFocusRefreshAt < FOCUS_MIN_GAP_MS) return;
+    state.lastFocusRefreshAt = now;
+    refreshNow({ silent: true });
   }
 
   function handleVisibility() {
@@ -197,7 +250,7 @@
       return;
     }
     startPolling();
-    refreshUnread();
+    refreshNow();
   }
 
   function subscribeToAuth() {
@@ -217,7 +270,7 @@
       // token would otherwise fetch, 401 and renew again in a loop.
       const changed = session.user?.id !== userId;
       userId = session.user?.id || null;
-      if (changed || event === 'SIGNED_IN') window.setTimeout(() => refreshUnread(), 0);
+      if (changed || event === 'SIGNED_IN') window.setTimeout(() => refreshNow(), 0);
     });
     state.authSubscription = subscription?.data?.subscription || subscription?.subscription || null;
     return true;
@@ -231,8 +284,12 @@
     refreshUnread();
 
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', () => refreshUnread({ silent: true }));
-    window.addEventListener('online', () => refreshUnread());
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', () => refreshNow());
+    // The service worker relays a Messages push so the badge updates at once.
+    navigator.serviceWorker?.addEventListener?.('message', (event) => {
+      if (event.data?.type === 'atlas:push' && event.data?.route === 'team') refreshNow({ silent: true });
+    });
     // Messages announces every snapshot it applies (a read, a send).
     window.AtlasShell?.on?.('messages:unread', (detail) => {
       if (!detail || !teamIsVisible()) return;
@@ -248,10 +305,24 @@
       window.setTimeout(() => window.clearInterval(authTimer), 10000);
     }
 
-    window.addEventListener('pagehide', () => {
+    // A page kept in the back-forward cache (event.persisted) only pauses: it
+    // keeps its auth subscription and resumes on pageshow. Only a page that is
+    // really going away unsubscribes (audit L20).
+    const onPageShow = (event) => {
+      if (!event?.persisted || document.hidden) return;
+      startPolling();
+      refreshNow({ silent: true });
+    };
+    const onPageHide = (event) => {
       stopPolling();
+      if (event?.persisted) return;
       state.authSubscription?.unsubscribe?.();
-    }, { once: true });
+      state.authSubscription = null;
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
   }
 
   window.AtlasTeamUnreadBadge = {

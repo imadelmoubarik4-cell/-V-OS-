@@ -55,8 +55,12 @@
     ['account', 'Notification settings', '#settings/notifications', ['notification', 'notifications', 'alerts', 'push'], null]
   ];
 
+  // Case, accents and þ/ð/æ fold the way the server search does (audit L31):
+  // 'Þristur' → 'thristur', 'Ölgerðin' → 'olgerdin'. AtlasFormat.searchKey
+  // lives in atlas-venue-clock.js; the fallback keeps the Icelandic letters.
   function normalize(value) {
-    return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    if (window.AtlasFormat?.searchKey) return window.AtlasFormat.searchKey(value);
+    return String(value || '').toLowerCase().replace(/þ/g, 'th').replace(/ð/g, 'd').replace(/æ/g, 'ae').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
   }
 
   function score(haystack, query) {

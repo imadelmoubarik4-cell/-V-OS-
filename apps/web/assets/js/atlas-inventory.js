@@ -68,6 +68,17 @@
   const icon = (name) => `<i data-lucide="${esc(name)}" aria-hidden="true"></i>`;
   const lucide = () => root.lucide?.createIcons?.();
   const uuid = () => (root.AtlasCapture?.uuid ? root.AtlasCapture.uuid() : root.crypto.randomUUID());
+  // One request id per dialog (audit L15): a retry after a lost answer replays
+  // the same change on the server instead of applying it twice. The server
+  // replays by id alone, so a changed request gets a new id.
+  function dialogRequestId(attempt, request) {
+    const signature = JSON.stringify(request);
+    if (!attempt.id || attempt.signature !== signature) {
+      attempt.id = uuid();
+      attempt.signature = signature;
+    }
+    return attempt.id;
+  }
   const toast = (message, options) => shell.toast?.(message, options);
 
   function num(value) {
@@ -75,10 +86,31 @@
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
+  // Numbers, names and search follow AtlasFormat (atlas-venue-clock.js): a
+  // quantity is shown without a thousands separator, so '1,250' never reads
+  // back as 1.25 in a quantity field (audit L30); typed money accepts '4.500'
+  // as 4500 (M16); search ignores accents and þ/ð/æ (L31); names sort the
+  // same on every device (L34). The fallbacks keep the module usable alone.
+  const format = () => root.AtlasFormat || null;
+  const looseNumber = (raw) => { const text = String(raw ?? '').trim(); return text === '' ? null : Number(text.replace(',', '.')); };
+  const parseAmount = (raw) => (format()?.parseAmount ? format().parseAmount(raw) : looseNumber(raw));
+  const parseQuantity = (raw) => (format()?.parseQuantity ? format().parseQuantity(raw) : looseNumber(raw));
+  const ambiguousQuantity = (raw) => (format()?.quantityIsAmbiguous?.(raw) ? format().ambiguousQuantityText(raw) : '');
+  // A prefilled figure the person didn't change is never questioned, nor is
+  // one Alcedo wrote itself (a stepper result, data-qty-written).
+  const typedAmbiguity = (input) => {
+    if (!input) return '';
+    const value = String(input.value).trim();
+    if (value === String(input.defaultValue ?? '').trim() || value === input.dataset?.qtyWritten) return '';
+    return ambiguousQuantity(value);
+  };
+  const amountText = (value) => (format()?.amountInputValue ? format().amountInputValue(value) : value ?? '');
+  const fold = (value) => (format()?.fold ? format().fold(value) : String(value ?? '').toLowerCase());
+  const compareNames = (a, b) => (format()?.compareNames ? format().compareNames(a, b) : String(a ?? '').localeCompare(String(b ?? ''), 'is', { sensitivity: 'base', numeric: true }));
   function qty(value) {
     const parsed = num(value);
     if (parsed === null) return '—';
-    return parsed.toLocaleString('en-GB', { maximumFractionDigits: 3 });
+    return format()?.formatQuantity ? format().formatQuantity(parsed) : String(Math.round(parsed * 1000) / 1000);
   }
   function money(value) {
     const parsed = num(value);
@@ -109,7 +141,7 @@
   function itemLocationRows() { return root.AtlasData?.itemLocations?.() || []; }
   function locationById(id) { return allLocations().find((loc) => String(loc.id) === String(id)) || null; }
   function locationOrder(a, b) {
-    return (num(a?.sort_order) ?? 0) - (num(b?.sort_order) ?? 0) || String(a?.code || '').localeCompare(String(b?.code || ''), 'en', { sensitivity: 'base' });
+    return (num(a?.sort_order) ?? 0) - (num(b?.sort_order) ?? 0) || compareNames(a?.code, b?.code);
   }
   function activeLocations() { return allLocations().filter((loc) => loc.active !== false).sort(locationOrder); }
   // Assignments for one item: primary first, then by location order. Rows whose
@@ -473,13 +505,13 @@
     if (group === 'spirits') return list.sort((a, b) => {
       const ia = SPIRIT_TYPES.indexOf(a[0]);
       const ib = SPIRIT_TYPES.indexOf(b[0]);
-      return (ia === -1 ? SPIRIT_TYPES.length : ia) - (ib === -1 ? SPIRIT_TYPES.length : ib) || a[0].localeCompare(b[0]);
+      return (ia === -1 ? SPIRIT_TYPES.length : ia) - (ib === -1 ? SPIRIT_TYPES.length : ib) || compareNames(a[0], b[0]);
     });
-    return list.sort((a, b) => a[0].localeCompare(b[0]));
+    return list.sort((a, b) => compareNames(a[0], b[0]));
   }
 
   function filtered() {
-    const query = state.query.trim().toLowerCase();
+    const query = fold(state.query.trim());
     return items().filter((item) => {
       if (state.activity === 'active' && item.active === false) return false;
       if (state.activity === 'inactive' && item.active !== false) return false;
@@ -500,14 +532,14 @@
       if (!query) return true;
       const locationText = locationsForItem(item.id).map((row) => `${row.location.code} ${row.location.name}`).join(' ');
       return [item.name, item.category, item.subcategory, item.supplier, item.sku, item.barcode, item.brand, item.bin_location, item.supplier_product_reference, locationText]
-        .some((value) => String(value || '').toLowerCase().includes(query));
+        .some((value) => fold(value || '').includes(query));
     });
   }
 
   function sorted(list) {
     const { key, dir } = state.sort;
     const factor = dir === 'desc' ? -1 : 1;
-    const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'en', { sensitivity: 'base' });
+    const byName = (a, b) => compareNames(a.name || '', b.name || '');
     const value = (item) => {
       if (key === 'onhand') return truth()?.known(item) ? num(item.quantity) : null;
       if (key === 'par') return num(item.par_level);
@@ -533,7 +565,7 @@
       const value = String(item[field] || '').trim();
       if (value) counts.set(value, (counts.get(value) || 0) + 1);
     });
-    return [...counts].sort((a, b) => a[0].localeCompare(b[0]));
+    return [...counts].sort((a, b) => compareNames(a[0], b[0]));
   }
 
   const STATUS_FILTERS = [['below-par', 'Below par'], ['out', 'Out or almost out'], ['not-counted', 'Not counted']];
@@ -572,7 +604,7 @@
       ]),
       menuHtml('tools', [
         ['tool', 'identify', 'Identify item'],
-        ...(isManager() ? [['tool', 'scan-product', 'Add product by camera'], ['tool', 'manage-locations', 'Manage storage locations'], ['tool', 'export', 'Download as CSV']] : [])
+        ...(isManager() ? [['tool', 'scan-product', 'Add product by camera'], ['tool', 'manage-locations', 'Manage storage locations'], ['tool', 'export', 'Download as CSV'], ['tool', 'export-icelandic', 'Download for Excel (Icelandic)']] : [])
       ])
     ].join('');
     return `<div class="inv__filters"><label class="atlas-search inv__search">${icon('search')}<input class="atlas-input" type="search" data-inv-search placeholder="Search items, suppliers or codes" aria-label="Search items, suppliers or codes" value="${esc(state.query)}" autocomplete="off"></label>
@@ -763,6 +795,7 @@
     else if (value === 'scan-product') openAddProductByCamera();
     else if (value === 'manage-locations') shell.navigate('#inventory/locations');
     else if (value === 'export') exportCsv();
+    else if (value === 'export-icelandic') exportCsv('icelandic');
   }
 
   function renderItemsOnly() {
@@ -788,21 +821,29 @@
     }
   }
 
+  // Standard CSV (comma, decimal point) or Excel on an Icelandic PC (semicolon,
+  // decimal comma), as in the Accounting export. Both start with a BOM so Excel
+  // reads UTF-8 names, end lines with CRLF, keep numbers as numbers and write
+  // the count date as YYYY-MM-DD (audit M17).
+  const CSV_FORMATS = { standard: { separator: ',', decimal: '.' }, icelandic: { separator: ';', decimal: ',' } };
   function exportCsv() {
+    // exportCsv('icelandic') writes the Excel (Icelandic) variant.
+    const csv = CSV_FORMATS[arguments[0]] || CSV_FORMATS.standard;
     const rows = sorted(filtered());
     const header = ['Item', 'Category', 'Supplier', 'On hand', 'Unit', 'Par', 'Status', 'Unit cost', 'Counted'];
     // S96: a cell that a spreadsheet would read as a formula (= + - @, tab or
     // carriage return first) is prefixed with ' so it opens as text.
-    const cell = (value) => { const text = String(value ?? ''); return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`; };
+    const cell = (value, decimal = '.') => { if (typeof value === 'number') return Number.isFinite(value) ? String(value).replace('.', decimal) : ''; const text = String(value ?? ''); return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`; };
     const lines = rows.map((item) => {
       const known = truth()?.known(item);
       const status = stockStatus(item);
-      return [item.name, item.category, item.supplier, known ? item.quantity : '', item.unit, item.par_level ?? '', status.label || 'OK', item.cost_price ?? '', item.stock_baseline_at ? dateText(item.stock_baseline_at) : 'Not counted'].map(cell).join(',');
+      const counted = item.stock_baseline_at ? clock()?.venueDate?.(typeof item.stock_baseline_at === 'number' ? new Date(item.stock_baseline_at) : item.stock_baseline_at) || '' : 'Not counted';
+      return [item.name, item.category, item.supplier, known ? num(item.quantity) ?? '' : '', item.unit, num(item.par_level) ?? '', status.label || 'OK', num(item.cost_price) ?? '', counted].map((value) => cell(value, csv.decimal)).join(csv.separator);
     });
-    const blob = new Blob([[header.map(cell).join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([`\ufeff${[header.map((value) => cell(value)).join(csv.separator), ...lines].join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `atlas-inventory-${clock()?.today?.() || 'export'}.csv`;
+    link.download = `atlas-inventory-${clock()?.today?.() || 'export'}${csv === CSV_FORMATS.icelandic ? ' (Excel)' : ''}.csv`;
     document.body.appendChild(link);
     link.click();
     window.setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 0);
@@ -1082,7 +1123,9 @@
   function itemFormHtml(draft = {}, { staff = false } = {}) {
     const field = (id, label, input, help = '') => `<div class="atlas-field"><label for="${id}">${label}</label>${input}${help ? `<p class="help">${help}</p>` : ''}</div>`;
     const text = (name, value, extra = '') => `<input class="atlas-input" id="inv-f-${name}" name="${name}" value="${esc(value ?? '')}" ${extra}>`;
-    const number = (name, value, extra = '') => `<input class="atlas-input" id="inv-f-${name}" name="${name}" type="number" inputmode="decimal" min="0" step="any" value="${esc(value ?? '')}" ${extra}>`;
+    // Text with a decimal keypad, read by AtlasFormat: a number field would
+    // hand back '' for '4,5' or 4.5 for '4.500' (audit M16).
+    const number = (name, value, extra = '') => `<input class="atlas-input" id="inv-f-${name}" name="${name}" type="text" inputmode="decimal" autocomplete="off" value="${esc(value ?? '')}" ${extra}>`;
     return `<form class="atlas-form inv-item-form" data-inv-item-form novalidate>
       <div data-inv-form-alert></div>
       ${field('inv-f-name', 'Name', text('name', draft.name, 'required maxlength="200" autocomplete="off" data-autofocus placeholder="e.g. Campari"'))}
@@ -1097,7 +1140,7 @@
         ${draft.abv_percent != null ? field('inv-f-abv_percent', 'ABV %', number('abv_percent', draft.abv_percent, 'max="100"')) : ''}
       </fieldset>
       ${staff ? '' : `<fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Stock and cost</legend>
-        <div class="atlas-grid-2">${field('inv-f-supplier', 'Supplier', `<select class="atlas-select" id="inv-f-supplier" name="supplier_id">${supplierOptions(draft.supplier)}</select>`)}${field('inv-f-cost_price', 'Cost per unit', `<div class="atlas-affix">${number('cost_price', draft.cost_price)}<span class="suffix">kr</span></div>`)}</div>
+        <div class="atlas-grid-2">${field('inv-f-supplier', 'Supplier', `<select class="atlas-select" id="inv-f-supplier" name="supplier_id">${supplierOptions(draft.supplier)}</select>`)}${field('inv-f-cost_price', 'Cost per unit', `<div class="atlas-affix">${number('cost_price', amountText(draft.cost_price))}<span class="suffix">kr</span></div>`)}</div>
         <div class="atlas-grid-2">${field('inv-f-par_level', 'Par level <span class="optional">(optional)</span>', number('par_level', draft.par_level, 'placeholder="e.g. 4"'), 'The quantity you want on hand after a delivery.')}${field('inv-f-bin_location', 'Location note <span class="optional">(optional)</span>', text('bin_location', draft.bin_location, 'placeholder="e.g. Back bar · shelf 2"'), 'A free-text note. Assign managed storage locations from the item after it’s created.')}</div>
       </fieldset>`}
       <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Codes and other names <span class="optional">(optional)</span></legend>
@@ -1111,7 +1154,7 @@
   function readItemForm(form) {
     const data = new FormData(form);
     const value = (key) => String(data.get(key) ?? '').trim();
-    const numberValue = (key) => { const raw = value(key); return raw === '' ? null : Number(raw); };
+    const numberValue = (key) => { const raw = value(key); return raw === '' ? null : key === 'cost_price' ? parseAmount(raw) : parseQuantity(raw); };
     const category = value('category') === '__new' ? value('category_new') : value('category');
     const supplierSelect = form.elements.supplier_id;
     const supplierName = supplierSelect?.selectedOptions?.[0]?.dataset?.name || null;
@@ -1154,7 +1197,13 @@
     if (form.elements.category.value === '__new' && !form.elements.category_new.value.trim()) mark(form.elements.category_new, 'Enter the new category.');
     ['cost_price', 'par_level', 'units_per_case', 'unit_size_quantity', 'abv_percent'].forEach((name) => {
       const input = form.elements[name];
-      if (input && input.value !== '' && (!Number.isFinite(Number(input.value)) || Number(input.value) < 0)) mark(input, 'Enter a number of 0 or more.');
+      const raw = String(input?.value ?? '').trim();
+      if (!input || raw === '') return;
+      const money = name === 'cost_price';
+      const ambiguous = money ? '' : typedAmbiguity(input);
+      const parsed = money ? parseAmount(raw) : parseQuantity(raw);
+      if (ambiguous) mark(input, ambiguous);
+      else if (!Number.isFinite(parsed) || parsed < 0) mark(input, money ? 'Enter an amount of 0 or more, like 4500 or 4.500.' : 'Enter a number of 0 or more.');
     });
     lucide();
     errors[0]?.focus();
@@ -1322,7 +1371,7 @@
 
   function openEditSheet(item) {
     if (!isManager()) return;
-    const field = (name, label, value, type = 'text', extra = '') => `<div class="atlas-field"><label for="inv-e-${name}">${label}</label><input class="atlas-input" id="inv-e-${name}" name="${name}" ${type === 'number' ? 'type="number" inputmode="decimal" min="0" step="any"' : ''} value="${esc(value ?? '')}" ${extra}></div>`;
+    const field = (name, label, value, type = 'text', extra = '') => `<div class="atlas-field"><label for="inv-e-${name}">${label}</label><input class="atlas-input" id="inv-e-${name}" name="${name}" ${type === 'number' ? 'type="text" inputmode="decimal" autocomplete="off"' : ''} value="${esc(value ?? '')}" ${extra}></div>`;
     const overlay = openOverlay(sheetHtml({
       title: `Edit ${item.name}`,
       desc: 'Changes are recorded with your name. Stock isn’t changed here.',
@@ -1333,7 +1382,7 @@
         <div class="atlas-grid-2">${field('brand', 'Brand <span class="optional">(optional)</span>', item.brand)}${field('variant', 'Variant <span class="optional">(optional)</span>', item.variant)}</div>
         <div class="atlas-grid-2">${field('package_size', 'Package', item.package_size)}${field('units_per_case', 'Units per case', item.units_per_case, 'number')}</div>
         <div class="atlas-grid-2"><div class="atlas-field"><label for="inv-e-supplier">Supplier</label><select class="atlas-select" id="inv-e-supplier" name="supplier">${supplierOptions(item.supplier).replace(/value="[^"]*" data-name="([^"]*)"/g, 'value="$1"')}</select></div>${field('bin_location', 'Location note', item.bin_location, 'text', 'placeholder="Free-text note"')}</div>
-        <div class="atlas-grid-2">${field('cost_price', 'Cost per unit (kr)', item.cost_price, 'number')}${field('case_cost', 'Case cost (kr)', item.case_cost, 'number')}</div>
+        <div class="atlas-grid-2">${field('cost_price', 'Cost per unit (kr)', amountText(item.cost_price), 'number')}${field('case_cost', 'Case cost (kr)', amountText(item.case_cost), 'number')}</div>
         <div class="atlas-grid-2">${field('minimum_order_quantity', 'Minimum order', item.minimum_order_quantity, 'number')}${field('lead_time_days', 'Lead time (days)', item.lead_time_days, 'number', 'step="1"')}</div>
         <p class="inv__muted">Par level: ${num(item.par_level) !== null ? esc(qty(item.par_level)) : 'not set'}. Change it in <a href="#data/pars">Data › Par levels</a>.</p>
       </form>`,
@@ -1342,24 +1391,42 @@
     const form = overlay.panel.querySelector('#inv-edit-form');
     const submit = overlay.panel.querySelector('[data-inv-submit]');
     const alertHost = form.querySelector('[data-inv-form-alert]');
+    const attempt = {};
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const data = new FormData(form);
       const values = {};
       const expected = {};
+      const problems = [];
+      form.querySelectorAll('[aria-invalid]').forEach((input) => input.removeAttribute('aria-invalid'));
       EDITABLE.forEach((key) => {
         if (!form.elements[key]) return;
         const raw = String(data.get(key) ?? '').trim();
         const isNumber = ['units_per_case', 'cost_price', 'case_cost', 'minimum_order_quantity', 'lead_time_days'].includes(key);
-        const next = raw === '' ? null : isNumber ? Number(raw) : raw;
+        const isMoney = key === 'cost_price' || key === 'case_cost';
+        const next = raw === '' ? null : isNumber ? (isMoney ? parseAmount(raw) : parseQuantity(raw)) : raw;
+        if (isNumber && raw !== '') {
+          const ambiguous = isMoney ? '' : typedAmbiguity(form.elements[key]);
+          if (ambiguous || !Number.isFinite(next) || next < 0) {
+            problems.push([form.elements[key], ambiguous || (isMoney ? 'Enter an amount of 0 or more, like 4500 or 4.500.' : 'Enter a number of 0 or more.')]);
+            return;
+          }
+        }
         const current = item[key] === undefined || item[key] === '' ? null : isNumber && item[key] !== null ? Number(item[key]) : item[key];
         if (String(next ?? '') !== String(current ?? '')) { values[key] = next; expected[key] = current; }
       });
       if (!values.name && form.elements.name.value.trim() === '') { form.elements.name.setAttribute('aria-invalid', 'true'); form.elements.name.focus(); return; }
+      if (problems.length) {
+        problems.forEach(([input]) => input.setAttribute('aria-invalid', 'true'));
+        alertHost.innerHTML = alertHtml('danger', 'Check the numbers', problems.map(([, text]) => text).join(' '));
+        lucide();
+        problems[0][0].focus();
+        return;
+      }
       if (!Object.keys(values).length) { overlay.close('done'); toast('No changes to save'); return; }
       busy(submit, true, 'Saving…');
       try {
-        const payload = await itemMaster('catalog-request', { body: { kind: 'metadata_correction', subject_item_id: item.id, payload: { item_id: item.id, values, expected }, source: 'manager', request_id: uuid(), self_approve: true } });
+        const payload = await itemMaster('catalog-request', { body: { kind: 'metadata_correction', subject_item_id: item.id, payload: { item_id: item.id, values, expected }, source: 'manager', request_id: dialogRequestId(attempt, { values, expected }), self_approve: true } });
         overlay.close('done');
         const status = payload.request?.status;
         toast(status === 'pending' ? 'Sent for review. It applies once approved.' : `${values.name || item.name} updated`);
@@ -1379,6 +1446,7 @@
       <div class="atlas-field"><label for="inv-code">Barcode or SKU</label><input class="atlas-input" id="inv-code" name="code" inputmode="numeric" autocomplete="off" required></div><div data-inv-form-alert></div></form>
       <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="inv-code-form" class="atlas-btn atlas-btn--primary">${manager ? 'Add barcode' : 'Send for approval'}</button></div>`, { className: 'atlas-dialog' });
     const form = overlay.panel.querySelector('#inv-code-form');
+    const attempt = {};
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const code = form.elements.code.value.trim();
@@ -1386,7 +1454,7 @@
       const button = overlay.panel.querySelector('[type="submit"]');
       busy(button, true);
       try {
-        if (manager) await itemMaster('catalog-request', { body: { kind: 'code', subject_item_id: item.id, payload: { item_id: item.id, code }, source: 'manager', request_id: uuid(), self_approve: true } });
+        if (manager) await itemMaster('catalog-request', { body: { kind: 'code', subject_item_id: item.id, payload: { item_id: item.id, code }, source: 'manager', request_id: dialogRequestId(attempt, { code }), self_approve: true } });
         else await root.AtlasCapture.propose({ kind: 'code', payload: { item_id: item.id, code } });
         overlay.close('done');
         toast(manager ? `Barcode linked to ${item.name}` : 'Sent for approval');
@@ -1602,8 +1670,8 @@
       return [...map.values()].sort(locationOrder);
     };
     const drawList = () => {
-      const q = query.trim().toLowerCase();
-      const rows = pool().filter((loc) => !q || `${loc.code} ${loc.name}`.toLowerCase().includes(q));
+      const q = fold(query.trim());
+      const rows = pool().filter((loc) => !q || fold(`${loc.code} ${loc.name}`).includes(q));
       listEl.innerHTML = rows.length ? rows.map((loc) => {
         const id = String(loc.id);
         const on = selected.has(id);
@@ -1677,9 +1745,9 @@
   function renderMovements(body) {
     if (inputHealth('movements') === 'loading' && !movements().length) { body.innerHTML = loadingRowsHtml(); return; }
     if (inputHealth('movements') === 'failed') { body.innerHTML = movementsFailedHtml('Movements'); return; }
-    const query = state.movementQuery.trim().toLowerCase();
+    const query = fold(state.movementQuery.trim());
     const list = movements().filter((entry) => (!state.movementType || entry.movement_type === state.movementType)
-      && (!query || [entry.item_name, entry.note].some((value) => String(value || '').toLowerCase().includes(query))));
+      && (!query || [entry.item_name, entry.note].some((value) => fold(value || '').includes(query))));
     const focus = state.focusMovement;
     // The linked record is always listed, even when it is older than the latest 300.
     const shown = list.slice(0, 300);
@@ -1763,7 +1831,7 @@
         <p>Waste lowers stock straight away and is kept in the movement history.</p>
         ${choices.length ? '' : alertHtml('info', '', 'Only counted items with stock can be recorded as waste.')}
         <div class="atlas-field"><label for="inv-w-item">Item</label><select class="atlas-select" id="inv-w-item" name="item_id" required><option value="">Choose an item</option>${choices.map((item) => `<option value="${esc(item.id)}"${String(item.id) === String(itemId) ? ' selected' : ''}>${esc(item.name)} · ${qty(item.quantity)} ${esc(unitWord(item))}</option>`).join('')}</select></div>
-        <div class="atlas-grid-2"><div class="atlas-field"><label for="inv-w-qty">Quantity</label><input class="atlas-input" id="inv-w-qty" name="quantity" type="number" inputmode="decimal" min="0.001" step="any" required></div>
+        <div class="atlas-grid-2"><div class="atlas-field"><label for="inv-w-qty">Quantity</label><input class="atlas-input" id="inv-w-qty" name="quantity" type="text" inputmode="decimal" autocomplete="off" required></div>
         <div class="atlas-field"><label for="inv-w-reason">Reason</label><select class="atlas-select" id="inv-w-reason" name="reason" required><option value="">Choose</option>${WASTE_REASONS.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select></div></div>
         <div class="atlas-field"><label for="inv-w-note">Note</label><input class="atlas-input" id="inv-w-note" name="note" maxlength="900" required placeholder="What happened and where"></div>
         <div data-inv-form-alert></div>
@@ -1776,12 +1844,14 @@
       event.preventDefault();
       const alert = form.querySelector('[data-inv-form-alert]');
       const item = itemById(form.elements.item_id.value);
-      const quantity = Number(form.elements.quantity.value);
+      const quantity = parseQuantity(form.elements.quantity.value);
+      const ambiguous = typedAmbiguity(form.elements.quantity);
       const reason = form.elements.reason.value;
       const note = form.elements.note.value.trim();
       const problems = [];
       if (!item) problems.push([form.elements.item_id, 'Choose an item.']);
-      if (!(quantity > 0) || (item && quantity > (num(item.quantity) || 0))) problems.push([form.elements.quantity, `Enter a quantity up to ${item ? qty(item.quantity) : 'the stock on hand'}.`]);
+      if (ambiguous) problems.push([form.elements.quantity, ambiguous]);
+      else if (!(quantity > 0) || (item && quantity > (num(item.quantity) || 0))) problems.push([form.elements.quantity, `Enter a quantity up to ${item ? qty(item.quantity) : 'the stock on hand'}.`]);
       if (!reason) problems.push([form.elements.reason, 'Choose a reason.']);
       if (!note) problems.push([form.elements.note, 'Say what happened.']);
       form.querySelectorAll('[aria-invalid]').forEach((input) => input.removeAttribute('aria-invalid'));

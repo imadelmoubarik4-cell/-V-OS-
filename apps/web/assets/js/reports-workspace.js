@@ -412,6 +412,7 @@
           <span class="reports-export"><button type="button" class="atlas-btn atlas-btn--secondary" id="reports-export-btn" aria-haspopup="menu" aria-expanded="false"><i data-lucide="download"></i>Export<i data-lucide="chevron-down"></i></button>
             <ul class="atlas-menu" role="menu" id="reports-export-menu" aria-label="Export" hidden>
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="csv"><i data-lucide="file-spreadsheet"></i>Download CSV</button></li>
+              <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="csv-icelandic"><i data-lucide="file-spreadsheet"></i>Download for Excel (Icelandic)</button></li>
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="print"><i data-lucide="printer"></i>Print or save as PDF</button></li>
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="copy"><i data-lucide="copy"></i>Copy summary</button></li>
             </ul></span>
@@ -644,7 +645,8 @@
       const nx = number(x);
       const ny = number(y);
       if (nx !== null && ny !== null) return (nx - ny) * direction;
-      return String(x).localeCompare(String(y), 'en', { numeric: true, sensitivity: 'base' }) * direction;
+      // Names in the venue language, the same on every device (audit L34).
+      return (window.AtlasFormat?.compareNames ? window.AtlasFormat.compareNames(x, y) : String(x).localeCompare(String(y), 'is', { numeric: true, sensitivity: 'base' })) * direction;
     });
   }
 
@@ -828,28 +830,52 @@
   // ---------- export ----------
 
   // S96: formula-looking text (= + - @, tab or carriage return first) opens as
-  // text in a spreadsheet; numbers stay numbers.
+  // text in a spreadsheet; numbers stay numbers. A ';' is quoted too, so the
+  // same cell works in both CSV variants.
   function escapeCsv(value) {
     let text = String(value ?? '');
     if (typeof value !== 'number' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    return /[",;\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }
 
-  function exportRows() {
+  // Standard CSV (comma, decimal point) or Excel on an Icelandic PC (semicolon,
+  // decimal comma), as in the Accounting export (audit M17). Number cells are
+  // numbers, not formatted '3.900 kr' text.
+  const CSV_FORMATS = { standard: { separator: ',', decimal: '.' }, icelandic: { separator: ';', decimal: ',' } };
+  function csvLine(values, csv = CSV_FORMATS.standard) {
+    return values.map((value) => (typeof value === 'number' ? (Number.isFinite(value) ? String(value).replace('.', csv.decimal) : '') : escapeCsv(value))).join(csv.separator);
+  }
+
+  // An instant as 'YYYY-MM-DD HH:MM' venue time: a spreadsheet sorts it and reads it as a date.
+  function csvDateTime(value) {
+    const p = value ? clock()?.parts?.(value) : null;
+    return p ? `${p.dateKey} ${p.time}` : String(value ?? '');
+  }
+
+  function csvValue(value, type) {
+    if (value === null || value === undefined || value === '') return '';
+    if (type === 'money' || type === 'number' || type === 'percent') return number(value) ?? String(value);
+    if (type === 'datetime') return csvDateTime(value);
+    if (type === 'boolean') return value ? 'Yes' : 'No';
+    return value;
+  }
+
+  function exportRows({ csv = false } = {}) {
     const section = state.activeSection === 'overview' ? null : state.activeSection;
     if (!section) {
       const overview = window.AtlasReportsOverview;
       const stock = overview?.inventoryValueParts?.();
       const spend = number(report('purchasing').summary?.spend);
+      // In the CSV a known figure is a number; the copied summary shows kr.
       return { columns: ['Figure', 'Value'], rows: [
-        ['Inventory value', stockIncomplete() ? 'Unknown (stock figures are incomplete)' : stock?.value === null || !stock ? 'Unknown (not everything is counted and costed)' : money(stock.value)],
-        ['Purchasing spend', spend === null ? 'None recorded' : money(spend)],
+        ['Inventory value', stockIncomplete() ? 'Unknown (stock figures are incomplete)' : stock?.value === null || !stock ? 'Unknown (not everything is counted and costed)' : csv ? number(stock.value) ?? money(stock.value) : money(stock.value)],
+        ['Purchasing spend', spend === null ? 'None recorded' : csv ? spend : money(spend)],
         ['Sales', 'Not connected'],
         ...(state.snapshot?.attention || []).map((entry) => ['Needs attention', `${entry.title} — ${entry.detail || ''}`])
       ] };
     }
     const columns = COLUMNS[section] || [];
-    return { columns: columns.map((column) => column[1]), rows: sortedRows(section).map((row) => columns.map(([key]) => row[key] ?? '')) };
+    return { columns: columns.map((column) => column[1]), rows: sortedRows(section).map((row) => columns.map(([key, , type]) => (csv ? csvValue(row[key], type) : row[key] ?? ''))) };
   }
 
   function exportAs(kind) {
@@ -857,13 +883,14 @@
     const compare = comparison(range);
     const name = TABS.find(([key]) => key === state.activeSection)?.[1] || 'Report';
     const meta = [['Report', name], ['Period', periodText(range)], ['Compared with', compare ? periodText(compare) : 'None'], ['Generated', dateTime(state.snapshot?.generated_at)], ['Currency', 'kr (ISK)']];
-    const { columns, rows } = exportRows();
-    if (kind === 'csv') {
-      const lines = [...meta.map((row) => row.map(escapeCsv).join(',')), '', columns.map(escapeCsv).join(','), ...rows.map((row) => row.map(escapeCsv).join(','))];
-      const blob = new Blob([`﻿${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+    const { columns, rows } = exportRows({ csv: kind === 'csv' || kind === 'csv-icelandic' });
+    if (kind === 'csv' || kind === 'csv-icelandic') {
+      const csv = kind === 'csv-icelandic' ? CSV_FORMATS.icelandic : CSV_FORMATS.standard;
+      const lines = [...meta.map((row) => csvLine(row, csv)), '', csvLine(columns, csv), ...rows.map((row) => csvLine(row, csv))];
+      const blob = new Blob([`\ufeff${lines.join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `atlas-${ROUTE_NAMES[state.activeSection] || state.activeSection}-${range.start}-${range.end}.csv`;
+      link.download = `atlas-${ROUTE_NAMES[state.activeSection] || state.activeSection}-${range.start}-${range.end}${kind === 'csv-icelandic' ? ' (Excel)' : ''}.csv`;
       document.body.appendChild(link);
       link.click();
       link.remove();

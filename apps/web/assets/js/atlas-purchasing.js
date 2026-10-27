@@ -83,7 +83,29 @@
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
-  const qty = (value) => (num(value) === null ? '—' : num(value).toLocaleString('en-GB', { maximumFractionDigits: 3 }));
+  // Numbers, names and search follow AtlasFormat (atlas-venue-clock.js): a
+  // quantity is shown without a thousands separator, so 'Ordered 1,250' never
+  // reads back as 1.25 in the receive field (audit L30); typed money accepts
+  // '4.500' as 4500 and an empty unit cost is an error, not 0 kr (M16);
+  // supplier search ignores accents (L31); names sort the same on every
+  // device (L34). The fallbacks keep the module usable alone.
+  const format = () => root.AtlasFormat || null;
+  const looseNumber = (raw) => { const text = String(raw ?? '').trim(); return text === '' ? null : Number(text.replace(',', '.')); };
+  const parseAmount = (raw) => (format()?.parseAmount ? format().parseAmount(raw) : looseNumber(raw));
+  const parseQuantity = (raw) => (format()?.parseQuantity ? format().parseQuantity(raw) : looseNumber(raw));
+  const ambiguousQuantity = (raw) => (format()?.quantityIsAmbiguous?.(raw) ? format().ambiguousQuantityText(raw) : '');
+  // A prefilled figure the person didn't change is never questioned, nor is
+  // one Alcedo wrote itself (a stepper result, data-qty-written).
+  const typedAmbiguity = (input) => {
+    if (!input) return '';
+    const value = String(input.value).trim();
+    if (value === String(input.defaultValue ?? '').trim() || value === input.dataset?.qtyWritten) return '';
+    return ambiguousQuantity(value);
+  };
+  const amountText = (value) => (format()?.amountInputValue ? format().amountInputValue(value) : value ?? '');
+  const fold = (value) => (format()?.fold ? format().fold(value) : String(value ?? '').toLowerCase());
+  const compareNames = (a, b) => (format()?.compareNames ? format().compareNames(a, b) : String(a ?? '').localeCompare(String(b ?? ''), 'is', { sensitivity: 'base', numeric: true }));
+  const qty = (value) => (num(value) === null ? '—' : format()?.formatQuantity ? format().formatQuantity(num(value)) : String(Math.round(num(value) * 1000) / 1000));
   // A litre unit is stored as "l" and shown as "L" (a lone lowercase l reads
   // as a stray glyph); every other unit is shown as stored.
   const unitLabel = (unit) => { const text = String(unit || '').trim(); return text === 'l' ? 'L' : text; };
@@ -340,7 +362,7 @@
       if (!groups.has(key)) groups.set(key, { supplier, name: supplier?.name || entry.supplier, lines: [] });
       groups.get(key).lines.push({ ...entry, item });
     });
-    return [...groups.values()].sort((a, b) => b.lines.length - a.lines.length || a.name.localeCompare(b.name));
+    return [...groups.values()].sort((a, b) => b.lines.length - a.lines.length || compareNames(a.name, b.name));
   }
 
   function suggestedCard() {
@@ -476,8 +498,8 @@
       body.innerHTML = alertHtml('danger', 'Suppliers couldn’t be loaded.', 'Your suppliers and orders are safe. Check your connection and try again.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-retry-data>Try again</button>');
       return;
     }
-    const query = state.supplierQuery.trim().toLowerCase();
-    const list = suppliers().filter((supplier) => !query || [supplier.name, supplier.contact_name, supplier.email].some((value) => String(value || '').toLowerCase().includes(query)));
+    const query = fold(state.supplierQuery.trim());
+    const list = suppliers().filter((supplier) => !query || [supplier.name, supplier.contact_name, supplier.email].some((value) => fold(value || '').includes(query)));
     const rows = list.map((supplier) => ({ supplier, ...supplierStats(supplier) }));
     // Spend over 30 days as a 2 px bar under the figure, the largest in ink.
     const topSpend = Math.max(0, ...rows.map((row) => row.spend || 0));
@@ -498,11 +520,11 @@
   // New / edit order
   // ---------------------------------------------------------------------------
   function lineRowHtml(line = {}, index = 0) {
-    const active = items().filter((item) => item.active !== false).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    const active = items().filter((item) => item.active !== false).sort((a, b) => compareNames(a.name, b.name));
     return `<div class="po-line" data-po-line>
       <div class="atlas-field po-line__item"><label for="po-line-item-${index}">Item</label><select class="atlas-select" id="po-line-item-${index}" data-po-line-item required><option value="">Choose an item</option>${active.map((item) => `<option value="${esc(item.id)}" data-cost="${esc(item.cost_price ?? '')}" data-unit="${esc(item.unit || '')}"${String(item.id) === String(line.item_id) ? ' selected' : ''}>${esc(item.name)}${item.unit ? ` (${esc(unitLabel(item.unit))})` : ''}</option>`).join('')}</select></div>
-      <div class="atlas-field po-line__qty"><label for="po-line-qty-${index}">Quantity</label><input class="atlas-input" id="po-line-qty-${index}" data-po-line-qty type="number" inputmode="decimal" min="0.001" step="any" value="${esc(line.quantity ?? 1)}" required></div>
-      <div class="atlas-field po-line__cost"><label for="po-line-cost-${index}">Unit cost</label><div class="atlas-affix"><input class="atlas-input" id="po-line-cost-${index}" data-po-line-cost type="number" inputmode="decimal" min="0" step="any" value="${esc(line.unit_cost ?? '')}" required><span class="suffix">kr</span></div></div>
+      <div class="atlas-field po-line__qty"><label for="po-line-qty-${index}">Quantity</label><input class="atlas-input" id="po-line-qty-${index}" data-po-line-qty type="text" inputmode="decimal" autocomplete="off" value="${esc(line.quantity ?? 1)}" required></div>
+      <div class="atlas-field po-line__cost"><label for="po-line-cost-${index}">Unit cost</label><div class="atlas-affix"><input class="atlas-input" id="po-line-cost-${index}" data-po-line-cost type="text" inputmode="decimal" autocomplete="off" value="${esc(amountText(line.unit_cost))}" required><span class="suffix">kr</span></div></div>
       <button type="button" class="atlas-icon-btn po-line__remove" data-po-remove-line aria-label="Remove line">${icon('trash-2')}</button>
     </div>`;
   }
@@ -531,7 +553,7 @@
     const linesHost = form.querySelector('[data-po-lines]');
     const totalNode = form.querySelector('[data-po-total]');
     const updateTotal = () => {
-      const total = [...linesHost.querySelectorAll('[data-po-line]')].reduce((sum, row) => sum + (Number(row.querySelector('[data-po-line-qty]').value) || 0) * (Number(row.querySelector('[data-po-line-cost]').value) || 0), 0);
+      const total = [...linesHost.querySelectorAll('[data-po-line]')].reduce((sum, row) => sum + (parseQuantity(row.querySelector('[data-po-line-qty]').value) || 0) * (parseAmount(row.querySelector('[data-po-line-cost]').value) || 0), 0);
       totalNode.textContent = `Total ${money(total)}`;
     };
     updateTotal();
@@ -541,7 +563,7 @@
       if (!select) return;
       const cost = select.selectedOptions[0]?.dataset.cost;
       const costInput = select.closest('[data-po-line]').querySelector('[data-po-line-cost]');
-      if (cost !== undefined && cost !== '' && !costInput.value) costInput.value = cost;
+      if (cost !== undefined && cost !== '' && !costInput.value) costInput.value = amountText(cost);
       updateTotal();
     });
     form.addEventListener('click', (event) => {
@@ -562,12 +584,22 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const alert = form.querySelector('[data-po-alert]');
-      const lines = [...linesHost.querySelectorAll('[data-po-line]')].map((row) => ({ item_id: row.querySelector('[data-po-line-item]').value, quantity: Number(row.querySelector('[data-po-line-qty]').value), unit_cost: Number(row.querySelector('[data-po-line-cost]').value) }));
+      const rows = [...linesHost.querySelectorAll('[data-po-line]')];
+      const lines = rows.map((row) => ({ item_id: row.querySelector('[data-po-line-item]').value, quantity: parseQuantity(row.querySelector('[data-po-line-qty]').value), unit_cost: parseAmount(row.querySelector('[data-po-line-cost]').value) }));
+      const ambiguous = rows.map((row) => typedAmbiguity(row.querySelector('[data-po-line-qty]'))).filter(Boolean);
       const problems = [];
       if (!form.elements.supplier.value) problems.push('Choose a supplier.');
       if (lines.some((line) => !line.item_id)) problems.push('Choose an item on every line.');
-      if (lines.some((line) => !(line.quantity > 0))) problems.push('Quantities must be above 0.');
-      if (lines.some((line) => !(line.unit_cost >= 0) || Number.isNaN(line.unit_cost))) problems.push('Enter a unit cost of 0 or more on every line.');
+      if (ambiguous.length) problems.push(...ambiguous);
+      else if (lines.some((line) => !(line.quantity > 0))) problems.push('Quantities must be above 0.');
+      // An empty or unreadable cost is an error, never 0 kr (audit M16).
+      if (lines.some((line) => line.unit_cost === null || !(line.unit_cost >= 0))) problems.push('Enter a unit cost of 0 or more on every line.');
+      const flag = (input, invalid) => (invalid ? input.setAttribute('aria-invalid', 'true') : input.removeAttribute('aria-invalid'));
+      rows.forEach((row, index) => {
+        const qtyField = row.querySelector('[data-po-line-qty]');
+        flag(qtyField, Boolean(typedAmbiguity(qtyField)) || !(lines[index].quantity > 0));
+        flag(row.querySelector('[data-po-line-cost]'), lines[index].unit_cost === null || !(lines[index].unit_cost >= 0));
+      });
       if (new Set(lines.map((line) => line.item_id)).size !== lines.length) problems.push('Each item can only be on the order once.');
       if (form.elements.date.value && form.elements.date.value < today()) problems.push('Choose today or a later delivery date.');
       if (problems.length) { alert.innerHTML = alertHtml('danger', 'Check the order', problems.join(' ')); lucide(); return; }
@@ -620,7 +652,7 @@
       body: `<form id="po-suggest-form" class="atlas-form" novalidate>${onOrderNote(suggestionsOnOrder())}${groups.map((group, gIndex) => `<fieldset class="po-group" data-po-group="${gIndex}"${group.supplier ? '' : ' disabled'}><legend class="po-group__title">${esc(group.name)} <span data-po-group-state></span></legend>
         ${group.supplier ? '' : '<p class="po__muted">These items aren’t linked to a supplier in Alcedo yet, so they can’t go on an order. Link a supplier in the item details.</p>'}
         <div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact po-suggest-table"><colgroup><col class="po-suggest-table__check"><col><col class="po-suggest-table__num"><col class="po-suggest-table__par"><col class="po-suggest-table__order"></colgroup><thead><tr><th class="col-check"><span class="sr-only">Include</span></th><th>Item</th><th class="is-num">On hand</th><th class="is-num">Par</th><th class="is-num">Order</th></tr></thead><tbody>
-        ${group.lines.map((line) => `<tr><td class="col-check"><input type="checkbox" class="atlas-check" data-po-include checked aria-label="Include ${esc(line.name)}" value="${esc(line.id)}"></td><td><span class="cell-primary">${esc(line.name)}</span><span class="cell-sub">${line.cases ? `${line.cases} ${line.cases === 1 ? 'case' : 'cases'} · ` : ''}${esc(unitLabel(line.unit))}</span></td><td class="is-num">${qty(line.item?.quantity)}</td><td class="is-num">${qty(line.item?.par_level)}</td><td class="is-num"><input class="atlas-input po-suggest__qty num" type="number" inputmode="decimal" min="0.001" step="any" value="${esc(line.orderQuantity)}" data-po-suggest-qty="${esc(line.id)}" aria-label="Quantity of ${esc(line.name)}"></td></tr>`).join('')}
+        ${group.lines.map((line) => `<tr><td class="col-check"><input type="checkbox" class="atlas-check" data-po-include checked aria-label="Include ${esc(line.name)}" value="${esc(line.id)}"></td><td><span class="cell-primary">${esc(line.name)}</span><span class="cell-sub">${line.cases ? `${line.cases} ${line.cases === 1 ? 'case' : 'cases'} · ` : ''}${esc(unitLabel(line.unit))}</span></td><td class="is-num">${qty(line.item?.quantity)}</td><td class="is-num">${qty(line.item?.par_level)}</td><td class="is-num"><input class="atlas-input po-suggest__qty num" type="text" inputmode="decimal" autocomplete="off" value="${esc(line.orderQuantity)}" data-po-suggest-qty="${esc(line.id)}" aria-label="Quantity of ${esc(line.name)}"></td></tr>`).join('')}
         </tbody></table></div></fieldset>`).join('')}<div data-po-alert></div></form>`,
       foot: `<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="po-suggest-form" class="atlas-btn atlas-btn--primary" data-po-create-many>Create ${orderable} ${orderable === 1 ? 'order' : 'orders'}</button>`
     }), { label: 'Suggested order' });
@@ -652,12 +684,13 @@
         includedLines(group, fieldset).forEach((line) => {
           const input = qtyInput(fieldset, line);
           const raw = String(input?.value ?? '').trim();
-          if (raw === '' || !(Number(raw) > 0) || Number(raw) > 1000000) invalid.push([input, line]);
+          const parsed = parseQuantity(raw);
+          if (raw === '' || typedAmbiguity(input) || !(parsed > 0) || parsed > 1000000) invalid.push([input, line]);
         });
       }
       if (invalid.length) {
         invalid.forEach(([input]) => { input?.setAttribute('aria-invalid', 'true'); input?.setAttribute('aria-describedby', 'po-suggest-error'); });
-        alert.innerHTML = `<div id="po-suggest-error">${alertHtml('danger', 'Check the quantities', `Enter a quantity above 0 for ${invalid.map(([, line]) => line.name).join(', ')}, or untick ${invalid.length === 1 ? 'it' : 'them'}.`)}</div>`;
+        alert.innerHTML = `<div id="po-suggest-error">${alertHtml('danger', 'Check the quantities', `Enter a quantity above 0 for ${invalid.map(([, line]) => line.name).join(', ')}, or untick ${invalid.length === 1 ? 'it' : 'them'}. Write it without a thousands separator, like 1250 or 1.25.`)}</div>`;
         lucide();
         invalid[0][0]?.focus();
         return;
@@ -669,7 +702,7 @@
         if (!attempt || attempt.created) continue;
         const fieldset = form.querySelector(`[data-po-group="${index}"]`);
         const lines = includedLines(group, fieldset)
-          .map((line) => ({ item_id: line.id, quantity: Number(String(qtyInput(fieldset, line).value).trim()), unit_cost: num(line.item?.cost_price) ?? 0 }));
+          .map((line) => ({ item_id: line.id, quantity: parseQuantity(qtyInput(fieldset, line).value), unit_cost: num(line.item?.cost_price) ?? 0 }));
         if (!lines.length) continue;
         if (!attempt.id) {
           attempt.id = uuid();
@@ -941,9 +974,10 @@
     const submit = panel.querySelector('[data-po-receive-submit]');
     const alertHost = panel.querySelector('[data-po-alert]');
     const readLines = () => [...panel.querySelectorAll('[data-po-rline]')].map((row) => {
-      const raw = String(row.querySelector('[data-po-rqty]').value || '').trim().replace(',', '.');
+      const input = row.querySelector('[data-po-rqty]');
+      const raw = String(input.value || '').trim();
       const reasons = [...row.querySelectorAll('[data-po-reason][aria-pressed="true"]')].map((chip) => chip.dataset.poReason);
-      return { item_id: row.dataset.poRline, raw, quantity: raw === '' ? 0 : Number(raw), note: reasons.length ? reasons.join(', ') : null };
+      return { item_id: row.dataset.poRline, raw, unclear: typedAmbiguity(input), quantity: raw === '' ? 0 : parseQuantity(raw), note: reasons.length ? reasons.join(', ') : null };
     });
     const updateLabel = () => {
       const counted = readLines().filter((line) => line.quantity > 0).length;
@@ -956,8 +990,9 @@
       const step = event.target.closest('[data-po-step]');
       if (step) {
         const input = step.closest('.po-stepper').querySelector('input');
-        const next = Math.max(0, (Number(String(input.value).replace(',', '.')) || 0) + Number(step.dataset.poStep));
+        const next = Math.max(0, (parseQuantity(input.value) || 0) + Number(step.dataset.poStep));
         input.value = String(Math.round(next * 1000) / 1000);
+        input.dataset.qtyWritten = input.value;
         updateLabel();
         return;
       }
@@ -973,6 +1008,9 @@
     panel.querySelector('#po-receive-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const entries = readLines();
+      // '1,250' could be 1250 or 1.25: ask instead of guessing (audit L30).
+      const unclear = entries.find((line) => line.unclear);
+      if (unclear) { alertHost.innerHTML = alertHtml('danger', '', unclear.unclear); lucide(); return; }
       const bad = entries.find((line) => line.raw !== '' && (!Number.isFinite(line.quantity) || line.quantity < 0 || Math.abs(line.quantity * 1000 - Math.round(line.quantity * 1000)) > 1e-6));
       if (bad) { alertHost.innerHTML = alertHtml('danger', '', 'Quantities must be 0 or more, with up to three decimals.'); lucide(); return; }
       const receipt = entries.filter((line) => line.quantity > 0).map(({ item_id, quantity, note }) => ({ item_id, quantity, ...(note ? { note } : {}) }));
@@ -1045,10 +1083,10 @@
         <details class="po-noorder"${open.length ? '' : ' open'}><summary>No order? Record a delivery without one</summary>
         <form class="atlas-form" id="po-restock-form" novalidate><div data-po-alert></div>
           <div class="atlas-field"><label for="po-rs-item">Item</label><select class="atlas-select" id="po-rs-item" name="item" required><option value="">Choose an item</option>${items().filter((item) => item.active !== false).map((item) => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('')}</select></div>
-          <div class="atlas-grid-2"><div class="atlas-field"><label for="po-rs-qty">Quantity received</label><input class="atlas-input" id="po-rs-qty" name="quantity" type="number" inputmode="decimal" min="0.001" step="any" required></div>
+          <div class="atlas-grid-2"><div class="atlas-field"><label for="po-rs-qty">Quantity received</label><input class="atlas-input" id="po-rs-qty" name="quantity" type="text" inputmode="decimal" autocomplete="off" required></div>
           <div class="atlas-field"><label for="po-rs-supplier">Supplier</label><select class="atlas-select" id="po-rs-supplier" name="supplier"><option value="">No supplier</option>${suppliers().filter((supplier) => supplier.active !== false).map((supplier) => `<option value="${esc(supplier.id)}">${esc(supplier.name)}</option>`).join('')}</select></div></div>
-          <div class="atlas-grid-2"><div class="atlas-field"><label for="po-rs-cost">Unit cost <span class="optional">(optional)</span></label><div class="atlas-affix"><input class="atlas-input" id="po-rs-cost" name="cost" type="number" inputmode="decimal" min="0" step="any"><span class="suffix">kr</span></div></div>
-          <div class="atlas-field"><label for="po-rs-discount">Discount <span class="optional">(optional)</span></label><div class="atlas-affix"><input class="atlas-input" id="po-rs-discount" name="discount" type="number" inputmode="decimal" min="0" max="100" step="any"><span class="suffix">%</span></div></div></div>
+          <div class="atlas-grid-2"><div class="atlas-field"><label for="po-rs-cost">Unit cost <span class="optional">(optional)</span></label><div class="atlas-affix"><input class="atlas-input" id="po-rs-cost" name="cost" type="text" inputmode="decimal" autocomplete="off"><span class="suffix">kr</span></div></div>
+          <div class="atlas-field"><label for="po-rs-discount">Discount <span class="optional">(optional)</span></label><div class="atlas-affix"><input class="atlas-input" id="po-rs-discount" name="discount" type="text" inputmode="decimal" autocomplete="off"><span class="suffix">%</span></div></div></div>
           <button type="submit" class="atlas-btn atlas-btn--secondary">Record delivery</button>
         </form></details>`
     }), { label: 'Receive a delivery' });
@@ -1078,13 +1116,15 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const alert = form.querySelector('[data-po-alert]');
-      const quantity = Number(form.elements.quantity.value);
+      const quantity = parseQuantity(form.elements.quantity.value);
+      const ambiguous = typedAmbiguity(form.elements.quantity);
       const chosen = itemById(item.value);
-      const cost = form.elements.cost.value === '' ? null : Number(form.elements.cost.value);
-      const discount = form.elements.discount.value === '' ? 0 : Number(form.elements.discount.value);
+      const cost = parseAmount(form.elements.cost.value);
+      const discount = parseQuantity(form.elements.discount.value) ?? 0;
       const problems = [];
       if (!chosen) problems.push([item, 'Choose an item.']);
-      if (!(quantity > 0)) problems.push([form.elements.quantity, 'Enter a quantity above 0.']);
+      if (ambiguous) problems.push([form.elements.quantity, ambiguous]);
+      else if (!(quantity > 0)) problems.push([form.elements.quantity, 'Enter a quantity above 0.']);
       if (cost !== null && !(cost >= 0)) problems.push([form.elements.cost, 'Enter a unit cost of 0 or more.']);
       if (!(discount >= 0 && discount <= 100)) problems.push([form.elements.discount, 'Enter a discount between 0 and 100 %.']);
       form.querySelectorAll('[aria-invalid]').forEach((input) => input.removeAttribute('aria-invalid'));

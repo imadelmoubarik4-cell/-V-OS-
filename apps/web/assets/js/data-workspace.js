@@ -439,7 +439,7 @@
       return;
     }
     state.root.innerHTML = `<div class="atlas-page data-page${state.tab === 'import' ? ' is-detail' : ''}">
-      ${root.AtlasShell.pageHead({ title: 'Data', sub: headSub(), actions: [{ label: 'Import a file', icon: 'upload', variant: 'primary', attrs: { 'data-data-upload': '' } }] })}
+      ${root.AtlasShell.pageHead({ title: 'Data', sub: headSub(), actions: [{ label: uploadLabel(), icon: 'upload', variant: 'primary', attrs: { 'data-data-upload': '' } }] })}
       ${tabsMarkup()}
       <div class="data-body">${bodyMarkup()}</div>
     </div>`;
@@ -471,6 +471,18 @@
   function workerEndpoint() {
     const target = String(cfg.SUPABASE_URL || '').replace(/\/$/, '');
     return cfg.SUPABASE_URL === target && cfg.IMPORT_WORKER_API === `${target}/functions/v1/atlas-import-worker` ? cfg.IMPORT_WORKER_API : '';
+  }
+  // Audit L41: while the worker is off (production today) an upload is only
+  // stored: nothing reads it, so the copy says "Store a file" and the page
+  // promises no Review or Import step. The gate above is unchanged.
+  function readingOn() {
+    return Boolean(workerEndpoint());
+  }
+  function uploadLabel() {
+    return readingOn() ? 'Import a file' : 'Store a file';
+  }
+  function readingOffNotice() {
+    return readingOn() ? '' : alertMarkup({ tone: 'info', title: 'File reading is off.', body: 'Uploaded files are stored privately for managers. Alcedo doesn\'t read or import them yet, so your live records never change from an upload.' });
   }
   function workerStatus(batch) {
     return batch?.record_counts?.worker === 'atlas-csv-1' ? batch.record_counts.processing_status : null;
@@ -543,7 +555,8 @@
     }
     if (!imports.loaded || (imports.loading && !imports.rows.length)) return skeletonRows();
     if (!imports.rows.length) {
-      return emptyMarkup({ icon: 'file-up', title: 'No imports yet', text: 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.', action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-upload><i data-lucide="upload"></i>Import a file</button>' });
+      const text = readingOn() ? 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.' : 'Store a spreadsheet, invoice or stock count privately for managers. Alcedo doesn\'t read uploaded files yet, so nothing is imported.';
+      return emptyMarkup({ icon: 'file-up', title: readingOn() ? 'No imports yet' : 'No files yet', text, action: `<button type="button" class="atlas-btn atlas-btn--secondary" data-data-upload><i data-lucide="upload"></i>${uploadLabel()}</button>` });
     }
     const rows = filteredImports();
     const segmented = [['all', 'All'], ['attention', 'Needs attention'], ['imported', 'Imported']]
@@ -565,9 +578,10 @@
         const [label, tone] = importStatus(batch);
         return `<li><a class="atlas-table-list__row" href="#data/import/${attr(encodeURIComponent(batch.id))}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${escapeHtml(sourceName(batch))}</div><div class="atlas-table-list__meta">${escapeHtml(scopeLabel(batch.entity_scope))} · ${escapeHtml(formatRelative(batch.created_at))}</div></div><div class="atlas-table-list__value">${pill(label, tone)}</div></a></li>`;
       }).join('')}</ul>
-      <div class="atlas-table-foot"><span>${plural(rows.length, 'file', 'files')}</span><span>Files stay private to managers. Nothing changes live records until you review it.</span></div>`
+      <div class="atlas-table-foot"><span>${plural(rows.length, 'file', 'files')}</span><span>${readingOn() ? 'Files stay private to managers. Nothing changes live records until you review it.' : 'Files stay private to managers. Alcedo doesn\'t read them yet.'}</span></div>`
       : emptyMarkup({ icon: 'search-x', title: `No files match “${state.imports.query || 'this filter'}”`, action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-clear-imports>Clear filters</button>' });
     return `${imports.error ? alertMarkup({ tone: 'warning', title: 'The list couldn\'t be refreshed.', body: 'Showing the last loaded files.' }) : ''}
+      ${readingOffNotice()}
       <div class="atlas-toolbar">
         <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" placeholder="Search files" aria-label="Search files" value="${attr(state.imports.query)}" data-data-import-search data-focus-key="import-search"></label>
         <div class="atlas-segmented" role="group" aria-label="Show">${segmented}</div>
@@ -592,13 +606,16 @@
     const uploaded = !['prepared', 'uploading'].includes(stage);
     const reviewed = COMPLETE.has(batch.status);
     const step = (done, current, n, text) => `<li class="${done ? 'is-done' : current ? 'is-current' : ''}"${current ? ' aria-current="step"' : ''}><span class="n">${done ? '<i data-lucide="check"></i>' : n}</span>${text}</li>`;
-    const steps = `<ol class="atlas-steps" aria-label="Import progress">
+    const workerOn = readingOn();
+    // With reading off, a file that was only stored has no Review or Import
+    // ahead of it; files something already read (or failed) keep their steps.
+    const storedOnly = !workerOn && !worker && !reviewed && !['ready', 'failed'].includes(batch.status) && !['reading', 'extracting', 'matching', 'importing'].includes(stage);
+    const steps = storedOnly ? '' : `<ol class="atlas-steps" aria-label="Import progress">
         ${step(uploaded, !uploaded, 1, 'Upload')}<li class="sep" aria-hidden="true"></li>
         ${step(reviewed, uploaded && !reviewed, 2, 'Review')}<li class="sep" aria-hidden="true"></li>
         ${step(reviewed, false, 3, 'Import')}
       </ol>`;
     const actions = [];
-    const workerOn = Boolean(workerEndpoint());
     if (workerOn && !worker && batch.status === 'uploaded' && batch.entity_scope === 'inventory' && String(batch.file_extension || '').toLowerCase() === 'csv') actions.push(['stage', 'play', 'Read this file', 'primary']);
     if (workerOn && worker === 'claimed') actions.push(['stage', 'play', 'Continue reading', 'primary']);
     if (worker === 'staged' || batch.status === 'ready') actions.push(['review', 'list-checks', 'Review rows', worker === 'staged' ? 'secondary' : 'primary']);
@@ -606,8 +623,9 @@
     if (workerOn && ['staged', 'claimed'].includes(worker)) actions.push(['discard', 'undo-2', 'Discard reading', 'ghost']);
     if (!worker && (batch.status === 'failed' || batch.status === 'cancelled')) actions.push(['retry', 'rotate-ccw', 'Try again', 'secondary']);
     if (batch.storage_bucket && batch.storage_path) actions.push(['source', 'download', 'Download file', 'ghost']);
-    if (!worker && !TERMINAL.has(batch.status) && batch.status !== 'ready') actions.push(['cancel', 'circle-x', 'Cancel import', 'ghost']);
-    if (!worker) actions.push(['delete', 'trash-2', 'Delete import', 'danger']);
+    // Nothing is reading a stored-only file, so there is no import to cancel.
+    if (!worker && !storedOnly && !TERMINAL.has(batch.status) && batch.status !== 'ready') actions.push(['cancel', 'circle-x', 'Cancel import', 'ghost']);
+    if (!worker) actions.push(['delete', 'trash-2', storedOnly ? 'Delete file' : 'Delete import', 'danger']);
     const buttons = actions.map(([action, icon, text, variant]) => `<button type="button" class="atlas-btn atlas-btn--${variant}" data-data-batch-action="${action}" data-batch-id="${attr(batch.id)}"${busy ? ' disabled aria-busy="true"' : ''}><i data-lucide="${icon}"></i>${text}</button>`).join('');
     const records = recordCount(batch);
     const failure = batch.status === 'failed'
@@ -619,6 +637,7 @@
       : stage === 'complete' ? 'Imported. The rows you approved are in your live records.'
       : worker === 'staged' || batch.status === 'ready' ? `Alcedo read ${records === null ? 'this file' : plural(records, 'row', 'rows')}. Review ${records === 1 ? 'it' : 'every row'} before anything is imported.`
       : label === 'Reading' ? 'Alcedo is reading this file. This page updates by itself.'
+      : storedOnly ? (uploaded ? 'Stored privately for managers. File reading is off, so Alcedo won\'t read or import this file; nothing has changed in your live records.' : 'This file hasn\'t finished uploading. Nothing has changed in your live records.')
       : 'Uploaded. Alcedo hasn\'t read this file yet; nothing has changed in your live records.';
     return `${back}
       <section class="data-import-detail" aria-labelledby="data-import-title">
@@ -712,7 +731,7 @@
   function openUpload() {
     const modal = ensureModal('data-upload-modal');
     modal.innerHTML = `<section class="atlas-dialog atlas-dialog--form" data-modal-panel aria-labelledby="data-upload-title">
-        <h2 class="atlas-dialog__title" id="data-upload-title">Import a file</h2>
+        <h2 class="atlas-dialog__title" id="data-upload-title">${uploadLabel()}</h2>
         <form class="atlas-dialog__body atlas-form" data-data-upload-form>
           <div class="atlas-field">
             <label for="data-upload-scope">What does this file contain?</label>
@@ -723,7 +742,7 @@
             <span class="atlas-upload__body"><span class="atlas-upload__title" data-data-file-name>Choose a file or drop it here</span><span class="atlas-upload__help" id="data-upload-help">CSV, Excel, PDF, JSON, text or a photo, up to 50 MB.</span></span>
             <input class="sr-only" type="file" name="file" multiple aria-label="Choose a file" aria-describedby="data-upload-help" accept=".pdf,.xlsx,.xls,.csv,.json,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif">
           </label>
-          <p class="data-upload-note">Nothing changes live records until you review the file.</p>
+          <p class="data-upload-note">${readingOn() ? 'Nothing changes live records until you review the file.' : 'File reading is off: the file is stored privately for managers and isn\'t read or imported.'}</p>
           <p class="error" data-data-upload-error hidden></p>
           <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary">Upload</button></div>
         </form>
@@ -952,6 +971,10 @@
       form.querySelectorAll('[data-show-mode]').forEach((element) => { element.hidden = element.dataset.showMode !== mode; });
     };
     form.addEventListener('change', sync);
+    // One request id per decision sheet (audit L15): a retry after a lost
+    // answer replays the same decision; a changed decision gets a new id
+    // (the server replays by id alone).
+    const attempt = { id: null, signature: null };
     modal.querySelector('[data-data-dup-save]').addEventListener('click', async (event) => {
       const button = event.currentTarget;
       const errorLine = form.querySelector('[data-data-dup-error]');
@@ -965,12 +988,17 @@
         if (size === null || size <= 0) { errorLine.hidden = false; errorLine.textContent = 'Enter the pack size of the other item.'; return; }
         resolution.values = { unit_size_quantity: size, unit_size_base: form.elements.base.value };
       }
+      const signature = JSON.stringify([keep, retire, mode, resolution]);
+      const decisionRequestId = () => {
+        if (!attempt.id || attempt.signature !== signature) { attempt.id = requestId('dup'); attempt.signature = signature; }
+        return attempt.id;
+      };
       button.disabled = true;
       button.classList.add('is-loading');
       try {
         const payload = await edge(cfg.ITEM_MASTER_API, 'catalog-request', {
           method: 'POST',
-          body: { kind: 'duplicate_resolution', subject_item_id: keep, source: 'data_review', self_approve: true, request_id: requestId('dup'), payload: { keep_item_id: keep, retire_item_id: retire, mode, reason: reason || null, resolution } }
+          body: { kind: 'duplicate_resolution', subject_item_id: keep, source: 'data_review', self_approve: true, request_id: decisionRequestId(), payload: { keep_item_id: keep, retire_item_id: retire, mode, reason: reason || null, resolution } }
         });
         const status = payload?.request?.status;
         root.AtlasModal.close(modal, 'saved');

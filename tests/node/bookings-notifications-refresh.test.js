@@ -13,14 +13,14 @@ class Events {
     this.listeners.get(type).add(fn);
   }
   removeEventListener(type, fn) { this.listeners.get(type)?.delete(fn); }
-  emit(type, detail) { for (const fn of [...(this.listeners.get(type) || [])]) fn({ type, detail }); }
+  emit(type, detail, extra = {}) { for (const fn of [...(this.listeners.get(type) || [])]) fn({ type, detail, ...extra }); }
   count() { return [...this.listeners.values()].reduce((n, set) => n + set.size, 0); }
 }
 
 async function boot({ seconds = 60, enabled = true, role = 'manager', profile = true } = {}) {
   let now = 1000000, nextId = 0, session = { user: { id: 'manager-id' }, access_token: 'test-token' };
   let authListener, responder = async () => ({ status: 200, items: [], unread: 0 });
-  const timers = new Map(), calls = [], warnings = [], bell = new Map();
+  const timers = new Map(), calls = [], warnings = [], bell = new Map(), toasts = [], bellRead = new Set();
   const window = new Events(), document = new Events(), serviceWorker = new Events();
   const navigator = { onLine: true, serviceWorker };
   document.visibilityState = 'visible'; document.hidden = false; document.readyState = 'complete';
@@ -31,13 +31,13 @@ async function boot({ seconds = 60, enabled = true, role = 'manager', profile = 
   window.atlasCurrentProfile = profile ? { id: 'manager-id', role, active: true } : null;
   window.setTimeout = (fn, delay) => { const id = ++nextId; timers.set(id, { fn, at: now + delay }); return id; };
   window.clearTimeout = (id) => timers.delete(id);
-  window.AtlasShell = { actions: { register() {} }, notify: { contribute(key, fn) { bell.set(key, fn); }, markRead() {} }, on() { return () => {}; } };
+  window.AtlasShell = { toast(message, options) { toasts.push({ message, tone: options?.tone }); }, actions: { register() {} }, notify: { contribute(key, fn) { bell.set(key, fn); }, markRead(id) { bellRead.add(id); }, markUnread(id) { bellRead.delete(id); } }, on() { return () => {}; } };
   window.atlasSupabase = { auth: {
     async getSession() { return { data: { session } }; },
     onAuthStateChange(fn) { authListener = fn; return { data: { subscription: { unsubscribe() { unsubscriptions++; } } } }; }
   } };
   const fetch = async (url, options) => {
-    const call = { at: now, url: String(url), signal: options.signal };
+    const call = { at: now, url: String(url), method: options.method, body: options.body ? JSON.parse(options.body) : null, signal: options.signal };
     calls.push(call);
     const result = await responder(call);
     return { status: result.status, ok: result.status >= 200 && result.status < 300, async json() { return { items: result.items, unread: result.unread }; } };
@@ -56,7 +56,7 @@ async function boot({ seconds = 60, enabled = true, role = 'manager', profile = 
     now = target; await flush();
   }
   return {
-    window, document, navigator, calls, warnings, timers, advance,
+    window, document, navigator, calls, warnings, timers, toasts, bellRead, advance,
     api: window.AtlasBookingsNotifications,
     respond(fn) { responder = fn; },
     auth(event, nextSession) { session = nextSession; signedIn = Boolean(session); authListener?.(event, session); },
@@ -200,4 +200,73 @@ test('role changes and pagehide clean up timers, listeners and auth subscription
   app.window.emit('focus'); await app.advance(600000);
   assert.equal(app.calls.length, 2);
   assert.equal(app.api.count(), 0);
+});
+
+// L20: a page kept in the back-forward cache (pagehide persisted) is paused,
+// not disposed, and resumes on pageshow; only a real unload tears down.
+test('back-forward cache: pagehide persisted pauses and pageshow resumes the inbox', async () => {
+  const app = await boot();
+  assert.equal(app.calls.length, 1);
+  let resolve;
+  app.respond(() => new Promise((done) => { resolve = done; }));
+  await app.advance(60000);
+  assert.equal(app.calls.length, 2);
+  const signal = app.calls.at(-1).signal;
+  app.window.emit('pagehide', undefined, { persisted: true });
+  assert.equal(signal.aborted, true, 'the in-flight request is aborted');
+  assert.equal(app.unsubscriptions(), 0, 'the auth subscription is kept');
+  resolve({ status: 200, items: [], unread: 0 }); await flush();
+  assert.equal(app.timers.size, 0, 'no timer while frozen');
+  app.window.emit('focus'); await app.advance(600000);
+  assert.equal(app.calls.length, 2, 'nothing fetches while paused');
+
+  app.respond(async () => ({ status: 200, items: [{ id: 'after-restore', reservation_id: 'res-1', title: 'New booking request', kind: 'request', read: false }], unread: 1 }));
+  app.window.emit('pageshow', undefined, { persisted: true }); await flush();
+  assert.equal(app.calls.length, 3, 'pageshow refreshes at once');
+  assert.equal(app.api.count(), 1);
+  await app.advance(60000);
+  assert.equal(app.calls.length, 4, 'the timed refresh is rescheduled');
+
+  // A later real unload still disposes everything.
+  app.window.emit('pagehide', undefined, { persisted: false });
+  assert.equal(app.unsubscriptions(), 1);
+  assert.equal(app.timers.size, 0);
+  assert.equal(app.window.count() + app.document.count() + app.navigator.serviceWorker.count(), 0);
+  app.window.emit('pageshow', undefined, { persisted: true }); await app.advance(600000);
+  assert.equal(app.calls.length, 4);
+});
+
+// L43: mark-as-read is only reflected locally when the server saved it.
+test('mark-as-read that the server rejects stays unread and says so; a saved one stays read', async () => {
+  const app = await boot();
+  const row = { id: 'n-1', reservation_id: 'res-1', title: 'New booking request', kind: 'request', read: false };
+  let serverRead = false;
+  app.respond(async (call) => {
+    if (call.method === 'POST') return { status: 500 };
+    return { status: 200, items: [{ ...row, read: serverRead }], unread: serverRead ? 0 : 1 };
+  });
+  await app.api.refresh({ force: true });
+  assert.equal(app.api.count(), 1);
+
+  // The bell marks an item read locally as it opens it (AtlasShell.notify.activate).
+  app.bellRead.add('booking:n-1');
+  await app.api.markAllRead();
+  assert.deepEqual(app.calls.at(-1).body, { all: true });
+  assert.equal(app.api.count(), 1, 'a rejected mark-read keeps the item unread');
+  assert.equal(app.bellRead.has('booking:n-1'), false, 'the bell item is unread again too');
+  assert.equal(app.api.items()[0].read, false);
+  assert.equal(app.toasts.length, 1);
+  assert.equal(app.toasts[0].tone, 'warning');
+  assert.match(app.toasts[0].message, /Couldn’t mark booking notifications as read/);
+
+  app.respond(async (call) => {
+    if (call.method === 'POST') { serverRead = true; return { status: 200 }; }
+    return { status: 200, items: [{ ...row, read: serverRead }], unread: serverRead ? 0 : 1 };
+  });
+  await app.api.markAllRead();
+  assert.equal(app.api.count(), 0, 'a saved mark-read is reflected at once');
+  await app.advance(60000);
+  assert.equal(app.calls.at(-1).method, 'GET');
+  assert.equal(app.api.count(), 0, 'and stays read after the next refresh');
+  assert.equal(app.toasts.length, 1, 'no toast for a saved mark-read');
 });

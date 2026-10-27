@@ -69,6 +69,9 @@
     failedAt: 0,
     submitting: false,
     snapshotPromise: null,
+    snapshotFor: null,         // the date the in-flight snapshot request is for
+    snapshotSerial: 0,         // only the latest snapshot request may land
+    loadedAt: 0,               // when the shown snapshot arrived (stale-on-return)
     configPromise: null,
     visible: false,
     initialized: false,
@@ -132,11 +135,42 @@
     return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(11, 16);
   }
 
+  // A staff-entered wall time is venue time (Reykjavik), whatever zone the
+  // device is set to, so it is converted with the venue clock, never parsed
+  // in the device zone. Without the clock the venue zone (UTC) is assumed.
+  function venueInstantMs(dateKey, time) {
+    const instant = vc()?.zonedToInstant?.(dateKey, time);
+    const ms = instant instanceof Date ? instant.getTime() : NaN;
+    return Number.isFinite(ms) ? ms : Date.parse(`${dateKey}T${time}:00Z`);
+  }
+
+  // One key per add-booking sheet: a retry after a lost response (timeout,
+  // 5xx) replays the saved booking instead of creating a second one. The
+  // server does not compare payloads on replay, so a changed party, date,
+  // time or location gets a fresh key. 'staff:' never collides with the
+  // public 'web:' keys.
+  function newIdempotencyKey() {
+    const crypto = window.crypto;
+    if (crypto?.randomUUID) return `staff:${crypto.randomUUID()}`;
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return `staff:${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+  }
+
+  function sheetIdempotencyKey(sheet, signature) {
+    if (!sheet.key || sheet.signature !== signature) {
+      sheet.key = newIdempotencyKey();
+      sheet.signature = signature;
+    }
+    return sheet.key;
+  }
+
   function longDate(dateKey) {
     if (!dateKey) return '';
     const date = new Date(`${dateKey}T12:00:00Z`);
     if (Number.isNaN(date.getTime())) return dateKey;
-    return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    // Only used without the venue clock; never the device language (audit L35).
+    return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
   }
 
   function plural(count, word, many = `${word}s`) {
@@ -173,7 +207,10 @@
     unavailable: 'Bookings is temporarily unavailable. Nothing was changed.',
     timeout: 'Bookings took too long to answer. Nothing was changed. Try again.',
     network: 'Bookings couldn’t be reached. Check the connection and try again.',
-    failed: 'Bookings is temporarily unavailable.'
+    failed: 'Bookings is temporarily unavailable.',
+    // A write whose answer was lost (timeout after sending, 502/503/504):
+    // it may have been saved (audit M5). AtlasApi uses this for writes only.
+    outcome_unknown: 'Bookings couldn’t confirm whether this was saved. Check the booking before trying again.'
   };
 
   function endpoint() {
@@ -1020,9 +1057,10 @@
     const root = window.AtlasModal.layer({ id: 'bk-add-layer', className: 'bk-layer', panel: addBookingMarkup(prefill), initialFocus: '#bk-add-party' });
     paintIcons();
     const form = root.querySelector('form');
+    const sheet = { key: null, signature: null };  // this sheet's idempotency key
     form?.addEventListener('submit', (event) => {
       event.preventDefault();
-      submitBooking(root);
+      submitBooking(root, sheet);
     });
     // Re-draw the seat picker when anything that decides availability changes.
     const SEAT_INPUTS = new Set(['party_size', 'area_id', 'date', 'time', 'seat_mode']);
@@ -1033,13 +1071,13 @@
     renderAddSeats(root);
   }
 
-  // The window a new booking would occupy, from the form (local time, like submit).
+  // The window a new booking would occupy, from the form (venue time, like submit).
   function addWindow(root) {
     const form = root.querySelector('form');
     const date = String(form?.elements.date?.value || '').trim();
     const time = String(form?.elements.time?.value || '').trim();
     if (!date || !time) return null;
-    const startMs = new Date(`${date}T${time}:00`).getTime();
+    const startMs = venueInstantMs(date, time);
     if (!Number.isFinite(startMs)) return null;
     return { date, startMs, endMs: startMs + DEFAULT_DURATION_MINUTES * 60000 };
   }
@@ -1082,7 +1120,7 @@
     if (error && !error.hidden) { error.hidden = true; error.textContent = ''; }
   }
 
-  async function submitBooking(root) {
+  async function submitBooking(root, sheet = { key: null, signature: null }) {
     if (state.submitting) return;
     const form = root.querySelector('form');
     const data = new FormData(form);
@@ -1091,10 +1129,11 @@
     const time = String(data.get('time') || '').trim();
     const areaId = String(data.get('area_id') || '').trim();
     const guestName = String(data.get('guest_name') || '').trim();
-    const errors = { party_size: !Number.isInteger(party) || party < 1 || party > 30, time: !time || !date, area_id: !areaId, guest_name: !guestName };
+    const startMs = time && date ? venueInstantMs(date, time) : NaN;
+    const errors = { party_size: !Number.isInteger(party) || party < 1 || party > 30, time: !Number.isFinite(startMs), area_id: !areaId, guest_name: !guestName };
     Object.entries(errors).forEach(([key, bad]) => { const el = root.querySelector(`[data-error-for="${key}"]`); if (el) el.hidden = !bad; });
     if (Object.values(errors).some(Boolean)) return;
-    const startAt = new Date(`${date}T${time}:00`).toISOString();
+    const startAt = new Date(startMs).toISOString();
     const body = {
       party_size: party,
       start_at: startAt,
@@ -1125,6 +1164,7 @@
       }
       if (chosen.length) body.table_ids = chosen;
     }
+    body.idempotency_key = sheetIdempotencyKey(sheet, JSON.stringify([party, date, time, areaId]));
     state.submitting = true;
     const submit = root.querySelector('[data-bookings-create-submit]');
     if (submit) submit.disabled = true;
@@ -1132,7 +1172,24 @@
       const result = await api('create', { body });
       const reservation = result?.reservation || null;
       window.AtlasModal.dismiss(root);
-      if (reservation) {
+      if (reservation && result?.replayed) {
+        // The first attempt had already saved: say so, with what was saved.
+        const party = Number(reservation.party_size);
+        const saved = [formatTime(reservation.start_at), Number.isInteger(party) && party > 0 ? plural(party, 'guest') : '', areaById(reservation.area_id)?.name || '']
+          .filter(Boolean).join(' · ');
+        // The key leaves the seats out (a different seat choice must not make
+        // a second booking), so a replay keeps the seats saved first. If this
+        // attempt chose others, say so instead of implying they were set.
+        const savedTables = (Array.isArray(reservation.tables) ? reservation.tables : []).filter((allocation) => allocation?.table_id);
+        const savedIds = new Set(savedTables.map((allocation) => String(allocation.table_id)));
+        const asked = Array.isArray(body.table_ids) ? body.table_ids.map(String) : null;
+        const seatsDiffer = Boolean(asked) && (asked.length !== savedIds.size || asked.some((id) => !savedIds.has(id)));
+        const savedLabels = savedTables.map((allocation) => allocation.label || tableById(allocation.table_id)?.label || '').filter(Boolean).join(' + ');
+        const seatsNote = seatsDiffer
+          ? ` It is seated at ${savedLabels || 'no tables yet'}; the new seat choice wasn’t applied. Change the seats in the booking.`
+          : '';
+        toast(`${reservation.booking_reference || 'This booking'} was already saved${saved ? ` — ${saved}` : ''}. No second booking was made.${seatsNote}`, seatsDiffer ? 'warning' : 'info');
+      } else if (reservation) {
         const confirmed = reservation.status === 'confirmed';
         toast(`${reservation.booking_reference || 'Booking'} saved — ${confirmed ? 'confirmed' : 'requested (awaiting confirmation)'}`, confirmed ? 'success' : 'info');
       } else {
@@ -1534,29 +1591,58 @@
 
   // ---------- load ----------
 
+  // Only the latest request lands: stepping quickly through days must never
+  // leave one day's grid under another day's header. A superseded request
+  // resolves with the latest one, so callers awaiting it see current data.
   function loadSnapshot(options = {}) {
-    if (state.snapshotPromise && !options.force) return state.snapshotPromise;
+    if (state.snapshotPromise && !options.force && state.snapshotFor === state.date) return state.snapshotPromise;
+    const serial = ++state.snapshotSerial;
+    const date = state.date;
     state.loading = true;
     if (!options.silent) state.error = null;
     if (!options.silent) paint();
-    state.snapshotPromise = (async () => {
+    const latest = () => serial === state.snapshotSerial;
+    const promise = (async () => {
       try {
-        const payload = await api('snapshot', { params: { date: state.date } });
+        const payload = await api('snapshot', { params: { date } });
+        if (!latest()) return state.snapshotPromise;
+        // The open day changed without a new request: load that day instead.
+        if (date !== state.date) return loadSnapshot({ ...options, force: true });
+        if (payload?.date && payload.date !== date) throw new Error('The snapshot is for another day.');
         state.snapshot = payload || null;
         state.permissions = payload?.permissions || state.permissions;
         state.actorRole = payload?.actor_role || state.actorRole;
         state.error = null;
         state.failedAt = 0;
+        state.loadedAt = Date.now();
       } catch (error) {
+        if (!latest()) return state.snapshotPromise;
         if (!options.silent || !state.snapshot) state.error = shown(error, 'Bookings couldn’t be loaded. Check the connection and try again.');
         state.failedAt = Date.now();
       } finally {
-        state.loading = false;
-        state.snapshotPromise = null;
-        paint();
+        if (latest()) {
+          state.loading = false;
+          state.snapshotPromise = null;
+          state.snapshotFor = null;
+          paint();
+        }
       }
+      return undefined;
     })();
-    return state.snapshotPromise;
+    state.snapshotPromise = promise;
+    state.snapshotFor = date;
+    return promise;
+  }
+
+  // A day view left open (or returned to) goes stale: new requests arrive
+  // from the website. Reload quietly on return, but never under an open
+  // sheet, form, calendar or save.
+  const STALE_SNAPSHOT_MS = 60000;
+  function snapshotIsStale() {
+    return state.section === 'day' && Boolean(state.snapshot) && state.snapshot.date === state.date
+      && !state.snapshotPromise && !state.submitting && !state.cal && state.loadedAt > 0
+      && Date.now() - state.loadedAt > STALE_SNAPSHOT_MS
+      && !document.querySelector('.bk-layer');
   }
 
   function loadConfig(options = {}) {
@@ -1613,16 +1699,26 @@
     // The snapshot carries permissions for both sections, so it loads first.
     const otherDay = Boolean(state.snapshot && state.snapshot.date && state.snapshot.date !== state.date);
     const needSnapshot = otherDay || (!state.snapshot && (!state.failedAt || Date.now() - state.failedAt > 20000));
-    const ensure = needSnapshot ? loadSnapshot(otherDay ? { force: true } : undefined) : Promise.resolve();
+    const stale = !needSnapshot && snapshotIsStale();
+    const ensure = needSnapshot ? loadSnapshot(otherDay ? { force: true } : undefined)
+      : stale ? loadSnapshot({ force: true, silent: true }) : Promise.resolve();
+    // Whether this render fetched the day, or relies on the cached snapshot.
+    const fetched = needSnapshot || stale;
     if (state.section === 'config') {
       ensure.then(() => { if (state.visible && state.section === 'config' && canConfigure() && !state.config) loadConfig(); });
     }
     // Deep link from a booking notification (#bookings/res/<id>): open that
     // reservation's detail once the day view is ready.
+    // A booking made after the cached snapshot (a new website request) is not
+    // in it yet: fetch the day once, quietly, before saying it isn't there.
     if (params.reservation) {
-      ensure.then(() => {
+      const id = String(params.reservation);
+      ensure.then(async () => {
         if (!state.visible) return;
-        const id = String(params.reservation);
+        if (!reservationById(id) && state.snapshot && !fetched) {
+          await loadSnapshot({ force: true, silent: true });
+          if (!state.visible) return;
+        }
         if (reservationById(id)) openReservation(id);
         else if (state.snapshot) toast('That booking isn’t on this day. Open its date to see it.', 'info');
       });

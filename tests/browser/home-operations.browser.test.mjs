@@ -246,3 +246,32 @@ test('phone: Home, Operations and Settings fit 390 px with 44 px touch targets',
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
+
+// Audit L12 (operations.js part): a checklist read that never answers fails at
+// its deadline instead of spinning for minutes, and Try again starts a fresh
+// request (the in-flight guard is cleared).
+test('Operations: a stalled checklist load times out and Try again loads it', { skip }, async () => {
+  const { page, record, close } = await launch(USERS.bartender, { launch: { controlTimers: true, hash: '#operations' } });
+  try {
+    await page.waitForSelector('#operations-view .ops-list');
+    let stalled = 0;
+    // The next snapshot read is never answered (a half-open socket).
+    await page.route(/atlas-operations-checkpoint-a.*action=snapshot/, (route) => {
+      if (stalled === 0) { stalled += 1; return undefined; }
+      return route.fallback();
+    });
+    const before = requestsTo(record, 'atlas-operations-checkpoint-a', 'snapshot').length;
+    await page.evaluate(() => { location.hash = '#operations'; location.reload(); });
+    await page.waitForFunction(() => document.querySelector('#operations-view') && !document.querySelector('#operations-view .ops-list'));
+    await page.waitForFunction(() => document.body.dataset.atlasReady === 'true');
+    assert.equal(stalled, 1, 'the snapshot read is stalled');
+    // Before the deadline it is still loading; at the deadline it fails.
+    await page.clock.runFor(15000);
+    assert.equal(await page.$('[data-ops-retry]'), null, 'still waiting before the deadline');
+    await page.clock.runFor(6000);
+    await page.waitForSelector('[data-ops-retry]');
+    await page.click('[data-ops-retry]');
+    await page.waitForSelector('#operations-view .ops-list');
+    assert.ok(requestsTo(record, 'atlas-operations-checkpoint-a', 'snapshot').length > before, 'Try again sent a fresh read');
+  } finally { await close(); }
+});

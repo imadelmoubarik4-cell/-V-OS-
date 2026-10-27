@@ -115,13 +115,16 @@ test('push opt-in covers unsupported, denied, pending, and enabled states', () =
   assert.match(worker, /addEventListener\('push'/);
   assert.match(worker, /addEventListener\('notificationclick'/);
   // Routes are allow-listed; an unknown route falls back to Team (S88 route table:
-  // shifts -> #shifts, team -> #messages, bookings -> #bookings[/res/<id>]).
+  // shifts -> #shifts, team -> #messages[/<channel>], bookings -> #bookings[/res/<id>[/<date>]],
+  // marketing -> #marketing). Behaviour: tests/node/service-worker-runtime.test.js (L19).
   assert.match(worker, /routeOf\s*=\s*\(value\)\s*=>\s*\(ROUTES\.has\(value\)\s*\?\s*value\s*:\s*'team'\)/);
-  assert.match(worker, /ROUTES\s*=\s*new Set\(\['shifts', 'bookings', 'team'\]\)/);
+  assert.match(worker, /ROUTES\s*=\s*new Set\(\['shifts', 'bookings', 'team', 'marketing'\]\)/);
   assert.match(worker, /route === 'shifts'\) return '#shifts'/);
-  assert.match(worker, /return '#messages'/);
+  assert.match(worker, /route === 'marketing'\) return '#marketing'/);
+  assert.match(worker, /: '#messages'/);
   // S109: booking notifications deep-link the exact reservation when present.
-  assert.match(worker, /route === 'bookings'\) return objectId \? `#bookings\/res\/\$\{encodeURIComponent\(objectId\)\}` : '#bookings'/);
+  assert.match(worker, /if \(!objectId\) return '#bookings'/);
+  assert.match(worker, /`#bookings\/res\/\$\{encodeURIComponent\(objectId\)\}`/);
   assert.match(notificationApi, /ATLAS_PUSH_DELIVERY_ENABLED/);
   assert.match(notificationApi, /delivery: "disabled"/);
   assert.match(notificationApi, /npm:web-push@3\.6\.7/);

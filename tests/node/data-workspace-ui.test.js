@@ -31,7 +31,7 @@ test('import review uses the production manager API; the old pages are gone', ()
     assert.doesNotMatch(index + config, new RegExp(file.replace(/[.]/g, '\\.')));
   }
   assert.doesNotMatch(index, /id="imports-view"/);
-  assert.match(index, /<script src="assets\/js\/data-workspace\.js\?v=20261026-redesign"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/data-workspace\.js\?v=20261027-audit"><\/script>/);
   assert.match(index, /\['imports', \{ guard: \(\) => 'data' \}\]/);
 });
 

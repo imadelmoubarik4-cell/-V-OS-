@@ -55,7 +55,10 @@
   const IDEAS_MESSAGES = {
     ...MAP_MESSAGES,
     invalid: 'Alcedo couldn’t use that brief. Check the ingredients and try again.',
-    forbidden: 'Only managers and administrators can create draft recipes.'
+    forbidden: 'Only managers and administrators can create draft recipes.',
+    // Ideas and drafts are POSTs that save nothing to Recipes, so a lost
+    // answer (timeout, 502/503/504) keeps the outage copy (audit M5).
+    outcome_unknown: 'The flavour library isn’t available right now. Try again shortly.'
   };
   const COMPOSE_MESSAGES = {
     ...IDEAS_MESSAGES,
@@ -69,7 +72,9 @@
     rate_limited: 'Too many requests just now. Wait a moment, then try again. Nothing was saved.',
     unavailable: 'Alcedo couldn’t save the draft right now. Nothing was saved. Try again shortly.',
     timeout: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.',
-    network: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.'
+    network: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.',
+    // Approving writes a recipe: a lost answer may have saved it (audit M5).
+    outcome_unknown: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.'
   };
   const RESULT_MESSAGES = {
     name_taken: 'A recipe with this name already exists, so nothing was saved. Choose another name and prepare the draft again.',

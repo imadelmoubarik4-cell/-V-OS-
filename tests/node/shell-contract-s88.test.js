@@ -197,7 +197,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261026-redesign"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261027-audit"><\/script>\s*<script src="config\.js"><\/script>/);
   // S99: atlas-mfa-enroll.js loads between atlas-bot.js and atlas-app.js.
   assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-mfa-enroll\.js\?v=[^"]+"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
@@ -229,24 +229,24 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 
 test('changed scripts carry the S88 cache key', () => {
   // S90 UX acceptance remediation (shell, design system and page fixes).
-  for (const file of ['atlas-capture.js', 'atlas-search.js']) {
+  for (const file of ['atlas-capture.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
   // Alcedo polish pass: data-workspace.js changed (import dialog a11y) and carries the polish key.
-  assert.ok(index.includes('<script src="assets/js/data-workspace.js?v=20261026-redesign"></script>'), 'data-workspace.js');
+  assert.ok(index.includes('<script src="assets/js/data-workspace.js?v=20261027-audit"></script>'), 'data-workspace.js');
   // S92 Accounting: dialogs labelled when they open (modal). The shell (the
   // admin-only Accounting destination and route) and the palette (its group)
   // changed on both sides of the S92/robot merge and carry the merge key.
   // The 2026 redesign (Basalt & Kingfisher, self-hosted icons) changed the palette,
   // and modal.js again (phone sheets drag down to dismiss).
-  for (const file of ['atlas-palette.js', 'modal.js']) {
+  for (const file of ['modal.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
   }
   // Bookings deep link carries the visit day (#bookings/res/<id>/<date>).
-  assert.ok(index.includes('<script src="assets/js/atlas-shell.js?v=20261026-redesign"></script>'), 'atlas-shell.js');
+  assert.ok(index.includes('<script src="assets/js/atlas-shell.js?v=20261027-audit"></script>'), 'atlas-shell.js');
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
-  for (const file of ['s38-app-remediation.js', 'atlas-venue-clock.js']) {
+  for (const file of ['s38-app-remediation.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
   // Shift plan: colour by person (a remembered toolbar toggle colours each
@@ -262,35 +262,39 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // Alcedo polish pass: atlas-purchasing.js (exclusion disclosure) and operations.js ((optional) label) carry the polish key.
   for (const file of ['atlas-purchasing.js', 'operations.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261027-audit"></script>`), file);
   }
   // S97 Inventory Storage Locations: managed locations with chips, filters, a
   // Manage Locations page and primary-location stock-count scoping.
   for (const file of ['stock-count-workspace.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261027-audit"></script>`), file);
   }
   // Spirits taxonomy fix: stored-first canonical Spirits classification
   // (Liqueurs / Aperitifs / Vermouth split; no "ori(gin)al" → Gin false match).
   // Inventory workspace only; the cache key must change so browsers reload it.
   for (const file of ['atlas-inventory.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261027-audit"></script>`), file);
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
-  for (const file of ['atlas-chrome.js', 'knowledge-workspace.js']) {
+  for (const file of ['knowledge-workspace.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
+  }
+  // Platform audit fixes (bell date label L35, per-person read state L22).
+  for (const file of ['atlas-chrome.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261027-audit"></script>`), file);
   }
   // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
   for (const file of ['recipes.js', 'flavor-map.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261027-audit"></script>`), file);
   }
   // Alcedo polish pass: atlas-ai.js changed ((optional) label, Decisions subtitle) and carries the polish key.
   assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20261026-redesign"></script>'), 'atlas-ai.js');
-  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261026-redesign"></script>\n<script src="assets/js/flavor-map.js?v=20261026-redesign"></script>'), 'flavor-map.js right after recipes.js');
+  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261027-audit"></script>\n<script src="assets/js/flavor-map.js?v=20261027-audit"></script>'), 'flavor-map.js right after recipes.js');
   // Accounting (S92): the offline quick answer keeps the sparkles icon (atlas-palette.js).
   // The 2026 redesign (Basalt & Kingfisher, self-hosted icons) changed the palette.
   for (const file of ['atlas-palette.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261026-redesign"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261027-audit"></script>`), file);
   }
   // Robot refinement: one state controller for every AI surface (sleep,
   // wake, listening, thinking, answering, success, attention, error), the
@@ -307,13 +311,15 @@ test('changed scripts carry the S88 cache key', () => {
   // The Atlas AI robot replaced the assistant icon in these lazily loaded scripts.
   // (marketing-workspace.js carries the same change under its S94 key below.)
   for (const file of ['reports-workspace.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261027-audit'`), file);
   }
   // S92: every message shows its sender's real name and photo (own on the
   // right with the viewer's name and avatar); photos load when Messages opens.
-  for (const file of ['team-unread-badge.js', 'team-profile-photos.js']) {
+  for (const file of ['team-profile-photos.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261002-s93r'`), file);
   }
+  // Platform audit M11/L20: the unread worker backs off and survives the back-forward cache.
+  assert.ok(config.includes("scriptPath: 'assets/js/team-unread-badge.js?v=20261027-audit'"), 'team-unread-badge.js');
   // The 2026 redesign (Basalt & Kingfisher) changed these and they carry its key.
   for (const file of ['team-messages.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
@@ -326,7 +332,7 @@ test('changed scripts carry the S88 cache key', () => {
   // S93: the Home/bell message item names the sender by the live name; the
   // daily briefing header shows the Atlas AI robot (thinking while the
   // briefing is prepared).
-  assert.ok(index.includes('<script src="assets/js/home.js?v=20261026-redesign"></script>'), 'home.js');
+  assert.ok(index.includes('<script src="assets/js/home.js?v=20261027-audit"></script>'), 'home.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
   }
@@ -338,7 +344,7 @@ test('changed scripts carry the S88 cache key', () => {
   // library and platform checks; S94b: review fixes in the composer (asap,
   // partial save, radios), the media picker and the platform checks.
   // S99: Settings Security now manages the current user's authenticator (2FA).
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261026-redesign'"), 'settings-workspace.js');
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261027-audit'"), 'settings-workspace.js');
   // S99: the TOTP enrolment module loads statically before atlas-app.js and is
   // reused by the invitation wizard and the login gate.
   assert.ok(index.includes('<script src="assets/js/atlas-mfa-enroll.js?v=20261026-redesign"></script>'), 'atlas-mfa-enroll.js');
@@ -350,8 +356,9 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94b'`), file);
   }
   // The 2026 redesign (Basalt & Kingfisher) changed these and they carry its key.
+  // Platform audit fixes (L35 'your time' note, L15 one request id per composer).
   for (const file of ['marketing-workspace.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261026-redesign'`), file);
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261027-audit'`), file);
   }
   // S94c Media fixes; the redesign moved the upload bar to scaleX (--ratio).
   assert.ok(config.includes("scriptPath: 'assets/js/marketing-media.js?v=20261026-redesign'"), 'marketing-media.js');
@@ -713,4 +720,43 @@ test('the notifications feed merges pushed, contributed and Home items and track
   shell.notify.toggle();
   assert.deepEqual(panel, ['open', 'close']);
   assert.equal(shell.navigate('#notifications'), true, '#notifications opens the panel');
+});
+
+// Audit L22: the bell's read state belongs to the signed-in person. Audit L43
+// (review): notify.markUnread undoes a local read the server did not keep.
+test('bell read state is kept per profile, and markUnread puts an item back', () => {
+  const { shell, store } = loadShell();
+  const changes = [];
+  shell.on('notify:changed', (detail) => changes.push(detail));
+  shell.notify.push({ id: 'msg-1', type: 'message', title: 'Sara: delivery is here' });
+  shell.notify.push({ id: 'msg-2', type: 'message', title: 'Jón: keg is empty' });
+  shell.profileReady({ id: 'user-a', role: 'manager' });
+  assert.equal(shell.notify.unreadCount(), 2);
+  shell.notify.markAllRead();
+  assert.equal(shell.notify.unreadCount(), 0, 'A read everything');
+  assert.match(store['atlas.notifications.read.v1:user-a'], /msg-1/);
+  assert.equal(store['atlas.notifications.read.v1'], undefined, 'nothing is written to the device-wide key');
+
+  // B signs in on the same tablet: A's "mark all read" is not B's.
+  changes.length = 0;
+  shell.profileReady({ id: 'user-b', role: 'bartender' });
+  assert.ok(changes.some((detail) => detail?.source === 'profile'), 'the bell is told to redraw');
+  assert.equal(shell.notify.unreadCount(), 2, 'B sees both unread');
+  shell.notify.markRead('msg-2');
+  assert.equal(shell.notify.unreadCount(), 1);
+  // A again: A's own read state is back.
+  shell.profileReady({ id: 'user-a', role: 'manager' });
+  assert.equal(shell.notify.unreadCount(), 0);
+  // Profile refreshes for the same person keep the set.
+  shell.profileReady({ id: 'user-a', role: 'manager', display_name: 'Anna' });
+  assert.equal(shell.notify.unreadCount(), 0);
+
+  // markUnread undoes a local read.
+  changes.length = 0;
+  shell.notify.markUnread('msg-1');
+  assert.equal(shell.notify.unreadCount(), 1);
+  assert.doesNotMatch(store['atlas.notifications.read.v1:user-a'], /msg-1/);
+  assert.deepEqual(plain(changes), [{ id: 'msg-1' }]);
+  shell.notify.markUnread('msg-1');
+  assert.equal(changes.length, 1, 'already unread: no change event');
 });

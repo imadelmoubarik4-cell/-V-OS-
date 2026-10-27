@@ -59,3 +59,17 @@ test('unread worker uses authenticated API only', () => {
   assert.doesNotMatch(badge, /SUPABASE_SERVICE_ROLE_KEY|\.from\s*\(/);
   assert.match(messages, /total_unread/);
 });
+
+// Audit M11: a failing gateway is not hit every 8 s from every tab, and focus
+// does not add a fetch per window switch. Behaviour is proven in
+// tests/browser/team-unread-badge.browser.test.mjs on fake timers.
+test('polling is a setTimeout chain with capped backoff, throttled focus and a push refresh', () => {
+  assert.match(badge, /const BACKOFF_MAX_MS = 180000;/);
+  assert.match(badge, /const FOCUS_MIN_GAP_MS = 15000;/);
+  assert.doesNotMatch(badge, /setInterval\(\(\) => refreshUnread/, 'no fixed-interval poll');
+  assert.match(badge, /Math\.min\(BACKOFF_MAX_MS, POLL_MS \* \(2 \*\* state\.failures\)\)/);
+  assert.match(badge, /state\.failures = 0;/);
+  assert.match(badge, /window\.addEventListener\('focus', handleFocus\)/);
+  assert.match(badge, /now - state\.lastFocusRefreshAt < FOCUS_MIN_GAP_MS/);
+  assert.match(badge, /event\.data\?\.type === 'atlas:push' && event\.data\?\.route === 'team'/);
+});

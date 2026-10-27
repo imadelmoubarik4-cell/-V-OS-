@@ -27,6 +27,12 @@
      @font-face in atlas-tokens.css. Preload the Latin text face. The theme
      colour is the stone frame (--bg-subtle). -->
 <link rel="preload" href="assets/fonts/IBMPlexSans-Latin-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<!-- Start-up connections (L25): open the Supabase connection early, and fetch
+     the pinned supabase-js build (SUPABASE_CDN_URLS[0] in atlas-app.js,
+     same SRI and CORS mode, so the script reuses this download) while the
+     page's own scripts are still loading. Both hosts are already in the CSP. -->
+<link rel="preconnect" href="https://dnefgcmjcgxlynycxkts.supabase.co" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" as="script" crossorigin="anonymous" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug">
   <!-- atlas-tokens.css is linked first because it declares the cascade-layer
        order (atlas.tokens, atlas.base, atlas.components, atlas.modules).
        atlas-base.css, atlas-components.css and atlas-shell.css are the design
@@ -76,7 +82,10 @@
       </div>
       <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
       <p class="atlas-auth__sub" id="login-sub">Sign in to continue.</p>
-      <form id="login-form" class="atlas-auth__form" novalidate>
+      <!-- method="post" and a disabled submit until atlas-app.js is ready
+           (M15): an Enter pressed before the script binds can never put the
+           email and password in the address bar, history or access logs. -->
+      <form id="login-form" class="atlas-auth__form" method="post" novalidate>
         <div class="atlas-field">
           <label for="email">Email</label>
           <input class="atlas-input" type="email" id="email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required aria-describedby="email-error login-error" />
@@ -97,7 +106,7 @@
         <!-- Calm, polite countdown during the client-side failed-login cooldown
              (a UX speed-bump; Supabase Auth's server limits are the real control). -->
         <p class="atlas-auth__status" id="login-cooldown" role="status" aria-live="polite" hidden></p>
-        <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit" id="login-btn">Sign in</button>
+        <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit" id="login-btn" disabled>Connecting…</button>
       </form>
       <!-- S99: two-factor enrolment host. When a signed-in account has no verified
            authenticator yet, atlas-app.js hides the form and mounts AtlasMfaEnroll
@@ -229,36 +238,36 @@
 
 
 <script src="assets/js/alcedo-icons.js?v=20261026-redesign"></script>
-<script src="assets/js/atlas-shell.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-shell.js?v=20261027-audit"></script>
 <script src="config.js"></script>
 <script src="assets/js/runtime-module-guard.js?v=20261026-redesign"></script>
 <script src="assets/js/rehearsal-boundary.js?v=20261026-redesign"></script>
 <script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>
-<script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
-<script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
+<script src="assets/js/atlas-venue-clock.js?v=20261027-audit"></script>
+<script src="assets/js/atlas-api.js?v=20261027-audit"></script>
 <script src="assets/js/atlas-bot.js?v=20260930-glb2"></script>
 <script src="assets/js/atlas-mfa-enroll.js?v=20261026-redesign"></script>
-<script src="assets/js/atlas-app.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-app.js?v=20261027-audit"></script>
 <script src="assets/js/atlas-calculations.js?v=20260929-s90p"></script>
 <script src="assets/js/modal.js?v=20261026-redesign"></script>
-<script src="assets/js/recipes.js?v=20261026-redesign"></script>
-<script src="assets/js/flavor-map.js?v=20261026-redesign"></script>
-<script src="assets/js/operations.js?v=20261026-redesign"></script>
+<script src="assets/js/recipes.js?v=20261027-audit"></script>
+<script src="assets/js/flavor-map.js?v=20261027-audit"></script>
+<script src="assets/js/operations.js?v=20261027-audit"></script>
 <script src="assets/js/atlas-capture.js?v=20260929-s90u"></script>
-<script src="assets/js/atlas-inventory.js?v=20261026-redesign"></script>
-<script src="assets/js/stock-count-workspace.js?v=20261026-redesign"></script>
-<script src="assets/js/atlas-purchasing.js?v=20261026-redesign"></script>
-<script src="assets/js/home.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-inventory.js?v=20261027-audit"></script>
+<script src="assets/js/stock-count-workspace.js?v=20261027-audit"></script>
+<script src="assets/js/atlas-purchasing.js?v=20261027-audit"></script>
+<script src="assets/js/home.js?v=20261027-audit"></script>
 <script src="assets/js/reports-overview.js?v=20260930-s90g"></script>
-<script src="assets/js/data-workspace.js?v=20261026-redesign"></script>
+<script src="assets/js/data-workspace.js?v=20261027-audit"></script>
 <script src="assets/js/shifts-workspace.js?v=20261026-redesign"></script>
 <script src="assets/js/knowledge-workspace.js?v=20261026-redesign"></script>
 <script src="assets/js/training-workspace.js?v=20261026-redesign"></script>
-<script src="assets/js/bookings-workspace.js?v=20261026-redesign"></script>
+<script src="assets/js/bookings-workspace.js?v=20261027-audit"></script>
 <script src="assets/js/s38-app-remediation.js?v=20260929-s90f"></script>
-<script src="assets/js/atlas-search.js?v=20260929-s90u"></script>
-<script src="assets/js/atlas-chrome.js?v=20261026-redesign"></script>
-<script src="assets/js/atlas-palette.js?v=20261026-redesign"></script>
+<script src="assets/js/atlas-search.js?v=20261027-audit"></script>
+<script src="assets/js/atlas-chrome.js?v=20261027-audit"></script>
+<script src="assets/js/atlas-palette.js?v=20261027-audit"></script>
 <script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>
 <script src="assets/js/atlas-ai.js?v=20261026-redesign"></script>
 <script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>

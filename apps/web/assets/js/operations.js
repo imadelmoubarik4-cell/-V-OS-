@@ -238,6 +238,12 @@
     }
   }
 
+  // Reads get a deadline covering the request and its body (audit L12): a
+  // stalled socket fails the load, its in-flight guard clears and Try again
+  // starts a fresh request. Writes are never cut short (their outcome would
+  // be unknown).
+  const READ_TIMEOUT_MS = 20000;
+
   async function api(action, { method = 'GET', params = null, body = undefined } = {}) {
     const base = endpoint();
     if (!base) throw new OperationsError(0, 'not_configured');
@@ -246,20 +252,29 @@
     const url = new URL(base);
     url.searchParams.set('action', action);
     Object.entries(params || {}).forEach(([key, value]) => { if (value != null && value !== '') url.searchParams.set(key, String(value)); });
-    let response;
+    const read = method === 'GET';
+    const controller = read ? new AbortController() : null;
+    const timer = read ? window.setTimeout(() => controller.abort(), READ_TIMEOUT_MS) : null;
     try {
-      response = await fetch(url, {
-        method,
-        cache: 'no-store',
-        headers: { authorization: `Bearer ${token}`, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
-        body: body ? JSON.stringify(body) : undefined
-      });
-    } catch {
-      throw new OperationsError(0, 'network');
+      let response;
+      try {
+        response = await fetch(url, {
+          method,
+          cache: 'no-store',
+          ...(controller ? { signal: controller.signal } : {}),
+          headers: { authorization: `Bearer ${token}`, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
+          body: body ? JSON.stringify(body) : undefined
+        });
+      } catch {
+        throw new OperationsError(0, controller?.signal.aborted ? 'timeout' : 'network');
+      }
+      const payload = await response.json().catch(() => (controller?.signal.aborted ? null : {}));
+      if (controller?.signal.aborted) throw new OperationsError(0, 'timeout');
+      if (!response.ok) throw new OperationsError(response.status, payload?.code || null);
+      return payload || {};
+    } finally {
+      if (timer) window.clearTimeout(timer);
     }
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new OperationsError(response.status, payload?.code || null);
-    return payload || {};
   }
 
   // What a failed write means for the person, never the server's text.

@@ -215,7 +215,9 @@
     records.forEach((result) => { if (!byType.has(result.group)) byType.set(result.group, []); byType.get(result.group).push(result); });
     const recordSections = [...byType.entries()].map(([group, results]) => ({ key: `records:${group}`, label: group, rows: results.map(recordRow), limit: MAX_ROWS }));
 
-    const matchesAction = (action, text) => !text || [action.label, action.recordLabel || '', ...action.keywords].some((value) => value.toLowerCase().includes(text.toLowerCase()));
+    // Accent- and þ/ð/æ-insensitive, like record search (audit L31).
+    const fold = (value) => (window.AtlasFormat?.fold ? window.AtlasFormat.fold(value) : String(value ?? '').toLowerCase());
+    const matchesAction = (action, text) => !text || [action.label, action.recordLabel || '', ...action.keywords].some((value) => fold(value).includes(fold(text)));
     const matching = shell.actions.list({ role: role(), query: actionQuery || query }).map((action) => actionRow(action));
     const firstRecord = records.find((result) => result.type && result.id);
     const record = firstRecord ? { type: firstRecord.type, id: firstRecord.id, label: firstRecord.title } : null;

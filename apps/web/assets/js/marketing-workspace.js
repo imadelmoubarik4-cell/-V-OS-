@@ -113,6 +113,19 @@
   const clock = () => window.AtlasVenueClock;
   const humanize = (value) => { const text = String(value || '').replace(/[_-]+/g, ' ').trim(); return text ? text.charAt(0).toUpperCase() + text.slice(1) : ''; };
   const requestId = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `marketing-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  // One client_request_id per composer and action (audit L15): a retry after
+  // a lost answer replays the same create on the server instead of making a
+  // second post. The server replays by id alone, so a changed request gets a
+  // new id.
+  function composerRequestId(composer, action, request) {
+    composer.requestIds = composer.requestIds || {};
+    const signature = JSON.stringify(request);
+    const entry = composer.requestIds[action];
+    if (entry && entry.signature === signature) return entry.id;
+    const id = requestId();
+    composer.requestIds[action] = { id, signature };
+    return id;
+  }
   const venueToday = () => state.workspace?.venue_date || clock()?.venueDate?.() || new Date().toISOString().slice(0, 10);
   const venueKey = (value) => (value ? clock()?.venueDate?.(value) || String(value).slice(0, 10) : null);
   const dateTime = (value, fallback = 'Not scheduled') => (value ? clock()?.formatDateTime?.(value, {}, fallback) || fallback : fallback);
@@ -1146,11 +1159,16 @@
     if (!at) return `Pick a date and time (${venueTimeLabel()}).`;
     let text = `Posts ${dateOnly(at)} at ${timeOnly(at)} ${venueTimeLabel()}.`;
     try {
+      // Compare wall clocks, not ICU strings: en-GB writes 'Sept' where the
+      // venue clock writes 'Sep', which added a false "your time" note to
+      // every September post (audit L35). Both sides use the venue clock.
       const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const local = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(at));
-      const localDay = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(at)).replace(',', '');
-      const venueDay = dateOnly(at);
-      if (local !== timeOnly(at) || localDay !== venueDay) {
+      const here = clock()?.parts?.(at, zone);
+      const there = clock()?.parts?.(at);
+      if (zone && here && there && (here.time !== there.time || here.dateKey !== there.dateKey)) {
+        const local = here.time;
+        const localDay = dateOnly(here.dateKey);
+        const venueDay = dateOnly(at);
         const city = String(zone || '').split('/').pop().replace(/_/g, ' ');
         text += ` That's ${localDay !== venueDay ? `${localDay}, ` : ''}${local} your time${city ? ` (${city})` : ''}.`;
       }
@@ -1713,7 +1731,8 @@
     const fields = contentFields(draft);
     const item = composerItem();
     if (composer.suggestion && !composer.id) {
-      const result = await mutate('convert-recommendation', { recommendation_id: composer.suggestion.id, occurrence_date: state.workspace?.venue_date || venueToday(), client_request_id: requestId(), scheduled_for: fields.scheduled_for, reminder_at: fields.reminder_at }, null);
+      const request = { recommendation_id: composer.suggestion.id, occurrence_date: state.workspace?.venue_date || venueToday(), scheduled_for: fields.scheduled_for, reminder_at: fields.reminder_at };
+      const result = await mutate('convert-recommendation', { ...request, client_request_id: composerRequestId(composer, 'convert-recommendation', request) }, null);
       const id = result?.content?.id || result?.content_id || result?.id;
       if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The suggestion was planned, but Alcedo couldn’t open it. Find it in Posts.' });
       composer.id = id;
@@ -1723,7 +1742,8 @@
     } else if (!composer.id) {
       let result;
       try {
-        result = await mutate('create-content', { client_request_id: requestId(), priority: 'normal', frames: [], media_requirements: {}, content_type: draft.content_type, ...fields, ...(draft.media.length ? { media: mediaPayload(draft) } : {}) }, null);
+        const request = { priority: 'normal', frames: [], media_requirements: {}, content_type: draft.content_type, ...fields, ...(draft.media.length ? { media: mediaPayload(draft) } : {}) };
+        result = await mutate('create-content', { client_request_id: composerRequestId(composer, 'create-content', request), ...request }, null);
       } catch (error) {
         // The post was created but its options or media were not saved: keep
         // editing that post, and send everything again on the next Save.

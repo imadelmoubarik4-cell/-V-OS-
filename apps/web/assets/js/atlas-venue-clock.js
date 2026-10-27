@@ -19,6 +19,11 @@
 //              native <input type="date|time|datetime-local"> fields; values stay ISO
 //   hours      dayWindow(dateKey) · isOpenAt(at) · nextEvent(at, {types}) · timeline(dateKey, at)
 //
+// It also defines window.AtlasFormat: money (formatKr), parseAmount,
+// amountInputValue, parseQuantity, quantityIsAmbiguous, formatQuantity,
+// fold / searchKey / foldIncludes and compareNames (see "numbers, names and
+// search" below).
+//
 // Rules (docs/design/Atlas_Time_Migration.md):
 // - Date-only values are 'YYYY-MM-DD' strings. Arithmetic on them is done at
 //   UTC noon, which is independent of every zone and of DST.
@@ -767,6 +772,118 @@
     }
   }
 
+  // ---------- numbers, names and search (AtlasFormat) ----------
+  //
+  // One rule for every screen (audit M16, L30, L31, L34):
+  // - Money accepts the Icelandic and the plain form: '4.500' and '4500' are
+  //   4500, '4.500,5' is 4500.5, '4,5' is 4.5, '12 345' is 12345. Anything else
+  //   is NaN (the form says so), never a silent 0 or a 1000x smaller amount.
+  // - Quantities take one decimal mark ('1,5' or '1.5') and refuse grouped
+  //   forms ('1 250', '1.250,5'). '1,250' and '1.250' could be 1250 or 1.25,
+  //   so forms ask the person to type it again (quantityIsAmbiguous).
+  // - Quantities are shown without thousands separators, so a figure copied
+  //   from the screen reads back as the same number.
+  // - Search folds case, accents and þ/ð/æ the way the server does
+  //   (supabase/functions/_shared/product-identity.mjs SEARCH_SPECIAL).
+  // - Names sort in the venue's language, the same on every device.
+  const VENUE_LOCALE = 'is';
+  const SEARCH_SPECIAL = Object.freeze({ þ: 'th', ð: 'd', æ: 'ae', œ: 'oe', ß: 'ss', ø: 'o', đ: 'd', ħ: 'h', ı: 'i', ĳ: 'ij', ŀ: 'l', ł: 'l', ŋ: 'n', ŧ: 't', ſ: 's', ĸ: 'k', ŉ: 'n' });
+  const SEARCH_SPECIAL_CHARS = new RegExp(`[${Object.keys(SEARCH_SPECIAL).join('')}]`, 'g');
+  let nameCollator = null;
+  let quantityFormat = null;
+
+  /** 'Þristur' → 'thristur', 'Ölgerðin' → 'olgerdin', 'Ægir' → 'aegir'. */
+  function fold(value) {
+    return String(value ?? '').normalize('NFC').toLowerCase()
+      .replace(SEARCH_SPECIAL_CHARS, (char) => SEARCH_SPECIAL[char])
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /** fold() reduced to lowercase ASCII words separated by single spaces. */
+  function searchKey(value) {
+    return fold(value).replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  /** Does `text` contain `query`, ignoring case, accents and þ/ð/æ? */
+  function foldIncludes(text, query) {
+    const needle = fold(query).trim();
+    return !needle || fold(text).includes(needle);
+  }
+
+  /** Name order in the venue language, independent of the device language. */
+  function compareNames(a, b) {
+    if (!nameCollator) nameCollator = new Intl.Collator(VENUE_LOCALE, { sensitivity: 'base', numeric: true });
+    return nameCollator.compare(String(a ?? ''), String(b ?? ''));
+  }
+
+  /** Money typed by a person: null when empty, NaN when it is not an amount. */
+  function parseAmount(text) {
+    let value = String(text ?? '').replace(/\s|kr\.?|isk/gi, '');
+    if (!value) return null;
+    if (!/^-?[\d.,]+$/.test(value)) return NaN;
+    if (value.includes(',') && value.includes('.')) {
+      if (!/^-?[1-9]\d{0,2}(\.\d{3})+,\d+$/.test(value)) return NaN;
+      value = value.replace(/\./g, '').replace(',', '.');
+    } else if (value.includes(',')) {
+      if (value.indexOf(',') !== value.lastIndexOf(',')) return NaN;
+      value = value.replace(',', '.');
+    } else if (/^-?[1-9]\d{0,2}(\.\d{3})+$/.test(value)) {
+      value = value.replace(/\./g, '');
+    }
+    const number = Number(value);
+    return Number.isFinite(number) ? number : NaN;
+  }
+
+  /**
+   * A stored amount as a money field shows it, so parseAmount reads it back
+   * unchanged: 4500 → '4500', 1.125 → '1,125' (never '1.125', which is 1125).
+   */
+  function amountInputValue(value) {
+    if (value === null || value === undefined || value === '') return '';
+    const number = Number(value);
+    return Number.isFinite(number) ? String(number).replace('.', ',') : String(value);
+  }
+
+  /** A quantity typed by a person: one decimal mark, no grouping. null when empty. */
+  function parseQuantity(text) {
+    const value = String(text ?? '').trim();
+    if (!value) return null;
+    if (!/^-?(\d+([.,]\d*)?|[.,]\d+)$/.test(value)) return NaN;
+    const number = Number(value.replace(',', '.'));
+    return Number.isFinite(number) ? number : NaN;
+  }
+
+  /** '1,250' / '1.250': a thousands mark (1250) or a decimal (1.25)? */
+  function quantityIsAmbiguous(text) {
+    return /^[1-9]\d{0,2}[.,]\d{3}$/.test(String(text ?? '').trim());
+  }
+
+  /**
+   * The question a form shows for an ambiguous quantity. Both answers it
+   * suggests are unambiguous, so typing either one is accepted: a decimal
+   * with three digits after the mark ('1.125') is suggested with a fourth
+   * ('1.1250'), which reads as 1.125 and is never taken for 1125.
+   */
+  function ambiguousQuantityText(text) {
+    const raw = String(text ?? '').trim();
+    const [whole, fraction = ''] = raw.split(/[.,]/);
+    const trimmed = fraction.replace(/0+$/, '');
+    const decimal = trimmed ? `${whole}.${trimmed}` : whole;
+    const typeDecimal = trimmed.length === 3 ? `${decimal}0` : decimal;
+    return `“${raw}” could mean ${whole}${fraction} or ${decimal}. Type ${whole}${fraction} or ${typeDecimal}.`;
+  }
+
+  /** '1250', '1.25': no thousands separator, '.' decimals, up to `digits` places. */
+  function formatQuantity(value, fallback = '—', digits = 3) {
+    const number = value === null || value === undefined || value === '' ? NaN : Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    if (digits === 3) {
+      if (!quantityFormat) quantityFormat = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 3, useGrouping: false });
+      return quantityFormat.format(number);
+    }
+    return new Intl.NumberFormat('en-GB', { maximumFractionDigits: digits, useGrouping: false }).format(number);
+  }
+
   root.AtlasVenueClock = Object.freeze({
     DEFAULT_TIME_ZONE,
     // state
@@ -812,8 +929,24 @@
     timeline
   });
 
-  // Spec §5.3 names one money helper, AtlasFormat.money(); none existed before.
-  if (!root.AtlasFormat) root.AtlasFormat = Object.freeze({ money: formatKr });
+  // Spec §5.3 names one money helper, AtlasFormat.money(); the number, name
+  // and search rules above live beside it.
+  if (!root.AtlasFormat) {
+    root.AtlasFormat = Object.freeze({
+      VENUE_LOCALE,
+      money: formatKr,
+      parseAmount,
+      amountInputValue,
+      parseQuantity,
+      quantityIsAmbiguous,
+      ambiguousQuantityText,
+      formatQuantity,
+      fold,
+      searchKey,
+      foldIncludes,
+      compareNames
+    });
+  }
 
   bind();
   bindNativeFields();

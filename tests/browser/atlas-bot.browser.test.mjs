@@ -234,7 +234,7 @@ test('badges: the sidebar kingfisher glyph, the palette Ask Alcedo glyph and the
     const badge = await spriteLoaded(page, FOLLOWER);
     assert.equal(badge.found, true);
     assert.match(badge.url, /assets\/atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb2/);
-    assert.deepEqual([badge.width, badge.height], [640, 640], 'the head-crop poster');
+    assert.deepEqual([badge.width, badge.height], [256, 256], 'the head-crop poster, sized for its largest badge at 2x (L28)');
     assert.deepEqual(badge.box, [20, 20]);
     // Hovering its button lifts the badge (a small transform; there are no sprite frames).
     await page.hover('#atlas-bot-follower');

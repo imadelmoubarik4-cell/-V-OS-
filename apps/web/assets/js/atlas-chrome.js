@@ -585,7 +585,9 @@
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes} min ago`;
     if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
-    return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(time));
+    // The venue's calendar day, spelled 'Sep' on every device (audit L35).
+    const venue = window.AtlasVenueClock?.formatDate?.(new Date(time));
+    return venue || new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Atlantic/Reykjavik' }).format(new Date(time));
   }
 
   const NOTIFY_ICONS = { danger: 'triangle-alert', warning: 'clock', info: 'bell', message: 'messages-square', attention: 'circle-alert' };

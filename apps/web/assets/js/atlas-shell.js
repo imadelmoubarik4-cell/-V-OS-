@@ -20,7 +20,7 @@
 //   data      onDataLoaded(fn) · dataLoaded(detail) · profileReady(profile) · profile()
 //   actions   actions.register(def) · actions.run(id, ctx) · actions.list(ctx) · actions.get(id)
 //   notify    notify.push(item) · notify.contribute(key, fn) · notify.items({ filter })
-//             notify.unreadCount() · notify.markRead(id) · notify.markAllRead()
+//             notify.unreadCount() · notify.markRead(id) · notify.markUnread(id) · notify.markAllRead()
 //             notify.open() / close() / toggle() / isOpen() · notify.setPanel(panel)
 //   links     links.register(type, handler) · links.open(type, key)   (registerLink / openLink)
 //   modules   modules.ensure({ js, global }) · load(src, options)       (deduplicated loader)
@@ -77,6 +77,7 @@
   let notifyPanel = null;
   let notifyIsOpen = false;
   let readIds = null;
+  let readOwner = '';
 
   // A failing module must not stop the rest of the lifecycle. The error is
   // reported as uncaught (visible in the console and to page-error monitors)
@@ -674,7 +675,9 @@
 
   function profileReady(profile) {
     lastProfile = profile ?? null;
+    const readOwnerChanged = setReadOwner(lastProfile);
     emit('profile:ready', lastProfile);
+    if (readOwnerChanged) emit('notify:changed', { source: 'profile' });
   }
 
   // ---------- navigation destinations (spec §3.1, §3.3) ----------
@@ -849,18 +852,33 @@
   // needsAction? }. Sources: pushed items, contributor functions and Home
   // attention rows. The panel UI registers itself with notify.setPanel().
 
+  // Read state belongs to the signed-in person, not the device (audit L22):
+  // the key carries the profile id, and a different profile starts from its
+  // own set. A profile without an id keeps the original device key.
+  function readStorageKey() {
+    return readOwner ? `${READ_STORAGE_KEY}:${readOwner}` : READ_STORAGE_KEY;
+  }
+
+  function setReadOwner(profile) {
+    const owner = profile?.id ? String(profile.id) : '';
+    if (owner === readOwner) return false;
+    readOwner = owner;
+    readIds = null;
+    return true;
+  }
+
   function loadReadIds() {
     if (readIds) return readIds;
     readIds = new Set();
     try {
-      const stored = JSON.parse(root.localStorage?.getItem(READ_STORAGE_KEY) || '[]');
+      const stored = JSON.parse(root.localStorage?.getItem(readStorageKey()) || '[]');
       if (Array.isArray(stored)) stored.slice(-300).forEach((id) => readIds.add(String(id)));
     } catch { /* storage unavailable: read state lasts for this page only */ }
     return readIds;
   }
 
   function saveReadIds() {
-    try { root.localStorage?.setItem(READ_STORAGE_KEY, JSON.stringify([...loadReadIds()].slice(-300))); } catch { /* storage unavailable */ }
+    try { root.localStorage?.setItem(readStorageKey(), JSON.stringify([...loadReadIds()].slice(-300))); } catch { /* storage unavailable */ }
   }
 
   function normalizeNotification(item, source) {
@@ -938,6 +956,15 @@
     const ids = loadReadIds();
     if (ids.has(String(id))) return;
     ids.add(String(id));
+    saveReadIds();
+    emit('notify:changed', { id: String(id) });
+  }
+
+  // Undo a local markRead the server did not keep (bookings-notifications.js
+  // after a rejected mark-as-read, audit L43).
+  function markUnread(id) {
+    const ids = loadReadIds();
+    if (!ids.delete(String(id))) return;
     saveReadIds();
     emit('notify:changed', { id: String(id) });
   }
@@ -1495,6 +1522,7 @@
       items: notificationItems,
       unreadCount,
       markRead,
+      markUnread,
       markAllRead,
       activate: activateNotification,
       open: openNotifications,

@@ -254,19 +254,30 @@
     try { return (await client.auth.getSession())?.data?.session?.access_token || null; } catch { return null; }
   }
 
+  // A read with a deadline covering the request and its body (audit L12): a
+  // stalled socket fails the Home card, so its in-flight guard clears and the
+  // next refresh asks again instead of spinning for minutes.
+  const READ_TIMEOUT_MS = 20000;
   async function getJson(base, params) {
     const token = await accessToken();
     if (!base || !token) return null;
     const url = new URL(base);
     Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
-    const response = await fetch(url, { cache: 'no-store', headers: { authorization: `Bearer ${token}`, accept: 'application/json' } });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error('request failed');
-      error.status = response.status;
-      throw error;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), READ_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, { cache: 'no-store', signal: controller.signal, headers: { authorization: `Bearer ${token}`, accept: 'application/json' } });
+      const payload = await response.json().catch(() => ({}));
+      if (controller.signal.aborted) throw Object.assign(new Error('request timed out'), { status: 0, timeout: true });
+      if (!response.ok) {
+        const error = new Error('request failed');
+        error.status = response.status;
+        throw error;
+      }
+      return payload;
+    } finally {
+      window.clearTimeout(timer);
     }
-    return payload;
   }
 
   async function loadShifts(force = false) {

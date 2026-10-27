@@ -17,7 +17,7 @@ const index = read('apps/web/index.html');
 const flavorCss = css.slice(css.indexOf('  .flavor-page {')).replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('flavor-map.js loads right after recipes.js with the Flavor Intelligence key', () => {
-  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261026-redesign"></script>\n<script src="assets/js/flavor-map.js?v=20261026-redesign"></script>'));
+  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261027-audit"></script>\n<script src="assets/js/flavor-map.js?v=20261027-audit"></script>'));
   assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20261026-redesign">'));
   assert.equal(index.match(/flavor-map\.js/g).length, 1);
   assert.match(flavor, /window\.AtlasFlavorMap = Object\.freeze\(\{\s+mount,\s+unmount,\s+openCreate,/);

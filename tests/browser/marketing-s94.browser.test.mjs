@@ -551,6 +551,24 @@ test('S94 roles: bartender sees the lock; manager can approve and publish; autom
   } finally { await off.close(); }
 });
 
+// Audit L35: a browser whose wall clock matches the venue's adds no
+// "your time" note, in September too (ICU en-GB writes 'Sept', the venue
+// clock 'Sep'; comparing those strings added a false note every September).
+for (const zone of ['Atlantic/Reykjavik', 'UTC']) {
+  test(`L35 a September post from a ${zone} browser has no "your time" note`, { skip }, async () => {
+    const { page, close } = await launch({ timezoneId: zone });
+    try {
+      await page.waitForSelector('#marketing-view [data-mk-new]');
+      await openNew(page);
+      await page.fill('#mk-title', 'September post');
+      await page.fill('#mk-when', '2026-09-30T18:00');
+      await page.waitForFunction(() => /Posts Wed 30 Sep at 18:00 Reykjavík time\./.test(document.querySelector('[data-mk-when-echo]').textContent));
+      await settle(page);
+      assert.doesNotMatch(await page.textContent('[data-mk-when-echo]'), /your time|Sept/);
+    } finally { await close(); }
+  });
+}
+
 for (const [zone, expected] of [['America/New_York', /That's 14:00 your time \(New York\)\./], ['Asia/Tokyo', /That's Fri 2 Oct, 03:00 your time \(Tokyo\)\./]]) {
   test(`S94 Reykjavík time from a ${zone} browser`, { skip }, async () => {
     const { page, record, close } = await launch({ timezoneId: zone });
@@ -641,4 +659,61 @@ test('S94 desktop screenshots of history and the phone history', { skip: skip ||
       await shot(page, viewport ? 'phone-history' : 'desktop-history-published');
     } finally { await close(); }
   }
+});
+
+// Audit L15 (Marketing part): one client_request_id per composer. A Save
+// retried after a lost answer (504) sends the same id, so the gateway replays
+// the create instead of making a second post; a changed post gets a new id.
+test('L15: a retried Save keeps its client_request_id; an edited post gets a new one', { skip }, async () => {
+  const gateway = marketingGateway({ role: 'admin' });
+  const inner = gateway.handler;
+  let lose = 1;
+  gateway.handler = (entry) => {
+    const result = inner(entry);
+    if (entry.action === 'create-content' && lose > 0) { lose -= 1; return { __status: 504, body: { error_code: 'unavailable' } }; }
+    return result;
+  };
+  const { page, record, close } = await launch({ gateway });
+  try {
+    await page.waitForSelector('#marketing-view .page-head');
+    await openNew(page);
+    await page.fill('#mk-title', 'Pop-up tonight');
+    await page.click('[data-mk-channel="facebook"]');
+    const creates = () => requestsTo(record, 'atlas-marketing-workspace', 'create-content').map((call) => call.body);
+    await page.click('[data-mk-save]');
+    await until(() => creates().length === 1, { message: 'first create' });
+    await settle(page);
+    await page.click('[data-mk-save]');
+    await until(() => creates().length === 2, { message: 'retried create' });
+    const [first, retry] = creates();
+    assert.ok(first.client_request_id);
+    assert.equal(retry.client_request_id, first.client_request_id, 'the retry replays the same create');
+    assert.equal(retry.title, 'Pop-up tonight');
+  } finally { await close(); }
+
+  const second = marketingGateway({ role: 'admin' });
+  const inner2 = second.handler;
+  let lose2 = 1;
+  second.handler = (entry) => {
+    const result = inner2(entry);
+    if (entry.action === 'create-content' && lose2 > 0) { lose2 -= 1; return { __status: 504, body: { error_code: 'unavailable' } }; }
+    return result;
+  };
+  const again = await launch({ gateway: second });
+  try {
+    await again.page.waitForSelector('#marketing-view .page-head');
+    await openNew(again.page);
+    await again.page.fill('#mk-title', 'Pop-up tonight');
+    await again.page.click('[data-mk-channel="facebook"]');
+    const creates = () => requestsTo(again.record, 'atlas-marketing-workspace', 'create-content').map((call) => call.body);
+    await again.page.click('[data-mk-save]');
+    await until(() => creates().length === 1, { message: 'first create' });
+    await settle(again.page);
+    await again.page.fill('#mk-title', 'Pop-up tomorrow');
+    await again.page.click('[data-mk-save]');
+    await until(() => creates().length === 2, { message: 'edited create' });
+    const [first, edited] = creates();
+    assert.notEqual(edited.client_request_id, first.client_request_id);
+    assert.equal(edited.title, 'Pop-up tomorrow');
+  } finally { await again.close(); }
 });

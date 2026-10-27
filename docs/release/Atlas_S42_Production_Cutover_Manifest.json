@@ -23,10 +23,10 @@
   "automatic_import_authorized": false
  },
  "files": {
-  "apps/web/config.js": "4a53bfac06c4dc872b2d8951b8cf7785c3e4bdc14d4e407c8d5a5021002644a7",
+  "apps/web/config.js": "12b079b991f4f0a4f50bd38546358962a1e16b30a8aefe783deffe716c44b124",
   "apps/web/assets/js/rehearsal-boundary.js": "33a3f02dde5ac1141d0b076bc9121d9d3b292956c77f211a5a8536f5c98b8d26",
-  "apps/web/assets/js/stock-count-workspace.js": "5923575f1fc305c05dc70d167b33620b69e45f9e455387dce61da4c216a53d57",
-  "apps/web/assets/js/data-workspace.js": "e0497de3a5a04bc30843b3b7d95d4a45391866294e94747bcbd049106d7af9a7",
+  "apps/web/assets/js/stock-count-workspace.js": "eed220f26dd3f5ac1e43d5ce3fe622dec262e289213ae512054d6833a49609aa",
+  "apps/web/assets/js/data-workspace.js": "674370b537ad597fb9be657671c8d53b719024ff68be37c5d59d909832996c1b",
   "netlify.toml": "f88a76eb026467992d1c7e32b1fa1ab848051bbf6131871d33d5bfb1b307fa84",
   "supabase/config.toml": "71adebc1e28fd3879a25a38dfd59b604069121b349174127f736f25a2e954e98"
  }

@@ -73,9 +73,25 @@
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
+  // Quantities are shown without a thousands separator (AtlasFormat), so
+  // 'Last verified 1250' never reads back as 1.25 when typed (audit L30).
+  const format = () => root.AtlasFormat || null;
   function qty(value) {
     const parsed = num(value);
-    return parsed === null ? '—' : parsed.toLocaleString('en-GB', { maximumFractionDigits: 3 });
+    if (parsed === null) return '—';
+    return format()?.formatQuantity ? format().formatQuantity(parsed) : parsed.toLocaleString('en-GB', { maximumFractionDigits: 3, useGrouping: false });
+  }
+  // '1,250' typed could be 1250 or 1.25: ask instead of guessing (audit L30).
+  // A prefilled figure the person didn't change, or one the stepper wrote, is
+  // never questioned.
+  function typedAmbiguity(input) {
+    if (!input || !format()?.quantityIsAmbiguous) return '';
+    const value = String(input.value).trim();
+    if (value === String(input.defaultValue ?? '').trim() || value === input.dataset?.qtyWritten) return '';
+    return format().quantityIsAmbiguous(value) ? format().ambiguousQuantityText(value) : '';
+  }
+  function fold(value) {
+    return format()?.fold ? format().fold(value) : String(value ?? '').toLowerCase();
   }
   function round3(value) { return Math.round(value * 1000) / 1000; }
   function dateText(value, options) { return value && clock()?.formatDate ? clock().formatDate(value, options || {}) : ''; }
@@ -187,6 +203,18 @@
       if (serial === state.loadSerial) state.loading = false;
     }
     return state.snapshot;
+  }
+
+  // The snapshot the shell read in its last data load (AtlasData.countPayload:
+  // the same edge response), adopted only while this page has none and isn't
+  // loading its own, so it never replaces a newer read or a command's result.
+  function adoptShellSnapshot() {
+    if (state.snapshot || state.loading || !['admin', 'manager', 'bartender'].includes(role())) return false;
+    const payload = root.AtlasData?.countPayload?.();
+    if (!payload || typeof payload !== 'object' || !payload.counts || typeof payload.counts !== 'object') return false;
+    state.error = null;
+    applyPayload(payload);
+    return true;
   }
 
   async function loadDetail(id) {
@@ -484,6 +512,11 @@
     root.AtlasModal.open(host);
     lucide();
     const form = host.querySelector('#sc-start-form');
+    // One request id per sheet and request (L15): a retry after an answer was
+    // lost (the count may have started) replays the same start on the server
+    // instead of opening a second count. The server replays by id alone, so
+    // changing what is sent makes it a new request with a new id.
+    let startRequest = null;
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const [type, value] = String(new FormData(form).get('scope') || 'all::').split('::');
@@ -497,8 +530,11 @@
       const serverType = isPrimaryLocation ? 'all' : type;
       const areaLabel = isPrimaryLocation ? locationName(value) : value;
       const title = form.elements.title.value.trim() || (serverType === 'all' && !isPrimaryLocation ? 'Full count' : `${areaLabel} count`);
+      const body = { title, scope_type: serverType, scope_value: serverType === 'all' ? null : value, notes: null };
+      const fingerprint = JSON.stringify(body);
+      if (!startRequest || startRequest.fingerprint !== fingerprint) startRequest = { fingerprint, id: uuid() };
       try {
-        const payload = await mutate('start', { title, scope_type: serverType, scope_value: serverType === 'all' ? null : value, notes: null, client_request_id: uuid() });
+        const payload = await mutate('start', { ...body, client_request_id: startRequest.id });
         root.AtlasModal.close(host);
         const id = payload.detail?.session?.id || payload.result?.session?.id;
         if (isPrimaryLocation) {
@@ -683,9 +719,10 @@
   }
 
   function allItemsHtml() {
-    const query = state.allQuery.trim().toLowerCase();
+    // Search ignores case, accents and þ/ð/æ (audit L31).
+    const query = fold(state.allQuery.trim()).trim();
     const list = orderedLines().map((line, index) => ({ line, index })).filter(({ line }) => (state.allFilter === 'all' || line.line_status === state.allFilter)
-      && (!query || [line.item_name, line.category, line.bin_location, lineLocationText(line), line.sku, line.barcode].some((value) => String(value || '').toLowerCase().includes(query))));
+      && (!query || [line.item_name, line.category, line.bin_location, lineLocationText(line), line.sku, line.barcode].some((value) => fold(value || '').includes(query))));
     return `<div class="sc-flow">${flowHead()}
       <div class="atlas-toolbar sc-all__toolbar"><label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" data-count-all-search placeholder="Search this count" aria-label="Search this count" value="${esc(state.allQuery)}"></label>
       <div class="atlas-segmented" role="group" aria-label="Show">${[['pending', 'Not counted'], ['counted', 'Counted'], ['all', 'All']].map(([value, label]) => `<button type="button" aria-pressed="${state.allFilter === value}" data-count-all-filter="${value}">${label}</button>`).join('')}</div></div>
@@ -831,7 +868,8 @@
     const input = host?.querySelector('[data-count-qty]');
     if (!line || !input || state.saving) return;
     const parsed = parseQuantity(input.value);
-    if (parsed.error) { input.setAttribute('aria-invalid', 'true'); showCardError(parsed.error); input.focus(); return; }
+    const unclear = parsed.error ? '' : typedAmbiguity(input);
+    if (parsed.error || unclear) { input.setAttribute('aria-invalid', 'true'); showCardError(parsed.error || unclear); input.focus(); return; }
     state.saving = true;
     button?.classList.add('is-loading');
     if (button) button.disabled = true;
@@ -1059,7 +1097,8 @@
         const button = event.currentTarget;
         const parsed = parseQuantity(input.value);
         const alert = sheet.querySelector('[data-sheet-alert]');
-        if (parsed.error) { input.setAttribute('aria-invalid', 'true'); alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(parsed.error)}</p></div></div>`; lucide(); input.focus(); return; }
+        const problem = parsed.error || typedAmbiguity(input);
+        if (problem) { input.setAttribute('aria-invalid', 'true'); alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(problem)}</p></div></div>`; lucide(); input.focus(); return; }
         button.disabled = true;
         button.classList.add('is-loading');
         try {
@@ -1099,6 +1138,7 @@
     scope.querySelectorAll('[data-step]').forEach((button) => button.addEventListener('click', () => {
       const current = parseQuantity(input.value).value || 0;
       input.value = String(round3(Math.max(0, current + Number(button.dataset.step))));
+      input.dataset.qtyWritten = input.value;
       input.removeAttribute('aria-invalid');
     }));
     input?.addEventListener('input', () => input.removeAttribute('aria-invalid'));
@@ -1316,7 +1356,12 @@
       const params = context.params || {};
       if (context.view !== 'inventory' || params.section !== 'stock-count' || !params.session) leave();
     });
-    shell?.on?.('profile:ready', () => { state.snapshot = null; state.detail = null; if (['admin', 'manager', 'bartender'].includes(role())) loadSnapshot(); });
+    // A new profile drops what the previous one loaded (and any read still in
+    // flight for it). The shell reads the same snapshot while it loads its data,
+    // so the workspace adopts that read (L24) instead of fetching it again; a
+    // page that needs it sooner loads it, and refreshes are always forced.
+    shell?.on?.('profile:ready', () => { state.snapshot = null; state.detail = null; state.error = null; state.loadSerial += 1; state.loading = false; });
+    shell?.onDataLoaded?.(() => adoptShellSnapshot());
     root.addEventListener('pagehide', () => leave(), { once: true });
   }
 

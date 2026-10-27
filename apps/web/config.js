@@ -110,8 +110,18 @@ window.VABAR_CONFIG = {
   window.setTimeout(() => window.clearInterval(timer), 10000);
 })();
 
+// A stylesheet counts as present when any linked sheet is the same file,
+// whatever its ?v= cache key (L26): index.html links every runtime module
+// sheet, and a second copy under another key would be appended last and win
+// the cascade with stale rules.
+function atlasStylesheetPresent(stylesheetPath) {
+  const pathOf = (href) => { try { return new URL(href, document.baseURI).pathname; } catch (_) { return String(href).split('?')[0]; } };
+  const wanted = pathOf(stylesheetPath);
+  return [...document.querySelectorAll('link[rel~="stylesheet"][href]')].some((link) => pathOf(link.getAttribute('href')) === wanted);
+}
+
 function loadAtlasAssetOnce({ stylesheetPath, scriptPath, globalName, dataAttribute }) {
-  if (stylesheetPath && !document.querySelector(`link[href="${stylesheetPath}"]`)) {
+  if (stylesheetPath && !atlasStylesheetPresent(stylesheetPath)) {
     const stylesheet = document.createElement('link');
     stylesheet.rel = 'stylesheet';
     stylesheet.href = stylesheetPath;
@@ -159,7 +169,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-unread-badge.js?v=20261002-s93r',
+  scriptPath: 'assets/js/team-unread-badge.js?v=20261027-audit',
   globalName: 'AtlasTeamUnreadBadge',
   dataAttribute: 'atlasTeamUnreadBadge',
 }));
@@ -169,14 +179,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // the server-side booking inbox; independent of web-push delivery. Loads after
 // window load so it never delays startup.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/bookings-notifications.js?v=20261026-redesign',
+  scriptPath: 'assets/js/bookings-notifications.js?v=20261027-audit',
   globalName: 'AtlasBookingsNotifications',
   dataAttribute: 'atlasBookingsNotifications',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/marketing-workspace.css?v=20261026-redesign',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20261026-redesign',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20261027-audit',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -254,7 +264,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Bookings: staff day view + manager room/rules configuration.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/bookings-workspace.css?v=20261026-redesign',
-  scriptPath: 'assets/js/bookings-workspace.js?v=20261026-redesign',
+  scriptPath: 'assets/js/bookings-workspace.js?v=20261027-audit',
   globalName: 'AtlasBookings',
   dataAttribute: 'atlasBookings',
 }));
@@ -272,7 +282,7 @@ if (window.VABAR_CONFIG && window.VABAR_CONFIG.KANEL_PRICING_ENABLED) {
   }));
   loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
     stylesheetPath: 'assets/css/finance-pricing-workspace.css?v=20261026-redesign',
-    scriptPath: 'assets/js/finance-pricing-workspace.js?v=20261026-redesign',
+    scriptPath: 'assets/js/finance-pricing-workspace.js?v=20261027-audit',
     globalName: 'AtlasFinancePricing',
     dataAttribute: 'atlasFinancePricing',
   }));
@@ -283,7 +293,7 @@ if (window.VABAR_CONFIG && window.VABAR_CONFIG.KANEL_PRICING_ENABLED) {
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/reports-workspace.css?v=20261026-redesign',
-  scriptPath: 'assets/js/reports-workspace.js?v=20261026-redesign',
+  scriptPath: 'assets/js/reports-workspace.js?v=20261027-audit',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));
@@ -300,7 +310,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/settings-workspace.css?v=20261026-redesign',
-  scriptPath: 'assets/js/settings-workspace.js?v=20261026-redesign',
+  scriptPath: 'assets/js/settings-workspace.js?v=20261027-audit',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));
