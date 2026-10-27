@@ -75,7 +75,8 @@ test('movements fail: no stock is projected from stale counts; Home, Inventory a
     assert.ok(statuses.every((line) => /Unknown/.test(line) && !/Not counted|Below par|\bOut\b/.test(line)), statuses.join(' | '));
 
     // Reports › Overview: the alert and no inventory value built from partial stock.
-    await navigate(page, '#reports', '.reports-body .atlas-stats');
+    // The loading skeleton is an .atlas-stats too (aria-busy); wait for the loaded one.
+    await navigate(page, '#reports', '.reports-body .atlas-stats:not([aria-busy="true"])');
     assert.match(await text(page, '.reports-body'), /Stock figures are incomplete — movements couldn’t load\. Try again\./);
     const inventoryValue = await page.$eval('.reports-stats .atlas-stat', (node) => node.textContent.replace(/\s+/g, ' ').trim());
     assert.match(inventoryValue, /Inventory value\s*—\s*Stock figures are incomplete/);
