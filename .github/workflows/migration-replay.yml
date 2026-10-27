@@ -92,5 +92,7 @@ jobs:
         run: bash scripts/verify_s111_booking_personal_data_retention.sh
       - name: Run S112 direct-booking acceptance (owner stool numbering, owner switch off by default, booking_mode + seat_map, direct confirm on chosen or adjacent stools, seat_taken, corners and gap refused, idempotent, managers alerted)
         run: bash scripts/verify_s112_public_direct_booking.sh
-      - name: Prove the S112, S111, S110b, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S112 via the reviewed bundles)
+      - name: Run S113 guest booking email acceptance (owner switch off by default, site language stored, emails rendered in it with stools, test email to the sender only, earlier emails discarded, sent once, retry back-off, never late or after an interrupted send)
+        run: bash scripts/verify_s113_booking_guest_email.sh
+      - name: Prove the S113, S112, S111, S110b, S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S113 via the reviewed bundles)
         run: bash scripts/release/verify_kanel_bookings_rollback.sh
