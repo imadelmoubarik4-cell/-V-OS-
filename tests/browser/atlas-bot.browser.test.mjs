@@ -272,7 +272,7 @@ test('every robot asset the page references loads (200) with the keys atlas-bot.
     });
     const entries = Object.entries(result.statuses);
     const names = entries.map(([url]) => url);
-    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20260930-glb2$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
+    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20261027-swgl$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
     assert.ok(names.some((url) => /atlas-bot\/alcedo-mascot-poster\.png\?v=20260930-glb2$/.test(url)), 'the full poster from the stylesheet');
     assert.ok(names.some((url) => /atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb2$/.test(url)), 'the head crop from the stylesheet');
     for (const [url, status] of entries) assert.equal(status, 200, url);
@@ -581,7 +581,11 @@ test('WebGL in software (no GPU): the poster stays, no scene is built, and it ca
     assert.equal(await page.locator('#ai-view .atlas-bot-live__poster').isVisible(), true, 'the robot badge is the poster');
     assert.equal(await page.locator('#ai-view canvas.atlas-bot-live__canvas').count(), 0);
     assert.equal(await info(page), null);
-    assert.deepEqual(await page.evaluate(() => window.webglContextCalls), ['webgl2', 'webgl', 'webgl2'], 'only the two probes, once');
+    // Only the probes, once: the GPU probe fails the performance caveat and
+    // the software probe succeeds, or (recent Chromium) the GPU probe succeeds
+    // and names SwiftShader as its renderer.
+    const probes = await page.evaluate(() => window.webglContextCalls);
+    assert.ok([['webgl2', 'webgl', 'webgl2'], ['webgl2']].some((expected) => JSON.stringify(expected) === JSON.stringify(probes)), `only the probes, once: ${probes}`);
     // The badges are unaffected.
     await mountFollower(page);
     assert.equal(await page.locator('#atlas-bot-follower .atlas-bot--small').count(), 1);

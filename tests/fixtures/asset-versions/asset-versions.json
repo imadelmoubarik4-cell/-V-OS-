@@ -187,9 +187,9 @@
   },
   "apps/web/assets/js/atlas-bot.js": {
     "keys": [
-      "20260930-glb2"
+      "20261027-swgl"
     ],
-    "sha256": "61885a9701538f6a40d6806e8b44d185be5c42c1c0a5e918b56647c8c2187b46"
+    "sha256": "82f936ee6bd0e752d248604239e9221b665e72ff1a7e275ac66ce6d67e2516ab"
   },
   "apps/web/assets/js/atlas-calculations.js": {
     "keys": [

@@ -14,7 +14,7 @@
     "eval:ai-live": "node scripts/ai-eval-live.mjs",
     "eval:ai-live:dry-run": "node scripts/ai-eval-live.mjs --dry-run",
     "verify": "npm run test:node && npm run test:python",
-    "test:browser": "node --test --test-concurrency=4 tests/browser/*.browser.test.mjs"
+    "test:browser": "node --test --test-concurrency=4 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./tests/browser/tools/github-annotations.mjs --test-reporter-destination=stdout tests/browser/*.browser.test.mjs"
   },
   "engines": {
     "node": ">=20"
