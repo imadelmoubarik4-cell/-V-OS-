@@ -45,10 +45,13 @@ const RENDER_MS = 45000;
 // budget unless a test sets its own (they must still become true).
 const until = (check, options = {}) => untilWithin(check, { timeout: RENDER_MS, ...options });
 const info = (page, key = 'ai-empty') => page.evaluate((name) => window.AtlasBot?.info(name), key);
-// Share of drawn (non-transparent) pixels in the robot canvas.
-const drawn = (page) => page.evaluate(() => {
+// Share of drawn (non-transparent) pixels in the robot canvas. The WebGL
+// canvas can only be read back in the frame it was drawn in, so the read
+// happens in the next animation frame, after the robot's own draw; a frame
+// the robot skipped (or a paused loop) reads as 0, so callers keep it drawing.
+const drawn = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => {
   const canvas = document.querySelector('.atlas-bot-live__canvas');
-  if (!canvas) return 0;
+  if (!canvas) { resolve(0); return; }
   const copy = document.createElement('canvas');
   copy.width = canvas.width;
   copy.height = canvas.height;
@@ -57,8 +60,8 @@ const drawn = (page) => page.evaluate(() => {
   const { data } = ctx.getImageData(0, 0, copy.width, copy.height);
   let lit = 0;
   for (let index = 3; index < data.length; index += 4) if (data[index] > 0) lit += 1;
-  return lit / (data.length / 4);
-});
+  resolve(lit / (data.length / 4));
+})));
 // The lowest drawn row of the robot canvas (alpha above a faint threshold,
 // so the contact shadow counts), in CSS px from the canvas top; 0 when the
 // copy caught a cleared frame.
@@ -434,7 +437,11 @@ test('WebGL context lost: the poster shows and drawing stops; restored: the robo
     await page.evaluate(() => window.loseContextForTest.restoreContext());
     await page.waitForSelector('#ai-view .atlas-bot-live.is-live:not(.is-static)', { timeout: RENDER_MS });
     await until(async () => { const now = await info(page); return now?.lost === false && now.scene?.frames > 1; }, { timeout: RENDER_MS, message: 'drawing again' });
-    await until(async () => (await drawn(page)) > 0.08, { timeout: RENDER_MS, message: 'the robot is drawn again after the restore' });
+    // A pointer move over the robot keeps the loop drawing (it may have gone
+    // calm-idle on a slow runner) while the pixels are read back.
+    const box = await page.locator('#ai-view .atlas-bot-live__canvas').boundingBox();
+    let jiggle = 0;
+    await until(async () => { jiggle += 1; await page.mouse.move(box.x + box.width / 2 + (jiggle % 2 ? 6 : -6), box.y + box.height / 2); return (await drawn(page)) > 0.08; }, { timeout: RENDER_MS, message: 'the robot is drawn again after the restore' });
     assert.equal(await page.locator('canvas.atlas-bot-live__canvas').count(), 1);
     assert.deepEqual(record?.pageErrors || [], []);
   } finally { await close(); }
