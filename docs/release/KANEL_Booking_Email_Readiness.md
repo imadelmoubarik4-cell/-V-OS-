@@ -1,5 +1,10 @@
 # KANEL Booking Email — Integration Readiness (prepared, not activated)
 
+> **Superseded by S113** (26 Oct 2026). The owner chose Google Workspace (kanel@kanel.is
+> over SMTP). The dispatch worker is `atlas-booking-email-worker`, and the guest's site
+> language selects English or Icelandic. See `docs/release/KANEL_S113_Guest_Email_Runbook.md`.
+> The notes below describe the S108 state.
+
 Status: the transactional-email **seam is built and inert**. No email is ever
 sent by the current code. Activation is blocked only on an owner-approved email
 provider + credentials. Proposed sender: **kanel@kanel.is**.

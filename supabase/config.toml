@@ -70,6 +70,9 @@ verify_jwt = false
 [functions.atlas-public-booking]
 verify_jwt = false
 
+[functions.atlas-booking-email-worker]
+verify_jwt = false
+
 [functions.atlas-reports]
 verify_jwt = false
 entrypoint = "./functions/atlas-reports/entrypoint.ts"

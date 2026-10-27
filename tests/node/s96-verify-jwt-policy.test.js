@@ -60,6 +60,7 @@ const SELF_AUTHENTICATED = {
   'atlas-marketing-media': 'resolveActor+manager',
   'atlas-marketing-publisher': 'constant-time x-atlas-publisher-secret; no browser surface',
   'atlas-public-booking': 'PUBLIC guest endpoint (S107): off unless the independent server flag PUBLIC_BOOKING_ENABLED is set; no staff actor; service-role public RPCs re-check the DB flag and enforce every rule',
+  'atlas-booking-email-worker': 'constant-time x-atlas-worker-secret (Vault-held, S113); no browser surface',
 };
 
 function sourcesOf(name) {
@@ -78,7 +79,7 @@ test('verify_jwt = false only for functions that authenticate in code', () => {
     if (verify !== false) continue;
     assert.ok(Object.hasOwn(SELF_AUTHENTICATED, name), `${name} turns platform JWT verification off without a recorded reason`);
     const source = sourcesOf(name);
-    if (name === 'atlas-marketing-publisher') {
+    if (name === 'atlas-marketing-publisher' || name === 'atlas-booking-email-worker') {
       assert.match(source, /secretMatches\(provided, expected\)/);
       assert.match(source, /if \(!secretConfigured\(expected\)\) return json\(503/);
       assert.doesNotMatch(source, /access-control-allow-origin/i, 'the worker exposes no CORS surface');
