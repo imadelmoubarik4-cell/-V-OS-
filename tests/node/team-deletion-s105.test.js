@@ -10,12 +10,17 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { stripTypeScriptTypes } from 'node:module';
 
+import { revocationMetadata } from '../../supabase/functions/_shared/staff-access.mjs';
+
 const source = fs.readFileSync(new URL('../../supabase/functions/atlas-team-profiles/index.ts', import.meta.url), 'utf8');
 const begin = source.indexOf('async function ensureNotLastActiveManager');
 const handler = stripTypeScriptTypes(source.slice(begin, source.indexOf('Deno.serve', begin)));
 
 function setup(overrides = {}) {
   const calls = [];
+  // S114: Auth app_metadata marker writes, kept apart from `calls` so the
+  // step sequences below stay exact.
+  const markers = [];
   const admin = {
     storage: { from: () => ({ remove: async () => { calls.push('storage.remove'); return { error: overrides.storageError || null }; } }) },
     auth: { admin: { deleteUser: async () => { calls.push('auth.deleteUser'); return { error: overrides.authDeleteError || null }; } } },
@@ -35,6 +40,10 @@ function setup(overrides = {}) {
     optionalUuid: (v) => (v == null ? null : v),
     requiredText: (v) => { if (!v) throw new scope.ApiError(400, 'required'); return String(v); },
     profileLabel: () => 'Owner',
+    // S114 (defined earlier in the module; the marker contract is proven by
+    // s114-account-setup-handlers.test.js).
+    revocationMetadata,
+    updateAccessMarkers: async (id, metadata) => { markers.push({ id, metadata }); return true; },
     logExternalEvent: async () => calls.push('audit'),
     productionJson: async (_ctx, url) => {
       calls.push('deactivate');
@@ -59,7 +68,7 @@ function setup(overrides = {}) {
   };
   vm.createContext(scope);
   vm.runInContext(handler, scope);
-  return { scope, calls, admin };
+  return { scope, calls, admin, markers };
 }
 
 const admin = { user: { id: 'admin1' }, profile: { id: 'admin1', role: 'admin', display_name: 'Owner' } };
@@ -275,4 +284,18 @@ test('remove-from-team cannot strip the last active administrator', async () => 
 test('you cannot remove your own account from the team', async () => {
   const { scope } = setup();
   await assert.rejects(scope.removeFromTeam(admin, { profile_id: 'admin1' }), /your own account/);
+});
+
+// ---- S114: every removal path marks the account so self-service setup can never restore it ----
+test('remove-from-team and delete-member write the access-revoked marker for the target', async () => {
+  const removal = setup();
+  await removal.scope.removeFromTeam(admin, { profile_id: 'emp1' });
+  assert.deepEqual(removal.markers.map((entry) => entry.id), ['emp1']);
+  assert.ok(removal.markers[0].metadata.atlas_access_revoked_at);
+  assert.equal(removal.markers[0].metadata.atlas_intended_role, null);
+
+  const deletion = setup();
+  await deletion.scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' });
+  assert.deepEqual(deletion.markers.map((entry) => entry.id), ['emp1']);
+  assert.ok(deletion.markers[0].metadata.atlas_access_revoked_at);
 });

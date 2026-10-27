@@ -1,0 +1,113 @@
+-- S114 (authn): the access history that self-service account setup needs.
+--
+-- atlas-team-profiles complete-onboarding (and save-details / photo upload
+-- while a profile is inactive) may activate only an invitation that has never
+-- been active: a removed, deactivated or demoted member must not be able to
+-- restore their access or their original invited role by re-running setup.
+-- The authoritative history is the append-only security audit from S96
+-- (20261010096100_s96_profile_access_audit.sql): every INSERT and every
+-- role/active change of public.profiles is recorded there in the same
+-- transaction, whoever makes it (Team Profiles, a direct PostgREST update by an
+-- administrator, SQL).
+--
+-- This function answers, for one profile, read-only:
+--   audited              the profile was created after that audit existed, so its
+--                        whole history is on record ("profile.created" is present);
+--   ever_active          the profile is active now, or any recorded change shows it
+--                        active before or after the change;
+--   removed              Team removed or permanently deleted it (the S105
+--                        append-only removal audit; covers removals made before S114);
+--   role_changed         someone changed its role after it was created (then the
+--                        profile's current role, not the invited one, is the role);
+--   inviter_active,      the person who invited it (Auth app_metadata
+--   inviter_role         atlas_invited_by) is still active, and their current role:
+--                        an invitation from someone since removed or demoted must
+--                        not activate on its own;
+--   invitation_age_days  whole days since Auth last sent the invitation (invited_at).
+-- The Edge Function refuses activation unless it is a fresh, never-active,
+-- never-removed invitation from a still-qualified inviter
+-- (_shared/staff-access.mjs). It reveals booleans, a role name and a day count,
+-- no personal data, and only the service role may call it. NOTHING else changes
+-- on apply: no table, no policy, no data.
+
+create or replace function atlas_private.team_profile_access_state(p_profile_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with invitation as (
+    select
+      case when coalesce(account.raw_app_meta_data ->> 'atlas_invited_by', '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        then (account.raw_app_meta_data ->> 'atlas_invited_by')::uuid end as inviter_id,
+      account.invited_at
+    from auth.users as account
+    where account.id = p_profile_id
+  )
+  select jsonb_build_object(
+    'audited', exists (
+      select 1
+      from atlas_private.security_audit_events as event
+      where event.target_type = 'profile'
+        and event.target_id = p_profile_id
+        and event.action = 'profile.created'
+    ),
+    'ever_active', exists (
+      select 1 from public.profiles as profile
+      where profile.id = p_profile_id and profile.active is true
+    ) or exists (
+      select 1
+      from atlas_private.security_audit_events as event
+      where event.target_type = 'profile'
+        and event.target_id = p_profile_id
+        and (coalesce(event.new_values ->> 'active', '') = 'true'
+          or coalesce(event.old_values ->> 'active', '') = 'true')
+    ),
+    'removed', exists (
+      select 1
+      from atlas_private.team_member_deletion_audit as removal
+      where removal.target_profile_id = p_profile_id
+        and removal.action in ('removed_from_team', 'permanently_deleted')
+    ),
+    'role_changed', exists (
+      select 1
+      from atlas_private.security_audit_events as event
+      where event.target_type = 'profile'
+        and event.target_id = p_profile_id
+        and event.action = 'profile.role_changed'
+    ),
+    'inviter_active', coalesce((
+      select inviter.active is true
+      from invitation
+      join public.profiles as inviter on inviter.id = invitation.inviter_id
+    ), false),
+    'inviter_role', (
+      select inviter.role::text
+      from invitation
+      join public.profiles as inviter on inviter.id = invitation.inviter_id
+    ),
+    'invitation_age_days', (
+      select floor(extract(epoch from (pg_catalog.now() - invitation.invited_at)) / 86400)::int
+      from invitation
+      where invitation.invited_at is not null
+    )
+  );
+$$;
+revoke all on function atlas_private.team_profile_access_state(uuid) from public, anon, authenticated;
+grant execute on function atlas_private.team_profile_access_state(uuid) to service_role;
+
+create or replace function public.atlas_team_profile_access_state(p_profile_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$ select atlas_private.team_profile_access_state(p_profile_id); $$;
+revoke all on function public.atlas_team_profile_access_state(uuid) from public, anon, authenticated;
+grant execute on function public.atlas_team_profile_access_state(uuid) to service_role;
+
+comment on function public.atlas_team_profile_access_state(uuid) is
+  'S114 service-role-only access history for self-service account setup: audited, ever_active, removed, role_changed, inviter_active, inviter_role, invitation_age_days. No personal data.';
+
+notify pgrst, 'reload schema';

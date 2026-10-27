@@ -39,7 +39,8 @@ def build(destination):
         raise ValueError('Use a new destination outside the repository')
     manifest = json.loads(CONTRACT.read_text())
     expected = {f['path']: f for fn in manifest['functions'] for f in fn['files']}
-    if len(manifest['functions']) != 16 or len(expected) != 25:
+    # S114: _shared/staff-access.mjs joined the reviewed shared sources (26).
+    if len(manifest['functions']) != 16 or len(expected) != 26:
         raise ValueError('Unexpected gateway/file scope')
     actual = set()
     for fn in manifest['functions']:

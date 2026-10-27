@@ -11,10 +11,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 let sequence = 0;
 
-export async function loadEdgeFunction(relativePath, env = {}) {
+// `replaceImports` maps a bare specifier (e.g. an npm: import Node cannot load)
+// to a test module path, so a function that needs it can still be exercised.
+export async function loadEdgeFunction(relativePath, env = {}, { replaceImports = {} } = {}) {
   const sourcePath = path.join(ROOT, relativePath);
   let source = fs.readFileSync(sourcePath, 'utf8');
   source = source.replace(/^import "jsr:@supabase\/functions-js\/edge-runtime\.d\.ts";\n/m, '');
+  for (const [specifier, replacement] of Object.entries(replaceImports)) {
+    source = source.split(`from "${specifier}"`).join(`from "${pathToFileURL(path.resolve(replacement)).href}"`);
+  }
   source = source.replace(/from "(\.{1,2}\/[^"]+)"/g, (_, specifier) =>
     `from "${pathToFileURL(path.resolve(path.dirname(sourcePath), specifier)).href}"`);
 
@@ -37,10 +42,13 @@ export async function loadEdgeFunction(relativePath, env = {}) {
   if (typeof state.handler !== 'function') throw new Error(`${relativePath} did not register a handler`);
 
   // Calls the handler with `fetchImpl` as the global fetch for this request.
+  // S114: the shared caller check reads the staff MFA policy
+  // (atlas_auth_policy). Unless a test answers it itself (fetchImpl
+  // .handlesAuthPolicy), it reads both flags off, as production does today.
   return async function call(request, fetchImpl) {
     const previousFetch = globalThis.fetch;
     const previous = globalThis.Deno;
-    globalThis.fetch = fetchImpl;
+    globalThis.fetch = withAuthPolicy(fetchImpl);
     globalThis.Deno = { env: { get: (name) => state.env[name] }, serve() {} };
     try {
       return await state.handler(request);
@@ -49,6 +57,17 @@ export async function loadEdgeFunction(relativePath, env = {}) {
       if (previous === undefined) delete globalThis.Deno;
       else globalThis.Deno = previous;
     }
+  };
+}
+
+export const AUTH_POLICY_OFF = Object.freeze({ require_privileged_mfa: false, require_all_staff_mfa: false, must_enroll: false });
+
+export function withAuthPolicy(fetchImpl, policy = AUTH_POLICY_OFF) {
+  if (typeof fetchImpl !== 'function' || fetchImpl.handlesAuthPolicy) return fetchImpl;
+  return (input, init) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (/\/rest\/v1\/rpc\/atlas_auth_policy(\?|$)/.test(url)) return Promise.resolve(json(policy));
+    return fetchImpl(input, init);
   };
 }
 

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
+import { pendingInvitationDecision } from "../_shared/staff-access.mjs";
 
 const PHOTO_BUCKET = "atlas-profile-photos";
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -29,6 +30,7 @@ type AtlasContext = {
   token: string;
   user: { id: string; email?: string | null };
   profile: AtlasProfile;
+  appMetadata: Record<string, unknown>;
 };
 
 type PhotoMetadata = {
@@ -45,10 +47,12 @@ type PhotoMetadata = {
 
 class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -125,7 +129,22 @@ async function requireActiveProfile(request: Request, options: { allowInactive?:
     inactiveMessage: "This Atlas profile is inactive. Team access has been removed.",
     allowInactive: options.allowInactive === true,
   });
-  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile, appMetadata: (actor.appMetadata ?? {}) as Record<string, unknown> };
+}
+
+// S114: an inactive caller may upload only their own photo, and only while
+// they are a genuine, never-active invitation (_shared/staff-access.mjs) —
+// never a removed or deactivated member. An unreadable history refuses.
+async function requirePendingInvitationIfInactive(context: AtlasContext): Promise<void> {
+  if (context.profile.active === true) return;
+  let accessState: unknown = null;
+  try {
+    accessState = await branchRpc("atlas_team_profile_access_state", { p_profile_id: context.user.id });
+  } catch (error) {
+    console.warn("Profile access state could not be read", error instanceof Error ? error.message : "unknown");
+  }
+  const decision = pendingInvitationDecision({ profile: context.profile, appMetadata: context.appMetadata, accessState });
+  if (!decision.ok) throw new ApiError(decision.status, decision.message, decision.code);
 }
 
 async function productionJson(context: AtlasContext, url: URL): Promise<any> {
@@ -359,6 +378,7 @@ async function uploadPhoto(context: AtlasContext, request: Request) {
   const form = await request.formData();
   const profileId = requireUuid(form.get("profile_id"), "Team profile");
   await requireEditableTarget(context, profileId);
+  await requirePendingInvitationIfInactive(context);
   const value = form.get("file");
   if (!(value instanceof File)) throw new ApiError(400, "Choose a profile photo to upload.");
   if (value.size < 1 || value.size > MAX_PHOTO_BYTES) {
@@ -444,7 +464,10 @@ Deno.serve(async (request: Request) => {
     if (action === "remove") return jsonResponse(await removePhoto(context, request));
     throw new ApiError(404, "Unknown profile-photo action.");
   } catch (error) {
-    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) {
+      const code = (error as { code?: unknown }).code;
+      return jsonResponse({ error: error.message, ...(typeof code === "string" ? { code } : {}) }, error.status);
+    }
     console.error("Team Profile photos API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The profile-photo service is temporarily unavailable." }, 500);
   }

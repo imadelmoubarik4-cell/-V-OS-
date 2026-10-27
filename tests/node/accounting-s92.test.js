@@ -393,6 +393,7 @@ test('production wiring: a function env (as index.ts passes) authenticates throu
   const profileFor = (role) => async (input) => {
     const url = new URL(String(input instanceof Request ? input.url : input));
     if (url.pathname === '/auth/v1/user') return new Response(JSON.stringify({ id: ADMIN.userId }), { status: 200 });
+    if (url.pathname === '/rest/v1/rpc/atlas_auth_policy') return new Response(JSON.stringify({ require_privileged_mfa: false, require_all_staff_mfa: false, must_enroll: false }), { status: 200 });
     if (url.pathname === '/rest/v1/profiles') return new Response(JSON.stringify([{ id: ADMIN.userId, display_name: 'Owner', role, active: true }]), { status: 200 });
     return new Response('{}', { status: 200 });
   };

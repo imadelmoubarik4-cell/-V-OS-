@@ -20,6 +20,7 @@ const INVITE_HTML = read('apps/web/invitation.html');
 const MFA_JS = read('apps/web/assets/js/atlas-mfa-enroll.js');
 const TEAM_FN = read('supabase/functions/atlas-team-profiles/index.ts');
 const PHOTO_FN = read('supabase/functions/atlas-team-profile-photos/index.ts');
+const STAFF_ACCESS = read('supabase/functions/_shared/staff-access.mjs');
 const APP_JS = read('apps/web/assets/js/atlas-app.js');
 
 // Extracts the plpgsql body of `create or replace function <name>` up to its `$$;`.
@@ -99,9 +100,13 @@ test('the invite path captures a role and restricts admin to admins', () => {
 
 test('complete-onboarding takes the role only from the invite, never from the caller', () => {
   assert.match(TEAM_FN, /case "complete-onboarding":/);
-  // Role is read from app_metadata.atlas_intended_role, validated, defaulting viewer.
-  assert.match(TEAM_FN, /atlas_intended_role \?\? "viewer"/);
-  assert.match(TEAM_FN, /PROFILE_ROLES\.has\(intended\) \? intended : "viewer"/);
+  // S114: the role comes from the shared access guard, which reads only
+  // app_metadata.atlas_intended_role, validates it and defaults to viewer
+  // (behaviour: s114-staff-access-guards / s114-account-setup-handlers tests).
+  assert.match(TEAM_FN, /const decision = onboardingDecision\(\{/);
+  assert.match(TEAM_FN, /const role = decision\.role;/);
+  assert.match(STAFF_ACCESS, /export const INTENDED_ROLE_KEY = "atlas_intended_role";/);
+  assert.match(STAFF_ACCESS, /STAFF_ROLES\.includes\(intended\) \? intended : "viewer"/);
   // It requires an aal2 session and a verified factor, and a saved phone + photo.
   assert.match(TEAM_FN, /context\.aal !== "aal2"/);
   assert.match(TEAM_FN, /readiness\?\.has_phone/);

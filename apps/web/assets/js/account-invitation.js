@@ -1,9 +1,10 @@
 // Atlas account setup wizard (S99). The single set-password form is now a
 // four-step wizard on ONE in-memory invite session (persistSession:false so the
 // owner's own login is never touched):
-//   1. password  2. name + phone  3. profile photo (required)  4. authenticator
-// Only after the TOTP factor is verified does the wizard call the
-// `complete-onboarding` edge action, which activates the account server-side.
+//   1. password  2. authenticator  3. name + phone  4. profile photo (required)
+// The authenticator comes second so every later step runs on a two-factor
+// session; the photo step then calls the `complete-onboarding` edge action,
+// which activates the account server-side.
 //
 // The invite-flow onboarding requirements enforced here (and re-verified by the
 // edge function) are SEPARATE from the database-wide MFA enforcement flag
@@ -51,7 +52,10 @@
     password: el('step-password'), details: el('step-details'), photo: el('step-photo'),
     mfa: el('step-mfa'), done: el('step-done')
   };
-  const stepOrder = ['password', 'details', 'photo', 'mfa'];
+  // S114: the authenticator comes right after the password, so every later
+  // step (details, photo, completion) runs on a two-factor (aal2) session —
+  // which the server requires of staff once the all-staff policy is on.
+  const stepOrder = ['password', 'mfa', 'details', 'photo'];
   function showStep(name) {
     Object.entries(steps).forEach(([key, node]) => { if (node) node.hidden = key !== name; });
     if (progress) {
@@ -111,6 +115,18 @@
     return;
   }
 
+  // S114: fixed copy for the account-setup refusals (the server's `code`).
+  // A removed member, an account already set up and an invitation that needs a
+  // manager each get a clear next step instead of "try again".
+  const SETUP_REFUSALS = {
+    already_onboarded: 'This account is already set up. Sign in to Alcedo with your email, password and authenticator code.',
+    access_revoked: 'This invitation can no longer be used. Ask a manager if you need access to Alcedo.',
+    not_invited: 'This invitation can no longer be used. Ask a manager if you need access to Alcedo.',
+    invitation_needs_review: 'This invitation needs a manager to finish it. Ask your manager to review your access in Team.',
+    invitation_expired: 'This invitation has expired. Ask your manager to review your access in Team.'
+  };
+  const setupRefusal = (error) => (error && Object.prototype.hasOwnProperty.call(SETUP_REFUSALS, error.code) ? SETUP_REFUSALS[error.code] : '');
+
   async function edgeRequest(endpoint, action, body) {
     const session = (await client.auth.getSession()).data?.session;
     const url = new URL(endpoint);
@@ -157,8 +173,8 @@
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
       done.password = true;
-      showStep('details');
-      say('Tell your team who you are.');
+      showStep('mfa');
+      mountMfa();
     } catch (_) {
       say('Your password couldn’t be set. Check the requirements and try again.', 'error');
     } finally {
@@ -166,7 +182,7 @@
     }
   });
 
-  // ---- step 2: name + phone ----
+  // ---- step 3: name + phone ----
   ['display-name', 'phone'].forEach((id) => el(id).addEventListener('input', () => fieldError(id, '')));
   steps.details.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -188,13 +204,13 @@
       showStep('photo');
       say('Add a profile photo to continue.');
     } catch (error) {
-      say(error?.status === 401 ? 'Your setup session expired. Open the invitation link again.' : 'Your details couldn’t be saved. Try again.', 'error');
+      say(error?.status === 401 ? 'Your setup session expired. Open the invitation link again.' : setupRefusal(error) || 'Your details couldn’t be saved. Try again.', 'error');
     } finally {
       setBusy(submit, false, 'Continue');
     }
   });
 
-  // ---- step 3: photo (required, upload confirmed before advancing) ----
+  // ---- step 4: photo (required, upload confirmed before advancing) ----
   let photoUploaded = false;
   // Local validation failures carry their own display copy on `userText`, so the
   // handler renders that fixed copy (never a raw error string or server text).
@@ -258,7 +274,7 @@
       el('photo-choose').textContent = 'Choose a different photo';
       say('Photo saved.');
     } catch (error) {
-      fieldError('photo', error?.userText || 'Your photo couldn’t be saved. Try another image.');
+      fieldError('photo', error?.userText || setupRefusal(error) || 'Your photo couldn’t be saved. Try another image.');
     } finally {
       el('photo-choose').disabled = false;
     }
@@ -266,11 +282,10 @@
   steps.photo.addEventListener('submit', (event) => {
     event.preventDefault();
     if (!photoUploaded) { fieldError('photo', 'Add a profile photo to continue.'); return; }
-    showStep('mfa');
-    mountMfa();
+    completeOnboarding();
   });
 
-  // ---- step 4: authenticator, then complete ----
+  // ---- step 2: authenticator; completion runs after the photo step ----
   let mfaController = null;
   async function completeOnboarding() {
     if (!canCompleteOnboarding(done)) {
@@ -287,7 +302,7 @@
     } catch (error) {
       say(error?.status === 401
         ? 'Your setup session expired. Open the invitation link again to finish.'
-        : 'Your account couldn’t be finished. Make sure every step is complete, then try again.', 'error');
+        : setupRefusal(error) || 'Your account couldn’t be finished. Make sure every step is complete, then try again.', 'error');
     }
   }
   let mfaMounted = false;
@@ -296,7 +311,11 @@
     mfaMounted = true;
     mfaController = await window.AtlasMfaEnroll.mount(el('mfa-host'), {
       client,
-      onVerified: () => { done.mfa = true; completeOnboarding(); }
+      onVerified: () => {
+        done.mfa = true;
+        showStep('details');
+        say('Tell your team who you are.');
+      }
     });
   }
 })();

@@ -464,6 +464,10 @@ export function createFakeFetch({ openai = {}, fallback = null } = {}) {
       if (!user) return new Response('{}', { status: 401 });
       return Response.json({ id: user.id, email: user.email });
     }
+    // S114: the staff MFA policy (both flags off, as production today).
+    if (url.startsWith(`${ENV.ATLAS_AUTH_PROJECT_URL}/rest/v1/rpc/atlas_auth_policy`)) {
+      return Response.json({ require_privileged_mfa: false, require_all_staff_mfa: false, must_enroll: false });
+    }
     if (url.startsWith(`${ENV.ATLAS_AUTH_PROJECT_URL}/rest/v1/profiles`)) {
       const id = new URL(url).searchParams.get('id').replace('eq.', '');
       const user = Object.values(USERS).find((entry) => entry.id === id);

@@ -25,7 +25,7 @@ function combinedFetch(backend) {
   const auth = createFakeFetch();
   return async (input, init = {}) => {
     const url = new URL(String(input));
-    if (url.origin === HARNESS_AUTH && (url.pathname.startsWith('/auth/v1/') || url.pathname === '/rest/v1/profiles')) {
+    if (url.origin === HARNESS_AUTH && (url.pathname.startsWith('/auth/v1/') || url.pathname === '/rest/v1/profiles' || url.pathname === '/rest/v1/rpc/atlas_auth_policy')) {
       return auth.fetchImpl(input, init);
     }
     if (url.origin !== HARNESS_AUTH && url.origin !== HARNESS_BRANCH) return auth.fetchImpl(input, init);

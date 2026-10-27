@@ -20,6 +20,9 @@
 #      out of order, re-apply S106→S113 from the rolled-back state, and refuse a
 #      repeat run;
 #   6. the ledger verifier and the S106–S113 acceptances pass again.
+# Later releases are rolled back first and re-applied at the end with their own
+# reviewed rollback and apply bundle (S114 staff access state), exactly as a
+# production rollback of the bookings release would have to.
 set -euo pipefail
 export PGOPTIONS="-c client_min_messages=warning"
 : "${PGHOST:=127.0.0.1}"; : "${PGUSER:=postgres}"; : "${PGDATABASE:=vaos_replay}"
@@ -35,6 +38,13 @@ RB112="$ROOT/docs/release/sql/KANEL_S112_rollback.sql"
 RB113="$ROOT/docs/release/sql/KANEL_S113_rollback.sql"
 SNAP="$ROOT/scripts/release/kanel_bookings_snapshot.sql"
 CMP="$ROOT/scripts/release/compare_kanel_expected.py"
+RB114="$ROOT/docs/release/sql/S114_staff_access_state_rollback.sql"
+APPLY114="$ROOT/docs/release/sql/S114_apply_staff_access_state.sql"
+
+# Step 0: roll back the later release (S114) so the bookings rollbacks may run.
+psql -X -v ON_ERROR_STOP=1 -q -f "$RB114" >/dev/null
+psql -X -v ON_ERROR_STOP=1 -q -f "$RB114" >/dev/null
+echo "step 0 ok: S114 rolled back (twice, idempotent) before the bookings rollbacks"
 
 if psql -X -v ON_ERROR_STOP=1 -q -f "$PRE" >/dev/null 2>&1; then
   echo "kanel_bookings_rollback: FAILED — pre-S106 acceptance unexpectedly passed at S110" >&2; exit 1
@@ -131,6 +141,11 @@ if psql -X -v ON_ERROR_STOP=1 -q -f "${BUNDLES[8]}" >/dev/null 2>&1; then
   echo "kanel_bookings_rollback: FAILED — apply bundle 9 (S113) ran twice" >&2; exit 1
 fi
 echo "step 5 ok: apply bundles refuse out-of-order and repeat runs; S106→S113 re-applied"
+psql -X -v ON_ERROR_STOP=1 -q -f "$APPLY114" >/dev/null
+if psql -X -v ON_ERROR_STOP=1 -q -f "$APPLY114" >/dev/null 2>&1; then
+  echo "kanel_bookings_rollback: FAILED — the S114 apply bundle ran twice" >&2; exit 1
+fi
+echo "step 5b ok: S114 re-applied from its reviewed bundle; a repeat run is refused"
 
 unset PGOPTIONS  # the acceptances report success via a NOTICE
 bash "$ROOT/scripts/verify_migration_ledger.sh" | tail -1
