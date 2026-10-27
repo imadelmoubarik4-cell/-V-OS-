@@ -24,8 +24,9 @@ Rollback options, fastest first:
 - [ ] Owner's explicit go-ahead in the session (not only a PR comment).
 - [ ] CI green on the PR head: `contracts`, `replay`, `Browser tests`, `S34 evidence`.
 - [ ] Local: `npm test`, `python -m unittest discover -s tests/python`, full browser suite;
-      known environment-only failures identical on `main` (live-voice timeouts under
-      concurrency, `atlas-bot` "WebGL in software").
+      the only failures accepted are the `atlas-bot` tests that deliberately draw the 3D
+      scene on the CPU timing out under heavy local load; they must pass when run
+      on their own.
 - [ ] No files under `supabase/` or `.github/` changed (`git diff --stat origin/main -- supabase .github` is empty).
 - [ ] CSP in `netlify.toml` contains no new hosts (the Lucide CDN entry is removed, nothing added).
 - [ ] `docs/release/Atlas_S42_Production_Cutover_Manifest.json` pins match the final files (python tests).
