@@ -21,7 +21,12 @@ async function openAi({ viewport, contextOptions, initScript, hash = '#ai/new', 
   });
   try {
     await launched.page.waitForFunction(() => document.body.dataset.atlasView === 'ai' && document.querySelector('#ai-view [data-ai-composer]'));
-    if (animate) await launched.page.evaluate(() => window.AtlasBot?.animateInSoftware(true));
+    if (animate) {
+      await launched.page.evaluate(() => window.AtlasBot?.animateInSoftware(true));
+      // The robot now draws in software for the whole test: every Playwright
+      // wait and action gets the slow renderer's budget (RENDER_MS, below).
+      launched.page.setDefaultTimeout(RENDER_MS);
+    }
     await settle(launched.page);
   } catch (error) {
     await launched.close();
@@ -112,7 +117,7 @@ const mountFollower = (page, size = 20) => page.evaluate((px) => {
 test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and reacts to a tap', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 3, { timeout: RENDER_MS, message: 'robot frames' });
     const first = await info(page);
     assert.equal(first.live, true);
@@ -183,7 +188,7 @@ test('Atlas AI: while an answer streams the robot label thinks, then settles', {
 test('reduced motion: one still frame, no animation loop, badges do not animate', { skip }, async () => {
   const { page, close } = await openAi({ contextOptions: { reducedMotion: 'reduce' } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames >= 1, { message: 'a still frame' });
     // The still frame for the mount is drawn on the next animation frame; then nothing is pending.
     await until(async () => (await info(page))?.running === false, { message: 'no frame pending' });
@@ -298,7 +303,7 @@ test('every robot asset the page references loads (200) with the keys atlas-bot.
 test('phone 390: tab bar kingfisher glyph, a smaller live robot, no sideways scroll, nothing overlaps the tab bar', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 390, height: 844 }, contextOptions: { hasTouch: true, isMobile: true } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     const tab = await navGlyph(page, '.atlas-tabbar__item--ai');
     assert.deepEqual(tab, { box: [22, 22], robots: 0, animations: 0 }, 'the 22 px kingfisher glyph, no robot');
     if (process.env.ATLAS_BOT_SHOTS) await page.locator('#atlas-tabbar').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/tabbar-390.png` });
@@ -332,7 +337,7 @@ for (const [label, viewport, mobile, size] of [
     // not drawn (software WebGL would only slow the page down).
     const { page, close } = await openAi({ viewport, contextOptions: mobile ? { hasTouch: true, isMobile: true } : {}, animate: false });
     try {
-      await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live', { timeout: 15000 });
+      await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live', { timeout: RENDER_MS });
       await settle(page);
       if (process.env.ATLAS_BOT_SHOTS) await page.screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/ai-empty-${viewport.width}x${viewport.height}.png` });
       const box = async (selector) => page.locator(selector).first().boundingBox();
@@ -403,7 +408,7 @@ const frames = (page, count = 3) => page.evaluate((n) => new Promise((resolve) =
 test('WebGL context lost: the poster shows and drawing stops; restored: the robot comes back', { skip }, async () => {
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 2, { timeout: RENDER_MS, message: 'robot frames' });
     await page.evaluate(() => {
       const canvas = document.querySelector('.atlas-bot-live__canvas');
@@ -424,7 +429,7 @@ test('WebGL context lost: the poster shows and drawing stops; restored: the robo
     });
     assert.equal(await page.locator('#ai-view .atlas-bot-live.is-static').count(), 1);
     await page.evaluate(() => window.loseContextForTest.restoreContext());
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live:not(.is-static)', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live:not(.is-static)', { timeout: RENDER_MS });
     await until(async () => { const now = await info(page); return now?.lost === false && now.scene?.frames > 1; }, { timeout: RENDER_MS, message: 'drawing again' });
     await until(async () => (await drawn(page)) > 0.08, { timeout: RENDER_MS, message: 'the robot is drawn again after the restore' });
     assert.equal(await page.locator('canvas.atlas-bot-live__canvas').count(), 1);
@@ -443,7 +448,7 @@ test('many rapid re-renders reuse one WebGL context and draw at most once per fr
   };
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 }, initScript });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 2, { message: 'robot frames' });
     const base = await page.evaluate(() => window.webglContextCalls.length);
     // The GPU probe (webgl2, webgl: both refused here, WebGL is in software),
@@ -490,7 +495,7 @@ test('many rapid re-renders reuse one WebGL context and draw at most once per fr
 test('reduced motion switched on while the robot runs: the scene is told, drawing and pointer tracking stop; off again: it resumes', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.running === true, { message: 'running' });
     for (const [on, off] of [
       [() => page.emulateMedia({ reducedMotion: 'reduce' }), () => page.emulateMedia({ reducedMotion: 'no-preference' })],
@@ -524,7 +529,7 @@ test('reduced motion switched on while the robot runs: the scene is told, drawin
 test('calm idle pauses the render loop; a pointer move, a state change or a moment resumes it', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     // Precondition only: the ~3 s greeting runs in scene time, which a starved
     // CI runner (software WebGL) advances slowly; this test is about the pause.
     await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
@@ -556,7 +561,7 @@ test('calm idle pauses the render loop; a pointer move, a state change or a mome
 test('the robot canvas follows its host size', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     const width = () => page.$eval('.atlas-bot-live__canvas', (canvas) => canvas.width / devicePixelRatio);
     await until(async () => (await width()) === 176, { message: 'initial size' });
     await page.$eval('#ai-view .ai-empty .atlas-bot-live', (host) => { host.style.width = '120px'; host.style.height = '120px'; });
@@ -590,7 +595,7 @@ test('WebGL in software (no GPU): the poster stays, no scene is built, and it ca
     await mountFollower(page);
     assert.equal(await page.locator('#atlas-bot-follower .atlas-bot--small').count(), 1);
     await page.evaluate(() => window.AtlasBot.animateInSoftware(true));
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     assert.deepEqual(record?.pageErrors || [], []);
   } finally { await close(); }
 });
@@ -618,7 +623,7 @@ const hexRed = (hex) => { const [r, g, b] = [1, 3, 5].map((index) => parseInt(he
 test('every state is reachable through the one controller and shows the same on the welcome robot, its scene and a small following badge; never red', { skip }, async () => {
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
     await mountFollower(page);
     // Transient awake would otherwise return to idle while it is checked.
@@ -668,7 +673,7 @@ test('every state is reachable through the one controller and shows the same on 
 test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in the robot corner and on a small badge; hover wakes it at once and the Z is gone', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
     await mountFollower(page);
     assert.equal((await robotInfo(page)).active, true, 'Atlas AI is open');
@@ -732,7 +737,7 @@ test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in th
 test('wake triggers: tap, hovering a robot badge, composer focus, typing, a new conversation and an AI task each wake a sleeping robot at once', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
     await mountFollower(page);
     const asleep = async () => { await page.evaluate(() => document.activeElement?.blur?.()); await page.mouse.move(1430, 890); await setRobot(page, 'sleeping'); assert.equal((await robotInfo(page)).state, 'sleeping'); };
@@ -777,7 +782,7 @@ test('wake triggers: tap, hovering a robot badge, composer focus, typing, a new 
 test('answering never restarts: repeated updates keep one state (same start, same scene timing)', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await greeted(page);
     await setRobot(page, 'thinking');
     await setRobot(page, 'answering');
@@ -797,7 +802,7 @@ test('answering never restarts: repeated updates keep one state (same start, sam
 test('reduced motion: a sleeping robot is still (closed eyes, one still Z, no loops) and every state keeps its own look', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 }, contextOptions: { reducedMotion: 'reduce' } });
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await mountFollower(page);
     await page.mouse.move(1400, 600);
     await setRobot(page, 'sleeping');
@@ -874,7 +879,7 @@ test('reduced motion: the still frame after a moment shows the state (an error r
     return (await info(page)).scene;
   };
   try {
-    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.greetings === 1, { message: 'greeted' });
     // The still greeting lasts 1.2 s (on the page's clock); nothing is drawn
     // after it until a change.
@@ -904,7 +909,7 @@ test('reduced motion: the still frame after a moment shows the state (an error r
 test('hidden tab and off screen: drawing and the timer stop; they resume cleanly', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await setRobot(page, 'thinking');
     await until(async () => (await info(page)).running === true, { message: 'running' });
     await setRobot(page, 'idle');
@@ -947,7 +952,7 @@ test('no duplicates: navigation, open/close, new conversations, focus/blur, hidd
   };
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 }, initScript });
   try {
-    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
+    await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: RENDER_MS });
     await until(async () => (await info(page))?.scene?.frames > 2, { message: 'robot frames' });
     const base = await page.evaluate(() => ({ contexts: window.webglContextCalls, pointers: window.pointerListeners }));
     const visibility = (hidden) => page.evaluate((value) => {
