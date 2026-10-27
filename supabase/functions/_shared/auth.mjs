@@ -127,8 +127,8 @@ function privilegedMfaMandatory(env) {
 //   * private.auth_policy.require_privileged_mfa: aal2 for admin and manager.
 // The flags are read through the existing atlas_auth_policy RPC with the
 // caller's own token, only when a password-only session would otherwise pass,
-// and cached briefly per isolate. An unreachable or malformed policy fails
-// closed (503); a database without the RPC (404) has no such flags.
+// and cached briefly per isolate. An unreachable, missing (404) or malformed
+// policy fails closed (503) and is not cached.
 const AUTH_POLICY_TTL_MS = 30_000;
 let authPolicyCache = null;
 

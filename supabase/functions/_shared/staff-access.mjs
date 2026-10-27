@@ -37,6 +37,7 @@ const REFUSALS = Object.freeze({
   not_invited: [403, "This account was not invited to Alcedo. Ask a manager to invite you."],
   invitation_needs_review: [409, "This invitation can’t be finished automatically. Ask a manager to review your access."],
   invitation_expired: [409, "This invitation has expired. Ask a manager to review your access."],
+  setup_conflict: [409, "Your access was changed while you were finishing setup. Try again."],
 });
 
 /**
@@ -112,6 +113,16 @@ export function onboardingDecision({ profile, appMetadata, accessState } = {}) {
     return refuse("invitation_needs_review");
   }
   return { ok: true, mode: "activate", role };
+}
+
+// The refusal for the atomic activation's answer (the S114
+// atlas_team_profile_activate_invitation reason) when it did not activate.
+/** @returns {AccessRefused} */
+export function activationRefusal(reason) {
+  if (reason === "access_revoked") return refuse("access_revoked");
+  if (reason === "already_active" || reason === "already_onboarded") return refuse("already_onboarded");
+  if (reason === "role_changed") return refuse("setup_conflict");
+  return refuse("invitation_needs_review");
 }
 
 // Inactive callers may use the other self-service setup steps (their own

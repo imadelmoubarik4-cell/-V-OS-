@@ -2,7 +2,8 @@
 
 - the apply bundle embeds the migration byte for byte, refuses unless S113 is
   recorded and S114 is not, and records the ledger row in the same transaction;
-- the migration only adds two read-only, service-role-only functions;
+- the migration only adds service-role-only functions: the read-only access
+  state and the locked invitation activation (its single profile update);
 - the rollback removes exactly those functions and the ledger row;
 - the pre-flight is read-only (a read-only transaction, rolled back, no writes).
 """
@@ -42,16 +43,24 @@ class S114StaffAccessRelease(unittest.TestCase):
         self.assertLess(text.index("insert into supabase_migrations.schema_migrations"), text.index("commit;"))
         self.assertNotIn("supabase db push", code_only(text))
 
-    def test_migration_adds_only_sealed_read_only_functions(self):
+    def test_migration_adds_only_sealed_functions(self):
         sql = code_only(MIGRATION.read_text(encoding="utf-8"))
         self.assertEqual(sorted(set(re.findall(r"create or replace function ([\w.]+)\(", sql))),
-                         ["atlas_private.team_profile_access_state", "public.atlas_team_profile_access_state"])
-        for statement in ("create table", "alter table", "create policy", "drop ", "insert ", "update ", "delete "):
+                         ["atlas_private.team_profile_access_state", "atlas_private.team_profile_activate_invitation",
+                          "public.atlas_team_profile_access_state", "public.atlas_team_profile_activate_invitation"])
+        for statement in ("create table", "alter table", "create policy", "drop ", "insert ", "delete "):
             self.assertNotIn(statement, sql.lower())
-        self.assertEqual(sql.count("security definer"), 2)
-        self.assertEqual(sql.count("set search_path = ''"), 2)
+        # The only write: the activation step's single, locked profile update.
+        self.assertEqual(len(re.findall(r"(?<!for )\bupdate\b", sql.lower())), 1)
+        self.assertIn("update public.profiles\n     set display_name = p_display_name, role = v_expected::public.staff_role, active = true\n   where id = p_profile_id;", sql)
+        self.assertEqual(sql.count("for update;"), 2, "the profile and Auth rows are locked")
+        self.assertEqual(sql.count("security definer"), 4)
+        self.assertEqual(sql.count("set search_path = ''"), 4)
         self.assertEqual(sql.count("stable"), 2)
-        for name in ("atlas_private.team_profile_access_state(uuid)", "public.atlas_team_profile_access_state(uuid)"):
+        self.assertEqual(sql.count("volatile"), 2)
+        for name in ("atlas_private.team_profile_access_state(uuid)", "public.atlas_team_profile_access_state(uuid)",
+                     "atlas_private.team_profile_activate_invitation(uuid, text, text)",
+                     "public.atlas_team_profile_activate_invitation(uuid, text, text)"):
             self.assertIn(f"revoke all on function {name} from public, anon, authenticated;", sql)
             self.assertIn(f"grant execute on function {name} to service_role;", sql)
         self.assertNotRegex(sql, r"grant execute[^;]*to (anon|authenticated|public)")
@@ -60,8 +69,10 @@ class S114StaffAccessRelease(unittest.TestCase):
         sql = code_only(ROLLBACK.read_text(encoding="utf-8"))
         self.assertIn("drop function if exists public.atlas_team_profile_access_state(uuid);", sql)
         self.assertIn("drop function if exists atlas_private.team_profile_access_state(uuid);", sql)
+        self.assertIn("drop function if exists public.atlas_team_profile_activate_invitation(uuid, text, text);", sql)
+        self.assertIn("drop function if exists atlas_private.team_profile_activate_invitation(uuid, text, text);", sql)
         self.assertIn("delete from supabase_migrations.schema_migrations where version = '20261031090000';", sql)
-        self.assertEqual(len(re.findall(r"\bdrop\b", sql)), 2)
+        self.assertEqual(len(re.findall(r"\bdrop\b", sql)), 4)
         self.assertEqual(len(re.findall(r"\bdelete\b", sql)), 1)
         self.assertLess(sql.index("begin;"), sql.index("drop function"))
         self.assertLess(sql.index("delete from"), sql.index("commit;"))

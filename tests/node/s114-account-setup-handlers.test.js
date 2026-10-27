@@ -60,7 +60,7 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), { stat
 // One scripted world: profiles, Auth users (app_metadata, factors) and the
 // audited access history; every request and admin call is recorded. As in the
 // database, only an administrator's profile update matches a row (RLS).
-function world({ users, accessState = {}, accessStateStatus = 200, markersFail = false }) {
+function world({ users, accessState = {}, accessStateStatus = 200, markersFail = false, beforeActivation = null }) {
   const state = {
     profiles: Object.fromEntries(Object.entries(users).map(([id, user]) => [id, { id, email: `${id.slice(0, 4)}@example.test`, display_name: user.name ?? null, role: user.role, active: user.active }])),
     auth: Object.fromEntries(Object.entries(users).map(([id, user]) => [id, { id, email: `${id.slice(0, 4)}@example.test`, app_metadata: { ...(user.appMetadata ?? {}) }, user_metadata: { full_name: user.name ?? 'New Person' }, factors: user.factors ?? [] }])),
@@ -93,8 +93,33 @@ function world({ users, accessState = {}, accessStateStatus = 200, markersFail =
         return accessStateStatus === 200 ? json(accessState[body.p_profile_id] ?? { audited: false, ever_active: false }) : json({ message: 'down' }, accessStateStatus);
       }
       if (name === 'atlas_team_profile_onboarding_ready') return json({ has_phone: true, has_photo: true });
+      if (name === 'atlas_team_profile_activate_invitation') {
+        // The locked database step (S114 migration), as the SQL test proves it.
+        if (beforeActivation) await beforeActivation(state);
+        const id = body.p_profile_id;
+        const profile = state.profiles[id];
+        const meta = state.auth[id]?.app_metadata ?? {};
+        if (!profile) return json({ activated: false, reason: 'not_found' });
+        if (profile.active) return json({ activated: false, reason: 'already_active' });
+        if (meta.atlas_access_revoked_at) return json({ activated: false, reason: 'access_revoked' });
+        if (meta.atlas_onboarding_completed_at) return json({ activated: false, reason: 'already_onboarded' });
+        const history = accessState[id] ?? { audited: false, ever_active: false };
+        if (history.ever_active || history.removed) return json({ activated: false, reason: 'access_revoked' });
+        if (history.audited !== true) return json({ activated: false, reason: 'invitation_needs_review' });
+        const expected = history.role_changed ? profile.role
+          : ['admin', 'manager', 'bartender', 'viewer'].includes(meta.atlas_intended_role) ? meta.atlas_intended_role : 'viewer';
+        if (body.p_role !== expected) return json({ activated: false, reason: 'role_changed' });
+        Object.assign(profile, { display_name: body.p_display_name, role: expected, active: true });
+        return json({ activated: true, role: expected });
+      }
       if (name === 'atlas_team_member_remove_from_team') return json({ archived: true });
       return json({});
+    }
+    if (url.pathname === '/auth/v1/invite') {
+      const id = '77777777-7777-4777-8777-777777777777';
+      state.profiles[id] = { id, email: body.email, display_name: null, role: 'viewer', active: false };
+      state.auth[id] = { id, email: body.email, app_metadata: {}, user_metadata: {}, factors: [] };
+      return json({ id });
     }
     if (url.pathname.startsWith('/storage/v1/')) {
       state.requests.push({ method, path: url.pathname, storage: true });
@@ -113,6 +138,10 @@ function world({ users, accessState = {}, accessStateStatus = 200, markersFail =
       return { data: { user: { id } }, error: null };
     },
     query: async (request) => {
+      if (request.table === 'profiles' && request.op === 'select') {
+        const [, , pattern] = request.filters.find(([kind]) => kind === 'ilike') ?? [];
+        return { data: Object.values(state.profiles).filter((row) => row.email === pattern).map(({ id, active }) => ({ id, active })), error: null };
+      }
       if (request.table !== 'profiles' || request.op !== 'update') return { data: null, error: null };
       const filters = Object.fromEntries(request.filters.map(([, column, value]) => [column, value]));
       const row = state.profiles[filters.id];
@@ -143,6 +172,7 @@ async function post(handler, scripted, action, callerId, body = {}, aal = 'aal2'
 }
 
 const patches = (scripted, id) => scripted.state.requests.filter((request) => request.method === 'PATCH' && request.path === '/rest/v1/profiles' && request.search.includes(id));
+const activations = (scripted) => scripted.state.rpcs.filter((call) => call.name === 'atlas_team_profile_activate_invitation');
 const profileUpdates = (scripted) => scripted.admin.calls.filter(([kind, request]) => kind === 'query' && request?.op === 'update');
 const markerWrites = (scripted, id) => scripted.admin.calls.filter(([kind, target]) => kind === 'updateUserById' && target === id).map(([, , attributes]) => attributes.app_metadata);
 
@@ -160,8 +190,8 @@ test('a genuine pending invitation finishes setup once, activated with the invit
   assert.equal(done.status, 200, JSON.stringify(done.body));
   assert.deepEqual(done.body.result, { completed: true, role: 'bartender' });
   assert.deepEqual({ role: scripted.state.profiles[IDS.pending].role, active: scripted.state.profiles[IDS.pending].active }, { role: 'bartender', active: true });
-  const [[, update]] = profileUpdates(scripted);
-  assert.deepEqual(update.filters, [['eq', 'id', IDS.pending], ['eq', 'active', false]], 'conditional on still inactive');
+  assert.deepEqual(activations(scripted).map((call) => call.body), [{ p_profile_id: IDS.pending, p_role: 'bartender', p_display_name: 'Nina New' }], 'one locked activation');
+  assert.equal(profileUpdates(scripted).length, 0, 'never a direct profile write');
   const markers = scripted.state.auth[IDS.pending].app_metadata;
   assert.ok(markers.atlas_onboarding_completed_at, 'completion marked');
   assert.equal(markers.atlas_intended_role, undefined, 'the invited role is cleared');
@@ -182,7 +212,7 @@ test('a removed member cannot re-activate through complete-onboarding', async ()
   assert.equal(refused.status, 403);
   assert.equal(refused.body.code, 'access_revoked');
   assert.equal(scripted.state.profiles[IDS.removed].active, false, 'still inactive');
-  assert.equal(profileUpdates(scripted).length, 0, 'no profile write');
+  assert.equal(profileUpdates(scripted).length + activations(scripted).length, 0, 'no profile write');
   assert.deepEqual(markerWrites(scripted, IDS.removed), [], 'no marker write');
   assert.ok(!scripted.state.rpcs.some((call) => call.name === 'atlas_shifts_sync_profiles'));
 });
@@ -222,6 +252,20 @@ test('a demoted, still active member cannot win back the invited role', async ()
     assert.deepEqual(Object.keys(update.values), ['display_name'], 'never role or active');
   }
   assert.equal(scripted.state.auth[IDS.demoted].app_metadata.atlas_intended_role, undefined, 'the stale invited role is cleared');
+  assert.equal(scripted.state.profiles[IDS.demoted].display_name, 'Dana Demoted', 'a recorded name is kept');
+});
+
+test('an already-active account records its name only when none is on record', async () => {
+  const handler = await loadTeamProfiles();
+  const named = world({ users: { [IDS.member]: { role: 'bartender', active: true, appMetadata: INVITED('bartender'), factors: VERIFIED, name: 'Bea Bartender' } } });
+  named.state.auth[IDS.member].user_metadata.full_name = 'Someone Else';
+  assert.equal((await post(handler, named, 'complete-onboarding', IDS.member)).status, 200);
+  assert.equal(named.state.profiles[IDS.member].display_name, 'Bea Bartender', 'a name cannot be swapped for another');
+  assert.equal(profileUpdates(named).length, 0);
+  const unnamed = world({ users: { [IDS.member]: { role: 'bartender', active: true, appMetadata: INVITED('bartender'), factors: VERIFIED } } });
+  assert.equal((await post(handler, unnamed, 'complete-onboarding', IDS.member)).status, 200);
+  assert.equal(unnamed.state.profiles[IDS.member].display_name, 'New Person');
+  assert.equal(unnamed.state.profiles[IDS.member].role, 'bartender');
 });
 
 test('an account that was never invited, or a password-only session, cannot finish setup', async () => {
@@ -239,14 +283,33 @@ test('an account that was never invited, or a password-only session, cannot fini
   assert.equal(profileUpdates(aal1).length, 0);
 });
 
-test('a lost race (activated meanwhile) is refused, not applied twice', async () => {
+test('races: whatever changes during setup wins over the earlier decision', async () => {
   const handler = await loadTeamProfiles();
-  const scripted = world({ users: { [IDS.pending]: { role: 'viewer', active: false, appMetadata: INVITED('bartender'), factors: VERIFIED } }, accessState: { [IDS.pending]: FRESH } });
-  const query = scripted.admin.query;
-  scripted.admin.query = async (request) => (request.op === 'update' ? { data: null, error: null } : query(request));
-  const lost = await post(handler, scripted, 'complete-onboarding', IDS.pending);
-  assert.equal(lost.status, 409);
-  assert.equal(scripted.state.profiles[IDS.pending].active, false);
+  const invitee = () => ({ [IDS.pending]: { role: 'viewer', active: false, appMetadata: INVITED('manager'), factors: VERIFIED, name: 'Pat Pending' } });
+  // Activated by a parallel request: refused, not applied twice.
+  const parallel = world({ users: invitee(), accessState: { [IDS.pending]: FRESH }, beforeActivation: (state) => { state.profiles[IDS.pending].active = true; } });
+  const twice = await post(handler, parallel, 'complete-onboarding', IDS.pending);
+  assert.equal(twice.status, 409);
+  assert.equal(twice.body.code, 'already_onboarded');
+  // Removed by an administrator while setup was finishing: stays inactive.
+  const removed = world({ users: invitee(), accessState: { [IDS.pending]: FRESH }, beforeActivation: (state) => { state.auth[IDS.pending].app_metadata.atlas_access_revoked_at = '2026-10-31T10:00:00Z'; } });
+  const refused = await post(handler, removed, 'complete-onboarding', IDS.pending);
+  assert.equal(refused.status, 403);
+  assert.equal(refused.body.code, 'access_revoked');
+  assert.equal(removed.state.profiles[IDS.pending].active, false);
+  // A new role chosen meanwhile: refused; the retry gets the new role.
+  const rerolled = world({ users: invitee(), accessState: { [IDS.pending]: FRESH }, beforeActivation: (state) => { state.auth[IDS.pending].app_metadata.atlas_intended_role = 'viewer'; } });
+  const conflict = await post(handler, rerolled, 'complete-onboarding', IDS.pending);
+  assert.equal(conflict.status, 409);
+  assert.equal(conflict.body.code, 'setup_conflict');
+  assert.equal(rerolled.state.profiles[IDS.pending].active, false);
+  const retry = await post(handler, world({ users: { [IDS.pending]: { ...invitee()[IDS.pending], appMetadata: INVITED('viewer') } }, accessState: { [IDS.pending]: FRESH } }), 'complete-onboarding', IDS.pending);
+  assert.deepEqual(retry.body.result, { completed: true, role: 'viewer' });
+  // The database step failing is a refusal, never an activation.
+  const down = world({ users: invitee(), accessState: { [IDS.pending]: FRESH }, beforeActivation: () => { throw new Error('connection reset'); } });
+  const unavailable = await post(handler, down, 'complete-onboarding', IDS.pending).catch(() => ({ status: 503 }));
+  assert.ok(unavailable.status >= 500);
+  assert.equal(down.state.profiles[IDS.pending].active, false);
 });
 
 test('an expired invitation, or one from someone since removed or demoted, needs a manager', async () => {
@@ -415,6 +478,71 @@ test('a manager cannot leave a "removed" member active: the removal is refused t
   assert.equal(cancelled.status, 200, JSON.stringify(cancelled.body));
   assert.ok(scripted.state.auth[IDS.pending].app_metadata.atlas_access_revoked_at);
   assert.ok(scripted.state.rpcs.some((call) => call.name === 'atlas_team_member_remove_from_team' && call.body.p_profile_id === IDS.pending));
+});
+
+test('only an administrator may change a pending invitation, and nothing changes when a manager tries', async () => {
+  const handler = await loadTeamProfiles();
+  const scripted = world({
+    users: {
+      [IDS.manager]: { role: 'manager', active: true, factors: VERIFIED, name: 'Mo Manager' },
+      [IDS.pending]: { role: 'viewer', active: false, appMetadata: INVITED('admin') },
+    },
+  });
+  const refused = await post(handler, scripted, 'update-access', IDS.manager, { profile_id: IDS.pending, role: 'viewer', active: false });
+  assert.equal(refused.status, 403, JSON.stringify(refused.body));
+  assert.equal(scripted.state.auth[IDS.pending].app_metadata.atlas_intended_role, 'admin', 'the invitation is untouched');
+  assert.deepEqual(markerWrites(scripted, IDS.pending), []);
+  assert.equal(patches(scripted, IDS.pending).length, 0);
+});
+
+test('remove-from-team marks the account before deactivating it', async () => {
+  const handler = await loadTeamProfiles();
+  const scripted = world({ users: { [IDS.admin]: { role: 'admin', active: true, factors: VERIFIED }, [IDS.member]: { role: 'bartender', active: true } } });
+  let markedBeforePatch = null;
+  const fetchImpl = scripted.fetchImpl;
+  scripted.fetchImpl = async (input, init = {}) => {
+    if ((init.method || '').toUpperCase() === 'PATCH' && markedBeforePatch === null) {
+      markedBeforePatch = Boolean(scripted.state.auth[IDS.member].app_metadata.atlas_access_revoked_at);
+    }
+    return fetchImpl(input, init);
+  };
+  const removed = await post(handler, scripted, 'remove-from-team', IDS.admin, { profile_id: IDS.member });
+  assert.equal(removed.status, 200, JSON.stringify(removed.body));
+  assert.equal(markedBeforePatch, true, 'a setup finishing meanwhile already sees the removal');
+  assert.equal(scripted.state.profiles[IDS.member].active, false);
+});
+
+test('invitations: a removed or already-accepted person is not re-invited; a lost invitation marker is reported', async () => {
+  const handler = await loadTeamProfiles();
+  const removedEmail = `${IDS.removed.slice(0, 4)}@example.test`;
+  const pendingEmail = `${IDS.pending.slice(0, 4)}@example.test`;
+  const scripted = world({
+    users: {
+      [IDS.admin]: { role: 'admin', active: true, factors: VERIFIED, name: 'Ada Admin' },
+      [IDS.removed]: { role: 'bartender', active: false, appMetadata: { ...INVITED('bartender'), atlas_access_revoked_at: '2026-10-28T10:00:00Z' } },
+      [IDS.pending]: { role: 'viewer', active: false, appMetadata: INVITED('bartender') },
+    },
+    accessState: { [IDS.removed]: WAS_ACTIVE, [IDS.pending]: FRESH },
+  });
+  const invites = () => scripted.state.requests.filter((request) => request.path === '/auth/v1/invite').length;
+  const again = await post(handler, scripted, 'invite-account', IDS.admin, { email: removedEmail, role: 'bartender' });
+  assert.equal(again.status, 409, JSON.stringify(again.body));
+  assert.match(again.body.error, /access was removed/);
+  assert.equal(invites(), 0, 'nothing was sent');
+
+  scripted.state.auth[IDS.pending].email_confirmed_at = '2026-10-20T10:00:00Z';
+  const accepted = await post(handler, scripted, 'invite-account', IDS.admin, { email: pendingEmail, role: 'bartender' });
+  assert.equal(accepted.status, 409, JSON.stringify(accepted.body));
+  assert.equal(invites(), 0);
+
+  const fresh = await post(handler, scripted, 'invite-account', IDS.admin, { email: 'new.person@example.test', role: 'bartender' });
+  assert.equal(fresh.status, 200, JSON.stringify(fresh.body));
+  const invitedId = '77777777-7777-4777-8777-777777777777';
+  assert.deepEqual(scripted.state.auth[invitedId].app_metadata, { atlas_intended_role: 'bartender', atlas_invited_by: IDS.admin });
+
+  const lost = world({ users: { [IDS.admin]: { role: 'admin', active: true, factors: VERIFIED, name: 'Ada Admin' } }, markersFail: true });
+  const untracked = await post(handler, lost, 'invite-account', IDS.admin, { email: 'other.person@example.test', role: 'bartender' });
+  assert.equal(untracked.status, 503, 'the manager is told, not shown a success');
 });
 
 // ---------------------------------------------------------------------------

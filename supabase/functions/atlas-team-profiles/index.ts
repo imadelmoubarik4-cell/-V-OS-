@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { AuthError, actorLabel, authConfig, requireRecentAuth, requireStepUp as requireActorStepUp, resolveActor } from "../_shared/auth.mjs";
 import {
+  ACCESS_REVOKED_KEY,
+  activationRefusal,
   completionMetadata,
   INTENDED_ROLE_KEY,
   onboardingDecision,
@@ -512,9 +514,15 @@ async function updateProfileAccess(context: AtlasContext, body: Record<string, u
   // role it will get, even when the profile row already shows that role (a
   // pending profile shows "viewer" until setup finishes). Recorded before the
   // change, and the change is refused if it cannot be recorded.
-  if (target.active !== true && !desiredActive
-      && !(await updateAccessMarkers(profileId, { [INTENDED_ROLE_KEY]: desiredRole }))) {
-    throw new ApiError(503, "The invitation’s role could not be saved. Try again in a moment.");
+  if (target.active !== true && !desiredActive) {
+    // Only an administrator's profile update takes effect (database policy), so
+    // nobody else may change what a pending invitation will become either.
+    if (context.profile.role !== "admin") {
+      throw new ApiError(403, "Only an administrator can change a pending invitation’s access.");
+    }
+    if (!(await updateAccessMarkers(profileId, { [INTENDED_ROLE_KEY]: desiredRole }))) {
+      throw new ApiError(503, "The invitation’s role could not be saved. Try again in a moment.");
+    }
   }
 
   const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
@@ -645,6 +653,25 @@ function resolveInviteRole(context: AtlasContext, value: unknown): string {
   return role;
 }
 
+// S114: an invitation never re-opens access that was removed, and cannot reach
+// someone who already accepted one (Auth would refuse, or the setup screens
+// would). Say so before anything is sent; an administrator acts in Team.
+async function refuseUnusableInvitation(email: string, serviceRoleKey: string): Promise<void> {
+  const admin = createClient(productionAuthUrl(), serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: existing, error } = await admin.from("profiles").select("id,active").ilike("email", email.replace(/[%_]/g, "\\$&"));
+  if (error) throw new ApiError(503, "Could not check existing accounts.");
+  const profile = Array.isArray(existing) ? existing[0] : null;
+  if (!profile || profile.active === true) return;
+  const [{ data: userData }, state] = await Promise.all([admin.auth.admin.getUserById(profile.id), profileAccessState(profile.id)]);
+  const user = userData?.user;
+  if (user?.app_metadata?.[ACCESS_REVOKED_KEY] || state?.ever_active === true || state?.removed === true) {
+    throw new ApiError(409, "This person’s access was removed. An administrator can restore it in Team.");
+  }
+  if (user?.email_confirmed_at) {
+    throw new ApiError(409, "This person already accepted an invitation. An administrator can activate them in Team.");
+  }
+}
+
 async function inviteAccount(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
   requireStepUp(context);
@@ -653,6 +680,8 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
   const intendedRole = resolveInviteRole(context, body.role ?? "viewer");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
+
+  await refuseUnusableInvitation(email, serviceRoleKey);
 
   const inviteUrl = new URL(`${productionAuthUrl()}/auth/v1/invite`);
   inviteUrl.searchParams.set("redirect_to", invitationRedirect(Deno.env.get("ATLAS_APP_ORIGIN"), Deno.env.get("ATLAS_INTEGRATIONS_APP_ORIGINS")));
@@ -681,16 +710,21 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
   // Record the intended role and who invited them; the account is NOT activated.
   const invitedId = typeof result?.id === "string" ? result.id
     : typeof result?.user?.id === "string" ? result.user.id : null;
-  if (invitedId) {
-    const admin = createClient(productionAuthUrl(), serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { error: markerError } = await admin.auth.admin.updateUserById(invitedId, {
-      app_metadata: { atlas_intended_role: intendedRole, atlas_invited_by: context.user.id },
-    });
-    if (markerError) console.warn("Invite metadata could not be stored", markerError.message);
-    await logExternalEvent(context, "active_status_changed", invitedId, {
-      previous_active: false, active: false, role: intendedRole, reason: "account_invited",
-    }).catch(() => undefined);
+  // Without these markers account setup refuses the invitee (S114), so a
+  // failure is reported, not hidden.
+  const untracked = "The invitation was sent but could not be tracked. Ask an administrator to review it before inviting again.";
+  if (!invitedId) throw new ApiError(503, untracked);
+  const admin = createClient(productionAuthUrl(), serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error: markerError } = await admin.auth.admin.updateUserById(invitedId, {
+    app_metadata: { atlas_intended_role: intendedRole, atlas_invited_by: context.user.id },
+  });
+  if (markerError) {
+    console.warn("Invite metadata could not be stored", markerError.message);
+    throw new ApiError(503, untracked);
   }
+  await logExternalEvent(context, "active_status_changed", invitedId, {
+    previous_active: false, active: false, role: intendedRole, reason: "account_invited",
+  }).catch(() => undefined);
   return { invited: true, email, role: intendedRole };
 }
 
@@ -798,10 +832,18 @@ async function removeFromTeam(context: AtlasContext, body: Record<string, unknow
       if (target.role === "admin") await ensureNotLastActiveAdmin(context, profileId);
       else if (target.role === "manager") await ensureNotLastActiveManager(context, profileId);
     }
+    // The database lets only administrators change another profile's access.
+    if (target.active && context.profile.role !== "admin") {
+      throw new ApiError(403, "Only an administrator can remove this member’s access. Ask an administrator to remove them.");
+    }
+    // S114: mark first, so an account setup finishing at this moment sees the
+    // removal (atlas_team_profile_activate_invitation re-checks it under lock);
+    // removed — including a pending invitation — can never be finished or
+    // restored through self-service account setup.
+    await updateAccessMarkers(profileId, revocationMetadata());
     // Always deactivate (idempotent; also covers a profile activated since it
     // was read) and confirm it: the removal is recorded only once the profile
-    // is known to be inactive. The database lets only administrators change
-    // another profile's access, so a manager's update matches no row; then the
+    // is known to be inactive. A manager's update matches no row; then the
     // profile is read again and an active one is refused, truthfully.
     const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
     url.searchParams.set("id", `eq.${profileId}`);
@@ -815,9 +857,6 @@ async function removeFromTeam(context: AtlasContext, body: Record<string, unknow
     if (target.active) {
       await logExternalEvent(context, "active_status_changed", profileId, { previous_active: true, active: false, role: target.role, reason: "removed_from_team" });
     }
-    // S114: removed — including a pending invitation — can never be finished or
-    // restored through self-service account setup.
-    await updateAccessMarkers(profileId, revocationMetadata());
   }
 
   const result = await branchRpc("atlas_team_member_remove_from_team", {
@@ -1084,30 +1123,35 @@ async function completeOnboarding(context: AtlasContext) {
 
   const role = decision.role;
   if (decision.mode === "activate") {
-    // Conditional on the profile still being inactive: two concurrent requests
-    // cannot both activate, and a profile a manager changed meanwhile is untouched.
-    const { data: updated, error: profileError } = await admin.from("profiles")
-      .update({ display_name: displayName, role, active: true })
-      .eq("id", context.user.id)
-      .eq("active", false)
-      .select("id,email,display_name,role,active")
-      .maybeSingle();
-    if (profileError) throw new ApiError(503, "Your account could not be finished. Ask your manager to review it.");
-    if (!updated) throw new ApiError(409, "This account is already set up. Sign in to Alcedo instead.");
+    // One locked database step re-checks everything that could have changed
+    // since the decision above (a removal, a new role, a parallel request) and
+    // activates only if nothing did (S114 atlas_team_profile_activate_invitation).
+    let activation: { activated?: unknown; reason?: unknown } | null = null;
+    try {
+      activation = await branchRpc("atlas_team_profile_activate_invitation", {
+        p_profile_id: context.user.id, p_role: role, p_display_name: displayName,
+      });
+    } catch (error) {
+      console.warn("Invitation activation failed", error instanceof Error ? error.message : "unknown");
+      throw new ApiError(503, "Your account could not be finished. Ask your manager to review it.");
+    }
+    if (activation?.activated !== true) throw accessRefusal(activationRefusal(activation?.reason));
     await branchRpc("atlas_shifts_sync_profiles", {
       p_profiles: [{ id: context.user.id, email: user.email, display_name: displayName, role, active: true }],
       p_actor_id: context.user.id, p_actor_label: displayName, p_actor_role: role,
     }).catch((error) => console.warn("Shift sync after onboarding failed", error instanceof Error ? error.message : error));
   } else {
-    // Already active (created by a manager): record the name only; the role and
-    // access stay exactly what a manager set.
-    const { data: updated, error: profileError } = await admin.from("profiles")
-      .update({ display_name: displayName })
-      .eq("id", context.user.id)
-      .eq("active", true)
-      .select("id")
-      .maybeSingle();
-    if (profileError || !updated) throw new ApiError(503, "Your account could not be finished. Ask your manager to review it.");
+    // Already active (created by a manager): the role and access stay exactly
+    // what a manager set, and a name a manager already recorded is kept.
+    if (!String(context.profile.display_name ?? "").trim()) {
+      const { data: updated, error: profileError } = await admin.from("profiles")
+        .update({ display_name: displayName })
+        .eq("id", context.user.id)
+        .eq("active", true)
+        .select("id")
+        .maybeSingle();
+      if (profileError || !updated) throw new ApiError(503, "Your account could not be finished. Ask your manager to review it.");
+    }
   }
   // Setup is done: it can never run again for this account.
   await updateAccessMarkers(context.user.id, completionMetadata());

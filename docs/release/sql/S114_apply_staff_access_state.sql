@@ -19,7 +19,8 @@ end
 $guard$;
 
 -- >>> migration file (verbatim) >>>
--- S114 (authn): the access history that self-service account setup needs.
+-- S114 (authn): the access history that self-service account setup needs, and
+-- the atomic activation of a pending invitation.
 --
 -- atlas-team-profiles complete-onboarding (and save-details / photo upload
 -- while a profile is inactive) may activate only an invitation that has never
@@ -48,8 +49,15 @@ $guard$;
 -- The Edge Function refuses activation unless it is a fresh, never-active,
 -- never-removed invitation from a still-qualified inviter
 -- (_shared/staff-access.mjs). It reveals booleans, a role name and a day count,
--- no personal data, and only the service role may call it. NOTHING else changes
--- on apply: no table, no policy, no data.
+-- no personal data, and only the service role may call it.
+--
+-- team_profile_activate_invitation then performs the activation the Edge
+-- Function decided on, atomically: it locks the profile and Auth rows, re-checks
+-- the removal marker, the completion marker and the history, re-derives the role
+-- and activates only if nothing changed since the decision (a removal or a new
+-- role chosen meanwhile wins). Service role only.
+--
+-- NOTHING changes on apply: no table, no policy, no data.
 
 create or replace function atlas_private.team_profile_access_state(p_profile_id uuid)
 returns jsonb
@@ -127,6 +135,72 @@ set search_path = ''
 as $$ select atlas_private.team_profile_access_state(p_profile_id); $$;
 revoke all on function public.atlas_team_profile_access_state(uuid) from public, anon, authenticated;
 grant execute on function public.atlas_team_profile_access_state(uuid) to service_role;
+
+create or replace function atlas_private.team_profile_activate_invitation(p_profile_id uuid, p_role text, p_display_name text)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_active boolean;
+  v_role text;
+  v_meta jsonb;
+  v_state jsonb;
+  v_expected text;
+begin
+  -- Serialise with every other change to this person: Team's profile updates
+  -- lock the profile row, Auth's app_metadata updates lock the Auth row.
+  select profile.active, profile.role::text into v_active, v_role
+  from public.profiles as profile where profile.id = p_profile_id for update;
+  if not found then return jsonb_build_object('activated', false, 'reason', 'not_found'); end if;
+  if v_active is true then return jsonb_build_object('activated', false, 'reason', 'already_active'); end if;
+  select coalesce(account.raw_app_meta_data, '{}'::jsonb) into v_meta
+  from auth.users as account where account.id = p_profile_id for update;
+  if not found then return jsonb_build_object('activated', false, 'reason', 'not_found'); end if;
+  if nullif(v_meta ->> 'atlas_access_revoked_at', '') is not null then
+    return jsonb_build_object('activated', false, 'reason', 'access_revoked');
+  end if;
+  if nullif(v_meta ->> 'atlas_onboarding_completed_at', '') is not null then
+    return jsonb_build_object('activated', false, 'reason', 'already_onboarded');
+  end if;
+  v_state := atlas_private.team_profile_access_state(p_profile_id);
+  if (v_state ->> 'ever_active')::boolean or (v_state ->> 'removed')::boolean then
+    return jsonb_build_object('activated', false, 'reason', 'access_revoked');
+  end if;
+  if (v_state ->> 'audited')::boolean is not true then
+    return jsonb_build_object('activated', false, 'reason', 'invitation_needs_review');
+  end if;
+  v_expected := case
+    when (v_state ->> 'role_changed')::boolean then v_role
+    when v_meta ->> 'atlas_intended_role' in ('admin', 'manager', 'bartender', 'viewer') then v_meta ->> 'atlas_intended_role'
+    else 'viewer'
+  end;
+  if p_role is distinct from v_expected then
+    return jsonb_build_object('activated', false, 'reason', 'role_changed');
+  end if;
+  update public.profiles
+     set display_name = p_display_name, role = v_expected::public.staff_role, active = true
+   where id = p_profile_id;
+  return jsonb_build_object('activated', true, 'role', v_expected);
+end;
+$$;
+revoke all on function atlas_private.team_profile_activate_invitation(uuid, text, text) from public, anon, authenticated;
+grant execute on function atlas_private.team_profile_activate_invitation(uuid, text, text) to service_role;
+
+create or replace function public.atlas_team_profile_activate_invitation(p_profile_id uuid, p_role text, p_display_name text)
+returns jsonb
+language sql
+volatile
+security definer
+set search_path = ''
+as $$ select atlas_private.team_profile_activate_invitation(p_profile_id, p_role, p_display_name); $$;
+revoke all on function public.atlas_team_profile_activate_invitation(uuid, text, text) from public, anon, authenticated;
+grant execute on function public.atlas_team_profile_activate_invitation(uuid, text, text) to service_role;
+
+comment on function public.atlas_team_profile_activate_invitation(uuid, text, text) is
+  'S114 service-role-only atomic activation of a pending invitation after account setup: re-checks removal, completion, history and role under row locks.';
 
 comment on function public.atlas_team_profile_access_state(uuid) is
   'S114 service-role-only access history for self-service account setup: audited, ever_active, removed, role_changed, inviter_active, inviter_role, invitation_age_days. No personal data.';

@@ -13,6 +13,7 @@ import {
   INVITATION_MAX_AGE_DAYS,
   INVITED_BY_KEY,
   ONBOARDING_COMPLETED_KEY,
+  activationRefusal,
   completionMetadata,
   onboardingDecision,
   pendingInvitationDecision,
@@ -141,6 +142,18 @@ test('an invitation from someone since removed or demoted does not activate on i
   refusedWith({ inviter_role: 'manager' }, 'admin');
   assert.equal(onboardingDecision({ profile: pending, appMetadata: { ...INVITED, [INTENDED_ROLE_KEY]: 'manager' }, accessState: { ...NEVER_ACTIVE, inviter_role: 'manager' } }).role, 'manager');
   assert.equal(onboardingDecision({ profile: pending, appMetadata: { ...INVITED, [INTENDED_ROLE_KEY]: 'admin' }, accessState: NEVER_ACTIVE }).role, 'admin');
+});
+
+test('the locked activation step’s answers map to the same refusals', () => {
+  assert.equal(activationRefusal('access_revoked').code, 'access_revoked');
+  assert.equal(activationRefusal('already_active').code, 'already_onboarded');
+  assert.equal(activationRefusal('already_onboarded').code, 'already_onboarded');
+  assert.deepEqual([activationRefusal('role_changed').status, activationRefusal('role_changed').code], [409, 'setup_conflict']);
+  for (const reason of ['invitation_needs_review', 'not_found', undefined, null, 'anything']) {
+    const refusal = activationRefusal(reason);
+    assert.equal(refusal.ok, false);
+    assert.equal(refusal.code, 'invitation_needs_review');
+  }
 });
 
 test('marker patches: completion and removal clear the invited role; reinstatement clears the removal', () => {

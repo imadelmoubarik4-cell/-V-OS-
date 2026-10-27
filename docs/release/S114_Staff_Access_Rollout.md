@@ -4,7 +4,7 @@ Status: **prepared, not deployed.** Every step marked 🔒 needs the owner's sep
 
 Scope:
 - **Edge Functions:** the `_shared/auth.mjs` staff two-factor check and the account-setup guards in `atlas-team-profiles` and `atlas-team-profile-photos`.
-- **Database:** one additive, read-only database function (`20261031090000_s114_staff_access_state.sql`).
+- **Database:** two additive, service-role-only database functions (`20261031090000_s114_staff_access_state.sql`): a read-only access-history check, and the locked step that activates a pending invitation when its setup finishes.
 - **Frontend:** the invitation wizard (`account-invitation.js`, `invitation.html`): the authenticator step now comes second (password → authenticator → details → photo), and refusals show plain-language messages.
 
 There are no table, policy or data changes.
@@ -23,6 +23,10 @@ Reference: `ALCEDO_Security_Fix_Report.md`, delivered privately, holds the techn
 | An invitation older than 14 days, or from someone who is no longer an active manager/administrator | Setup asks them to contact a manager. A manager sends a fresh invitation (if they haven't accepted it yet) or an administrator activates them in Team. |
 | An administrator changing the role of a pending invitation in Team | The new role is what they get when they finish setup, even when the profile already showed it. |
 | A manager (not an administrator) removing an **active** member in Team | Refused with "Only an administrator can remove this member’s access". This was already blocked by the database, but the screen used to report success. Managers can still cancel a pending invitation. |
+| A manager changing a pending invitation's role in Team | Refused: only an administrator can. The database already allowed only administrators to change access; the change used to fail with a vague message. |
+| Inviting someone whose access was removed, or who already accepted an invitation | Refused before anything is sent, with what to do instead (an administrator restores or activates them in Team). |
+| An invitation whose tracking could not be saved | The manager is told (503) instead of seeing a success the invitee could never use. |
+| A login member a manager created, finishing setup | Their name is recorded only if none is on record; role and access stay as the manager set them. |
 | An inactive profile from before the security audit existed (rare) | An administrator activates it from Team. Setup refuses it, and the pre-flight lists such profiles. |
 
 ## Order
@@ -64,7 +68,7 @@ Functions that import `_shared/auth.mjs` (redeploy all of them in step 5 so ever
 Fastest first. Data is never touched; nothing to restore.
 
 1. **Edge Functions:** redeploy the previous sources from the pre-S114 commit (`git worktree add /tmp/pre-s114 <pre-S114 main SHA>`, then `supabase functions deploy <slug> --project-ref <ref>`, with flags as in `config.toml`), for the functions deployed in steps 4–5. This alone restores the previous behaviour.
-2. **Database (after step 1):** run `docs/release/sql/S114_staff_access_state_rollback.sql`. It drops the two functions and the S114 ledger row, is idempotent, and is proven by a test to leave nothing behind.
+2. **Database (after step 1):** run `docs/release/sql/S114_staff_access_state_rollback.sql`. It drops the S114 functions and the S114 ledger row, is idempotent, and is proven by a test to leave nothing behind.
 3. **Frontend:** `git revert` of the wizard-copy commit, or Netlify "Publish deploy" of the previous production deploy.
 
 Do **not** roll back the database before the Edge Functions. The S114 functions would then refuse every pending invitation (fail closed) until they are rolled back too.

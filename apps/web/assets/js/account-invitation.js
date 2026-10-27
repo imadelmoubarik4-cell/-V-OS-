@@ -123,7 +123,8 @@
     access_revoked: 'This invitation can no longer be used. Ask a manager if you need access to Alcedo.',
     not_invited: 'This invitation can no longer be used. Ask a manager if you need access to Alcedo.',
     invitation_needs_review: 'This invitation needs a manager to finish it. Ask your manager to review your access in Team.',
-    invitation_expired: 'This invitation has expired. Ask your manager to review your access in Team.'
+    invitation_expired: 'This invitation has expired. Ask your manager to review your access in Team.',
+    setup_conflict: 'Your access was changed while you were finishing setup. Try again.'
   };
   const setupRefusal = (error) => (error && Object.prototype.hasOwnProperty.call(SETUP_REFUSALS, error.code) ? SETUP_REFUSALS[error.code] : '');
 

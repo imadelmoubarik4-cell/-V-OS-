@@ -14,7 +14,10 @@
 --      shows as such; a malformed inviter reads as no inviter;
 --   6. a profile created before the audit existed reads as not audited, and an
 --      unknown profile id reads as not audited, never active, no inviter;
---   7. the answer holds no personal data: exactly the seven keys.
+--   7. the answer holds no personal data: exactly the seven keys;
+--   8. the activation step is sealed too, activates a fresh invitation with its
+--      invited role exactly once, and refuses (changing nothing) a removed,
+--      revoked, completed, role-changed, previously active or pre-audit one.
 -- Fixtures are created in one transaction and rolled back. Loopback only.
 begin;
 
@@ -28,6 +31,13 @@ begin
   then raise exception 'browser roles can execute the access-state functions'; end if;
   if not has_function_privilege('service_role', 'public.atlas_team_profile_access_state(uuid)', 'EXECUTE')
   then raise exception 'service_role cannot execute the access-state wrapper'; end if;
+  if has_function_privilege('anon', 'public.atlas_team_profile_activate_invitation(uuid, text, text)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.atlas_team_profile_activate_invitation(uuid, text, text)', 'EXECUTE')
+     or has_function_privilege('anon', 'atlas_private.team_profile_activate_invitation(uuid, text, text)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'atlas_private.team_profile_activate_invitation(uuid, text, text)', 'EXECUTE')
+  then raise exception 'browser roles can execute the activation functions'; end if;
+  if not has_function_privilege('service_role', 'public.atlas_team_profile_activate_invitation(uuid, text, text)', 'EXECUTE')
+  then raise exception 'service_role cannot execute the activation wrapper'; end if;
   raise notice 'check 1 ok: sealed to service_role';
 end $$;
 
@@ -114,6 +124,63 @@ begin
   raise notice 'checks 2-7 ok: invitation, removal, demotion, direct SQL, role change, inviters, age, pre-audit and unknown profiles';
 end $$;
 
+-- 8. The locked activation step. Refusals first: each changes nothing.
+do $$
+declare
+  answer jsonb;
+  expect record;
+begin
+  for expect in
+    select * from (values
+      ('11400000-0000-4000-8000-000000000002'::uuid, 'bartender', 'access_revoked',          'a deactivated member'),
+      ('11400000-0000-4000-8000-000000000008'::uuid, 'bartender', 'access_revoked',          'a pending invitation Team removed'),
+      ('11400000-0000-4000-8000-000000000003'::uuid, 'manager',   'already_active',          'an active (demoted) member'),
+      ('11400000-0000-4000-8000-000000000006'::uuid, 'manager',   'role_changed',            'the invited role after a manager changed it'),
+      ('11400000-0000-4000-8000-000000000005'::uuid, 'viewer',    'invitation_needs_review', 'a pre-audit profile'),
+      ('11400000-0000-4000-8000-000000000001'::uuid, 'admin',     'role_changed',            'a role other than the invited one'),
+      ('11400000-0000-4000-8000-0000000000ff'::uuid, 'viewer',    'not_found',               'an unknown id')
+    ) as t(id, role, reason, label)
+  loop
+    answer := public.atlas_team_profile_activate_invitation(expect.id, expect.role, 'Changed Name');
+    if answer is distinct from jsonb_build_object('activated', false, 'reason', expect.reason) then
+      raise exception '%: got %', expect.label, answer;
+    end if;
+  end loop;
+  if exists (select 1 from public.profiles where display_name = 'Changed Name') then
+    raise exception 'a refused activation changed a profile';
+  end if;
+  raise notice 'check 8a ok: removed, revoked, active, role-changed, pre-audit and unknown are refused unchanged';
+end $$;
+
+reset role;
+-- Markers set by Team / setup, as Auth stores them.
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"atlas_access_revoked_at":"2026-10-31T10:00:00Z"}'
+ where id = '11400000-0000-4000-8000-000000000004';
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"atlas_onboarding_completed_at":"2026-10-31T10:00:00Z"}'
+ where id = '11400000-0000-4000-8000-000000000009';
+set local role service_role;
+
+do $$
+declare
+  answer jsonb;
+begin
+  if public.atlas_team_profile_activate_invitation('11400000-0000-4000-8000-000000000004', 'viewer', 'X') is distinct from '{"activated":false,"reason":"access_revoked"}'::jsonb
+  then raise exception 'a revoked marker did not refuse'; end if;
+  if public.atlas_team_profile_activate_invitation('11400000-0000-4000-8000-000000000009', 'viewer', 'X') is distinct from '{"activated":false,"reason":"already_onboarded"}'::jsonb
+  then raise exception 'a completion marker did not refuse'; end if;
+  -- A fresh invitation: activated once, with its invited role and name.
+  answer := public.atlas_team_profile_activate_invitation('11400000-0000-4000-8000-000000000001', 'bartender', 'Pending Invitee');
+  if answer is distinct from '{"activated":true,"role":"bartender"}'::jsonb then raise exception 'fresh invitation not activated: %', answer; end if;
+  if not exists (select 1 from public.profiles where id = '11400000-0000-4000-8000-000000000001' and active and role = 'bartender' and display_name = 'Pending Invitee')
+  then raise exception 'the activation did not apply'; end if;
+  if public.atlas_team_profile_activate_invitation('11400000-0000-4000-8000-000000000001', 'bartender', 'Pending Invitee') is distinct from '{"activated":false,"reason":"already_active"}'::jsonb
+  then raise exception 'a second activation was not refused'; end if;
+  -- The pending profile whose role a manager changed gets that role.
+  if public.atlas_team_profile_activate_invitation('11400000-0000-4000-8000-000000000006', 'bartender', 'Role Changed') is distinct from '{"activated":true,"role":"bartender"}'::jsonb
+  then raise exception 'the changed role was not the one activated'; end if;
+  raise notice 'check 8b ok: markers refuse; a fresh invitation activates once with the right role';
+end $$;
+
 reset role;
 
 -- Only a browser role at runtime is refused, not just by grants on paper.
@@ -123,6 +190,14 @@ begin
     set local role authenticated;
     perform public.atlas_team_profile_access_state('11400000-0000-4000-8000-000000000001');
     raise exception 'authenticated could call the access-state wrapper';
+  exception when insufficient_privilege then
+    null;
+  end;
+  reset role;
+  begin
+    set local role authenticated;
+    perform public.atlas_team_profile_activate_invitation('11400000-0000-4000-8000-000000000007', 'bartender', 'X');
+    raise exception 'authenticated could call the activation wrapper';
   exception when insufficient_privilege then
     null;
   end;

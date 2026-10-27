@@ -2,7 +2,7 @@
   "package": "Atlas S41 production function addendum v1",
   "status": "Approved for production deployment on 2026-09-15",
   "base_source_manifest": "docs/release/Atlas_S35_Combined_Isolated_Staging_Manifest.json",
-  "base_source_manifest_sha256": "d6699a372aaebb87a55bcee9171232a209b120ac232a3e98ad89df112ae39d27",
+  "base_source_manifest_sha256": "8a9819343226ab1eaa53fa7dec80a6d81df2ef94f23262f88afd74d8b2448cd7",
   "production_target": "dnefgcmjcgxlynycxkts",
   "functions": [
     {
@@ -13,7 +13,7 @@
         "supabase/functions/_shared/atlas-domain.mjs": "651f015a973d50cb38ba8ef1741ecd3e15603903f81181806f78f39a52da191c",
         "supabase/functions/_shared/stock-provenance.mjs": "dde174cf079fe0a345719b521afb6bca7721e2427de68b158320867d57f84eba",
         "supabase/functions/_shared/product-identity.mjs": "077745f34ef4935cfb5dafb2195d9a0b33055dc603416cd6f90e2400f0f7379f",
-        "supabase/functions/_shared/auth.mjs": "3853d9368cf622c32c1d6ec7bcafd4d297674f561c145db79eefcf5ee634583d"
+        "supabase/functions/_shared/auth.mjs": "1a2e05508ac7cc5cce285e871a729ee10b8f4d1f009a0f9d0278cf6fc4a56a75"
       }
     }
   ],
