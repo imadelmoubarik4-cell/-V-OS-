@@ -51,10 +51,10 @@ window.VABAR_CONFIG = {
   // KANEL Pricing & Profitability (Finance › Menu Pricing). FEATURE-FLAGGED: the
   // destination only appears when this is true, and only for admin/manager roles.
   // It is a client-side calculation workspace — it never writes to live POS/menu
-  // prices, invoices or accounting records. The S104 database migration is applied
-  // and its RLS/RPC checks passed in production (issue #124), so the module is
-  // enabled for admin/manager roles. Set to false to hide it entirely.
-  KANEL_PRICING_ENABLED: true,
+  // prices, invoices or accounting records. DISABLED (containment): its business
+  // inputs were removed from the public files, and it stays off until a
+  // manager-authorised server endpoint serves the pricing profile.
+  KANEL_PRICING_ENABLED: false,
   // Public (guest) online booking — Reserve a Table / Bóka borð on the public
   // website, backed by the existing Alcedo bookings system. FEATURE-FLAGGED and
   // OFF by default: while false, no public booking endpoint is advertised, no
@@ -276,13 +276,13 @@ if (window.VABAR_CONFIG && window.VABAR_CONFIG.KANEL_PRICING_ENABLED) {
   // The shared, decimal-safe calculation engine (window.KanelPricing). Pure and
   // dependency-free; the workspace waits for it before it renders.
   loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-    scriptPath: 'assets/js/kanel-pricing-engine.js?v=20261017-kanel1',
+    scriptPath: 'assets/js/kanel-pricing-engine.js?v=20261028-contain',
     globalName: 'KanelPricing',
     dataAttribute: 'kanelPricingEngine',
   }));
   loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
     stylesheetPath: 'assets/css/finance-pricing-workspace.css?v=20261026-redesign',
-    scriptPath: 'assets/js/finance-pricing-workspace.js?v=20261027-audit',
+    scriptPath: 'assets/js/finance-pricing-workspace.js?v=20261028-contain',
     globalName: 'AtlasFinancePricing',
     dataAttribute: 'atlasFinancePricing',
   }));

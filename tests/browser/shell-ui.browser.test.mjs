@@ -29,9 +29,9 @@ const visibleSidebar = (page) => page.evaluate(() => [...document.querySelectorA
 const groupLabels = (page) => page.evaluate(() => [...document.querySelectorAll('.atlas-sidebar .nav-label')]
   .filter((node) => node.getClientRects().length > 0).map((node) => node.textContent.trim()));
 
-test('sidebar: spec groups and role visibility (admin sees 15 + Settings, bartender exactly 10)', { skip }, async () => {
+test('sidebar: spec groups and role visibility (admin sees 14 + Settings, bartender exactly 10)', { skip }, async () => {
   for (const [user, expected, labels] of [
-    [USERS.admin, ['home', 'ai', 'messages', 'operations', 'inventory', 'recipes', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'pricing', 'data', 'settings'], ['Venue', 'People', 'Business']],
+    [USERS.admin, ['home', 'ai', 'messages', 'operations', 'inventory', 'recipes', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'data', 'settings'], ['Venue', 'People', 'Business']],
     [USERS.bartender, ['home', 'ai', 'messages', 'operations', 'inventory', 'recipes', 'bookings', 'shifts', 'team', 'knowledge'], ['Venue', 'People']]
   ]) {
     const { page, record, close } = await launch({ user });
@@ -54,6 +54,31 @@ test('sidebar: spec groups and role visibility (admin sees 15 + Settings, barten
       assert.deepEqual(record.pageErrors, []);
     } finally { await close(); }
   }
+});
+
+// Containment: Menu Pricing is switched off, so even an admin gets no pricing
+// files and a direct #pricing link does not open the module.
+test('Menu Pricing is off: no nav item, no pricing files, #pricing does not open it', { skip }, async () => {
+  const { page, record, close } = await launch({ user: USERS.admin });
+  const fetched = [];
+  page.on('request', (request) => { if (/pricing|price-lock|\/assets\/data\//.test(request.url())) fetched.push(request.url()); });
+  try {
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[data-nav-id="pricing"]')]
+      .filter((node) => !node.hidden || node.getClientRects().length > 0).length), 0, 'no visible pricing link');
+    assert.deepEqual(await page.evaluate(() => ({
+      tags: document.querySelectorAll('script[src*="pricing"], link[href*="pricing"]').length,
+      engine: typeof window.KanelPricing,
+      workspace: typeof window.AtlasFinancePricing,
+    })), { tags: 0, engine: 'undefined', workspace: 'undefined' });
+    // A switched-off destination never opens (the shell's promise stays pending),
+    // so the link is followed without awaiting it.
+    await page.evaluate(() => { window.AtlasShell.navigate('#pricing'); });
+    await settle(page);
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'dashboard');
+    assert.equal(await page.$('#pricing-view .fp-page'), null);
+    assert.deepEqual(fetched, []);
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
 });
 
 test('rail at 1024 and 768: 64 px icons with tooltips; toggle opens the full sidebar as an overlay', { skip }, async () => {
@@ -97,7 +122,7 @@ test('at 1440 the sidebar collapses to the rail and the choice survives a reload
 
 test('phone (390 and 430): top bar title, 5-slot tab bar, More sheet with the rest per role', { skip }, async () => {
   for (const [user, width, more] of [
-    [USERS.admin, 390, ['messages', 'operations', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'pricing', 'data', 'settings']],
+    [USERS.admin, 390, ['messages', 'operations', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'data', 'settings']],
     [USERS.bartender, 430, ['messages', 'operations', 'bookings', 'shifts', 'team', 'knowledge', 'settings']]
   ]) {
     const { page, record, close } = await launch({ user, viewport: { width, height: 900 } });

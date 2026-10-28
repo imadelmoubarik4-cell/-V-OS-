@@ -4,11 +4,12 @@
  * A self-contained shell view ('pricing') for #pricing (overview) and
  * #pricing/quick (Quick Price Calculator). It is a CLIENT-SIDE calculation
  * surface over the shared engine (window.KanelPricing): it never writes to live
- * POS/menu prices, invoices or accounting records, and its baseline is the
- * engine's built-in launch baseline (DEFAULT_PROFILE, October 2026 planning
- * figures): nothing is read from a saved profile yet (audit L42), so the copy
- * never calls it "saved". Admin/manager only (the nav already gates it; this adds a
- * defence-in-depth permission state for anyone who reaches the route directly).
+ * POS/menu prices, invoices or accounting records. No business figures are
+ * bundled with the app: the pricing profile and the owner price snapshot must
+ * come from a manager-authorised server endpoint, and until one is connected
+ * every tab shows an "unavailable" state instead of figures. Admin/manager only
+ * (the nav already gates it; this adds a defence-in-depth permission state for
+ * anyone who reaches the route directly).
  *
  * Margins shown here are computed on NET sales (ex 11% output VAT), never on the
  * VAT-inclusive guest price — the engine owns that maths so the UI and the test
@@ -27,7 +28,6 @@
   const MANAGER_ROLES = ['admin', 'manager'];
 
   const SECTIONS = ['dashboard', 'quick', 'locked', 'classics', 'exceptions'];
-  const SNAPSHOT_URL = 'assets/data/kanel-price-lock-v07.json';
   // The forecast cash-margin floor every locked and proposed price is held to.
   const CASH_FLOOR = 0.05;
 
@@ -35,10 +35,10 @@
     initialized: false,
     visible: false,
     section: 'dashboard',
-    // Quick calculator form (seeded with the LIE so the page is useful on open).
-    quick: { name: 'Lie (signature)', category: 'cocktail', cost: 642, includesVat: false, vatRate: 0.11, disposables: 0 },
+    quick: { name: '', category: 'cocktail', cost: 0, includesVat: false, vatRate: 0.11, disposables: 0 },
+    // Filled only by a manager-authorised server endpoint (none is connected yet).
     snapshot: null,
-    snapshotState: 'idle', // idle | loading | ready | error
+    snapshotState: 'unavailable', // unavailable | loading | ready | error
   };
 
   // ---------- engine ----------
@@ -115,23 +115,18 @@
     </nav>`;
   }
 
-  // ---------- owner price-lock snapshot (V07) ----------
-
-  function loadSnapshot() {
-    if (state.snapshotState === 'loading' || state.snapshotState === 'ready') return;
-    state.snapshotState = 'loading';
-    fetch(SNAPSHOT_URL, { credentials: 'same-origin' })
-      .then((res) => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
-      .then((data) => { state.snapshot = data; state.snapshotState = 'ready'; if (state.visible) paint(); })
-      .catch(() => { state.snapshotState = 'error'; if (state.visible) paint(); });
-  }
+  // ---------- owner price-lock snapshot ----------
+  // The snapshot used to be a static file served with the app; it was removed
+  // because anyone could download it. It is not fetched until a manager-
+  // authorised server endpoint exists.
 
   // The block keeps its place while the snapshot loads (flat grey rows at the
   // real row height) and says what failed inside it when it can't load.
   function snapshotPending(label, rows = 6) {
     if (state.snapshotState === 'error') {
-      return `<div class="atlas-alert atlas-alert--danger fp-error" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Couldn’t load the ${escapeHtml(label)}</p><p class="atlas-alert__body">The owner price snapshot is bundled with the app. Nothing was changed.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-fp-retry>Try again</button></div></div>`;
+      return `<div class="atlas-alert atlas-alert--danger fp-error" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Couldn’t load the ${escapeHtml(label)}</p><p class="atlas-alert__body">Nothing was changed.</p></div></div>`;
     }
+    if (state.snapshotState === 'unavailable') return unavailableNote();
     return `<div class="fp-skeleton" role="status" aria-busy="true" aria-label="Loading the ${escapeHtml(label)}">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(rows)}</div>`;
   }
 
@@ -296,7 +291,7 @@
     return `<div class="fp-quick">
       <form class="fp-panel fp-form" data-fp-form novalidate aria-labelledby="fp-q-title">
         <h2 class="fp-panel__title" id="fp-q-title">What are you pricing?</h2>
-        <p class="fp-panel__sub">Enter what one serving costs you. KANEL’s built-in launch baseline (October 2026 planning figures for rent, card fees, loan, overhead and VAT) does the rest.</p>
+        <p class="fp-panel__sub">Enter what one serving costs you. The pricing profile (rent, card fees, loan, overhead and VAT) comes from the secure pricing service.</p>
         <div class="atlas-field"><label for="fp-q-name">Product name</label><input class="atlas-input" id="fp-q-name" data-fp="name" value="${escapeHtml(q.name)}" maxlength="120"></div>
         <div class="fp-form__row">
           <div class="atlas-field"><label for="fp-q-cat">Category</label><select class="atlas-select" id="fp-q-cat" data-fp="category">${catOptions}</select></div>
@@ -323,21 +318,6 @@
   }
 
   // ---------- overview ----------
-
-  // A small set of worked examples computed live by the engine, so the overview
-  // demonstrates cocktail (batch/clarified), wine (bottle→glass) and coffee
-  // (beans+milk+cup) costing end-to-end. These are illustrations, not saved menu
-  // prices.
-  function demoItems() {
-    const e = engine();
-    const wine = e.costPerServing({ packCost: 2480, includesVat: true, vatRate: 0.24, packSize: 750, packUnit: 'ml', servingSize: 150, servingUnit: 'ml', disposablesPerServing: 0 });
-    const coffee = e.costPerServing({ packCost: 4960, includesVat: true, vatRate: 0.24, packSize: 1, packUnit: 'kg', servingSize: 18, servingUnit: 'g', wastePerServing: 45, disposablesPerServing: 25 });
-    return [
-      { name: 'Lie', note: 'milk-clarified, 8 usable portions', cost: 642, price: 3190 },
-      { name: 'House wine (glass)', note: '750 ml bottle → 150 ml', cost: wine.costPerServing, price: 1690 },
-      { name: 'Flat white', note: '1 kg beans → 18 g + milk + cup', cost: coffee.costPerServing, price: 690 },
-    ];
-  }
 
   function modelMarkup() {
     const e = engine();
@@ -392,27 +372,9 @@
       ${tableBlock({ head, body, list, caption: 'Largest shortfalls against the 5% cash floor' })}`;
   }
 
-  function examplesMarkup() {
-    const e = engine();
-    const p = profile();
-    const rows = demoItems().map((item) => ({ item, l: e.priceProduct({ guestPrice: item.price, productCost: item.cost }, p) }));
-    // What is fine stays grey text, as on the locked menu; a mark only where
-    // the engine has something to say.
-    const status = (l) => (l.warnings.some((w) => w.level === 'error') ? '<span class="atlas-pill atlas-pill--danger">Error</span>'
-      : l.warnings.length ? `<span class="atlas-pill atlas-pill--warning">${escapeHtml(plural(l.warnings.length, 'warning', 'warnings'))}</span>` : '<span class="fp-muted">No warnings</span>');
-    const head = [th('Item'), th('Cost', true), th('Menu price', true), th('Net', true), th('Gross margin', true), th('Operating', true), th('Cash', true), th('Status')].join('');
-    const body = `<tbody>${rows.map(({ item, l }) => `<tr>${itemCell(item.name, item.note)}${td(isk(item.cost))}${td(isk(item.price))}${td(isk(l.netSales))}${td(pct(l.grossMarginPct))}${td(isk(l.operatingContribution))}${td(isk(l.cashContribution), 'fp-strong')}<td>${status(l)}</td></tr>`).join('')}</tbody>`;
-    const list = rows.map(({ item, l }) => listRow({ title: item.name, meta: `cost ${isk(item.cost)} · price ${isk(item.price)} · ${pct(l.grossMarginPct)} gross`, value: `${isk(l.cashContribution)} cash`, pill: l.warnings.length ? status(l) : '' })).join('');
-    return `<section class="atlas-section fp-section" aria-labelledby="fp-examples-title">
-      ${sectionHead('Worked examples', navLink('quick', 'Price a new item'), 'fp-examples-title')}
-      ${tableBlock({ head, body, list, caption: 'Worked examples' })}
-      <p class="fp-note">${icon('info')}Illustrative calculations over the built-in launch baseline (October 2026 planning figures), not live menu prices. Operating and cash are per serving, before fixed overhead. Recipe costs come from Inventory and Recipes once connected.</p>
-    </section>`;
-  }
-
   // The overview answers the line under the title first: how the locked menu
   // sits against the cash floor (the strip, then the worst shortfalls). The
-  // monthly model that sets the floor follows; worked examples close.
+  // monthly model that sets the floor follows.
   function dashboardMarkup() {
     const s = state.snapshot;
     const meta = state.snapshotState === 'ready' ? navLink('exceptions', `All ${s.exceptions.length} exceptions`) : '';
@@ -420,8 +382,7 @@
         ${sectionHead('Locked menu against the 5% cash floor', meta, 'fp-locked-title')}
         ${shortfallsMarkup()}
       </section>
-      ${modelMarkup()}
-      ${examplesMarkup()}`;
+      ${modelMarkup()}`;
   }
 
   // ---------- locked menu ----------
@@ -490,6 +451,16 @@
 
   // ---------- render ----------
 
+  // No business figures ship with the app; until the secure pricing service is
+  // connected, managers see this instead of numbers.
+  function unavailableNote() {
+    return `<div class="atlas-alert atlas-alert--info fp-unavailable" role="status">${icon('lock')}<div class="atlas-alert__content"><p class="atlas-alert__title">Menu pricing is unavailable</p><p class="atlas-alert__body">Pricing figures are only available from the secure pricing service, which is not connected yet. No prices were changed.</p></div></div>`;
+  }
+
+  function unavailableMarkup() {
+    return `<div class="atlas-page fp-page">${pageHead({ title: 'Menu Pricing' })}${unavailableNote()}</div>`;
+  }
+
   function notReadyMarkup() {
     return `<div class="atlas-page fp-page">${pageHead({ title: 'Menu Pricing' })}<p class="atlas-view-loading" role="status">Loading the pricing engine…</p></div>`;
   }
@@ -509,7 +480,7 @@
     const tally = s ? s.locked_menu.reduce((t, it) => { t[flagTone(it.financial_flag)] += 1; return t; }, { pass: 0, under: 0, negative: 0 }) : null;
     const below = tally ? tally.under + tally.negative : 0;
     switch (state.section) {
-      case 'quick': return 'Price any product in seconds against the KANEL baseline';
+      case 'quick': return 'Price any product in seconds against the pricing profile';
       case 'locked': return s ? `${below} of ${s.locked_menu.length} locked prices are under the 5% cash floor · read-only, never auto-published` : 'The owner’s frozen printed prices — read-only, never auto-published';
       case 'classics': return s ? `${s.classics.length} staff-only drinks on request · draft prices, owner approval required` : 'Staff-only on-request drinks — draft prices, owner approval required';
       case 'exceptions': return s ? `${s.exceptions.length} locked prices need a decision · ${s.exceptions.filter((x) => flagTone(x.severity) === 'negative').length} lose cash under the forecast` : 'Locked prices sitting below the forecast 5% cash-margin floor';
@@ -525,6 +496,7 @@
     view.classList.add('fp-host');
 
     if (!canView()) { view.innerHTML = deniedMarkup(); paintIcons(); return; }
+    if (state.snapshotState === 'unavailable') { view.innerHTML = unavailableMarkup(); paintIcons(); return; }
     if (!engine()) { view.innerHTML = notReadyMarkup(); paintIcons(); ensureEngine(); return; }
 
     const body = state.section === 'quick' ? quickMarkup()
@@ -554,8 +526,6 @@
     state.visible = true;
     const rawSection = params.section != null ? String(params.section) : '';
     state.section = SECTIONS.includes(rawSection) ? rawSection : 'dashboard';
-    // The owner snapshot powers three tabs and the overview counts; load it once.
-    if (state.snapshotState === 'idle') loadSnapshot();
     paint();
     window.scrollTo?.(0, 0);
   }
@@ -577,7 +547,6 @@
     if (tab) { event.preventDefault(); const s = tab.dataset.fpTab; go(s === 'dashboard' ? '' : s); return; }
     const nav = target.closest('[data-fp-nav]');
     if (nav) { event.preventDefault(); go(nav.dataset.fpNav); return; }
-    if (target.closest('[data-fp-retry]')) { state.snapshotState = 'idle'; loadSnapshot(); paint(); }
   }
 
   function readForm() {
