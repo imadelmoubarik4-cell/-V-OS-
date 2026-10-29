@@ -283,9 +283,9 @@
   },
   "apps/web/assets/js/finance-pricing-workspace.js": {
     "keys": [
-      "20261027-audit"
+      "20261028-contain"
     ],
-    "sha256": "873b905dea044bdb64eb13821d413c4eada195b88c5a4114e58acf8c8f9a6e46"
+    "sha256": "5738bceb60480a9e177db040cf3425602244d774f3517272247c7b1f7f675090"
   },
   "apps/web/assets/js/flavor-map.js": {
     "keys": [
@@ -301,9 +301,9 @@
   },
   "apps/web/assets/js/kanel-pricing-engine.js": {
     "keys": [
-      "20261017-kanel1"
+      "20261028-contain"
     ],
-    "sha256": "1ca2da45641c22158c632b32ef6df0b2b01e1cf2ebada012e15a43356ba18b64"
+    "sha256": "30f541b28f127c381819a5ac4b2bdc8ff9ef4347a2c269a5f44dc8eb1251cc2d"
   },
   "apps/web/assets/js/knowledge-workspace.js": {
     "keys": [

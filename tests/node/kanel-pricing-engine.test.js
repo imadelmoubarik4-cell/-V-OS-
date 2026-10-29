@@ -1,12 +1,16 @@
 // KANEL Pricing & Profitability — engine regression suite.
 // Proves the shared calculation engine (apps/web/assets/js/kanel-pricing-engine.js)
 // against the spec's mandatory test categories: net-ex-VAT margins (never on the
-// VAT-inclusive guest price), 11%/24% VAT recoverable vs not, the 35% employer
-// allowance counted once, 9% turnover rent, 15% loan collection across every base,
+// VAT-inclusive guest price), 11%/24% VAT recoverable vs not, the employer
+// allowance counted once, turnover rent, loan collection across every base,
 // card fees on card takings, batch / clarification yields, pack / keg / wine / coffee
 // conversions, net-share overhead allocation that reconciles to the whole, break-even,
-// the alerts for negative / thin margins, menu-ending rounding, and — as the first
-// full integration test — the LIE cocktail ladder.
+// the alerts for negative / thin margins, menu-ending rounding, and a full
+// serving ladder.
+//
+// Every business figure below is SYNTHETIC (round invented numbers chosen so the
+// expectations can be checked by hand). No real venue input belongs in this file:
+// the engine ships to the browser with neutral defaults only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -29,6 +33,28 @@ const {
   businessModel, monthlyOperatingOverhead, monthlyCashOverhead,
   DEFAULT_PROFILE,
 } = engine;
+
+// A synthetic venue profile: invented, round inputs (not any real business).
+//   net of a 2220 kr guest price = 2220 / 1.11 = 2000 exactly
+//   overhead = 1,000,000 + 300,000 + 400,000 + 100,000 = 1,800,000 a month
+const SYNTH = Object.freeze({
+  ...DEFAULT_PROFILE,
+  employerCostPct: 0.30,
+  turnoverRentPctOfNet: 0.10,
+  loanCollectionPct: 0.10,
+  loanCollectionBase: 'gross_incl_vat',
+  cardShare: 0.80,
+  merchantFeePct: 0.03,
+  blendedProductCostPct: 0.30,
+  targetCashSurplusPctOfNet: 0.05,
+  monthlyNetSales: 5000000,
+  expenses: [
+    { key: 'wages_gross', label: 'Wages', category: 'payroll', monthlyEffective: 1000000, monthlyCash: 1000000, vatRecoverable: false },
+    { key: 'employer_costs', label: 'Employer costs at 30%', category: 'payroll', monthlyEffective: 300000, monthlyCash: 300000, vatRecoverable: false },
+    { key: 'premises', label: 'Premises', category: 'property', monthlyEffective: 400000, monthlyCash: 400000, vatRecoverable: false },
+    { key: 'software', label: 'Software', category: 'technology', monthlyEffective: 100000, monthlyCash: 124000, vatRecoverable: true },
+  ],
+});
 
 // Within 1 ISK (rounding at posting boundaries) / within tol for ratios.
 const near = (actual, expected, tol = 1) =>
@@ -58,10 +84,12 @@ test('menu-ending rounding lands on xx90 and never drops below the value', () =>
 });
 
 test('VAT: net excludes 11% output VAT; output VAT is the difference', () => {
-  // 3190 incl 11% -> net 2873.87..., VAT 316.13...
-  near(netFromGross(3190, 0.11), 2873.87, 0.01);
-  near(outputVat(3190, 0.11), 316.13, 0.01);
-  near(grossFromNet(2873.87, 0.11), 3190, 0.02);
+  // 2220 incl 11% -> net 2000, VAT 220; 1000 incl 11% -> net 900.90..., VAT 99.09...
+  near(netFromGross(2220, 0.11), 2000, 0.01);
+  near(outputVat(2220, 0.11), 220, 0.01);
+  near(netFromGross(1000, 0.11), 900.90, 0.01);
+  near(outputVat(1000, 0.11), 99.10, 0.01);
+  near(grossFromNet(900.90, 0.11), 1000, 0.02);
 });
 
 test('purchase VAT: 24% and 11% recoverable reduces cost to net; non-recoverable stays in cost', () => {
@@ -116,9 +144,9 @@ test('operational materials never silently zero: a serving with only ice/garnish
 });
 
 test('batch/clarification cost divides by ACTUAL usable portions, not theoretical volume', () => {
-  // LIE: total batch cost 5136 ISK, milk clarification yields 8 usable portions -> 642/portion
-  const r = batchCostPerServing({ ingredients: [{ cost: 5136 }], usablePortions: 8 });
-  near(r.costPerServing, 642);
+  // a clarified batch costing 4000 ISK yields 8 usable portions -> 500/portion
+  const r = batchCostPerServing({ ingredients: [{ cost: 4000 }], usablePortions: 8 });
+  near(r.costPerServing, 500);
   assert.equal(r.incomplete, false);
   // zero usable portions is flagged incomplete, never a divide-by-zero price
   const bad = batchCostPerServing({ ingredients: [{ cost: 500 }], usablePortions: 0 });
@@ -126,25 +154,25 @@ test('batch/clarification cost divides by ACTUAL usable portions, not theoretica
   assert.ok(Number.isNaN(bad.costPerServing));
 });
 
-// ---------- LIE: the first full integration test ----------
-test('LIE cocktail ladder matches the spec reference (net-based, 642 cost, 3190 guest price)', () => {
-  const r = priceProduct({ guestPrice: 3190, productCost: 642 }, DEFAULT_PROFILE);
-  near(r.netSales, 2874, 1);              // 3190 / 1.11
-  near(r.vatCollected, 316, 1);
-  near(r.grossProfit, 2232, 1);           // 2874 - 642
-  near(r.grossMarginPct, 77.7, 0.3);      // on NET, not on 3190
-  near(r.turnoverRent, 259, 1);           // 9% of net
-  near(r.cardFee, 57, 1);                 // 3190 * 0.90 * 0.02
-  near(r.operatingContribution, 1916, 2); // 2874 - 642 - 259 - 57
-  near(r.loanCollection, 479, 1);         // 15% of gross incl VAT (3190)
-  near(r.cashContribution, 1437, 2);      // 1916 - 479
+// ---------- a full serving ladder ----------
+test('serving ladder on the synthetic profile (net-based, 500 cost, 2220 guest price)', () => {
+  const r = priceProduct({ guestPrice: 2220, productCost: 500 }, SYNTH);
+  near(r.netSales, 2000, 1);              // 2220 / 1.11
+  near(r.vatCollected, 220, 1);
+  near(r.grossProfit, 1500, 1);           // 2000 - 500
+  near(r.grossMarginPct, 75, 0.1);        // on NET, not on 2220
+  near(r.turnoverRent, 200, 1);           // 10% of net
+  near(r.cardFee, 53, 1);                 // 2220 * 0.80 * 0.03
+  near(r.operatingContribution, 1247, 2); // 2000 - 500 - 200 - 53.28
+  near(r.loanCollection, 222, 1);         // 10% of gross incl VAT (2220)
+  near(r.cashContribution, 1025, 2);      // 1246.72 - 222
   // margin is emphatically NOT profit/guestPrice
-  const wrongMargin = round(((3190 - 642) / 3190) * 100, 1);
+  const wrongMargin = round(((2220 - 500) / 2220) * 100, 1);
   assert.notEqual(r.grossMarginPct, wrongMargin);
 });
 
 test('margins are computed on net sales, never on the VAT-inclusive menu price', () => {
-  const r = priceProduct({ guestPrice: 1000, productCost: 200 }, DEFAULT_PROFILE);
+  const r = priceProduct({ guestPrice: 1000, productCost: 200 }, SYNTH);
   const net = 1000 / 1.11;
   near(r.grossMarginPct, ((net - 200) / net) * 100, 0.1);
   // the naive menu-price margin would be (1000-200)/1000 = 80%, which this must not equal
@@ -153,45 +181,47 @@ test('margins are computed on net sales, never on the VAT-inclusive menu price',
 
 test('loan collection honours every configured base', () => {
   const bases = {
-    gross_incl_vat: 3190 * 0.15,
-    net_ex_vat: (3190 / 1.11) * 0.15,
-    card_only: 3190 * 0.90 * 0.15,
-    settlement: 3190 * 0.90 * 0.15,
+    gross_incl_vat: 2220 * 0.10,
+    net_ex_vat: (2220 / 1.11) * 0.10,
+    card_only: 2220 * 0.80 * 0.10,
+    settlement: 2220 * 0.80 * 0.10,
   };
   for (const [base, expected] of Object.entries(bases)) {
-    const r = priceProduct({ guestPrice: 3190, productCost: 642 }, { ...DEFAULT_PROFILE, loanCollectionBase: base });
+    const r = priceProduct({ guestPrice: 2220, productCost: 500 }, { ...SYNTH, loanCollectionBase: base });
     near(r.loanCollection, expected, 1, `loan base ${base}`);
   }
 });
 
-test('9% turnover rent is charged on net sales only', () => {
-  const r = priceProduct({ guestPrice: 3190, productCost: 642 }, DEFAULT_PROFILE);
-  near(r.turnoverRent, (3190 / 1.11) * 0.09, 0.5);
+test('turnover rent is charged on net sales only', () => {
+  const r = priceProduct({ guestPrice: 2220, productCost: 500 }, SYNTH);
+  near(r.turnoverRent, (2220 / 1.11) * 0.10, 0.5);
 });
 
 test('card fee is charged on card takings (incl VAT), not on net', () => {
-  const r = priceProduct({ guestPrice: 3190, productCost: 642 }, DEFAULT_PROFILE);
-  near(r.cardFee, 3190 * 0.90 * 0.02, 0.5);
+  const r = priceProduct({ guestPrice: 2220, productCost: 500 }, SYNTH);
+  near(r.cardFee, 2220 * 0.80 * 0.03, 0.5);
 });
 
-test('employer costs at 35% are a single baseline line, not double-counted on wages', () => {
-  const wages = DEFAULT_PROFILE.expenses.find((e) => e.key === 'wages_gross');
-  const employer = DEFAULT_PROFILE.expenses.find((e) => e.key === 'employer_costs');
-  near(employer.monthlyEffective, wages.monthlyEffective * 0.35, 1);
-  // exactly one employer-costs line exists
-  assert.equal(DEFAULT_PROFILE.expenses.filter((e) => e.key === 'employer_costs').length, 1);
+test('employer costs are a single baseline line, not double-counted on wages', () => {
+  const wages = SYNTH.expenses.find((e) => e.key === 'wages_gross');
+  const employer = SYNTH.expenses.find((e) => e.key === 'employer_costs');
+  near(employer.monthlyEffective, wages.monthlyEffective * SYNTH.employerCostPct, 1);
+  // exactly one employer-costs line exists, and overhead counts it once
+  assert.equal(SYNTH.expenses.filter((e) => e.key === 'employer_costs').length, 1);
+  near(monthlyOperatingOverhead(SYNTH), 1000000 + 300000 + 400000 + 100000, 0);
 });
 
-test('monthly operating overhead sums the baseline to the KANEL total (3,248,624)', () => {
-  near(monthlyOperatingOverhead(DEFAULT_PROFILE), 3248624, 1);
+test('monthly operating overhead sums the expense lines; cash overhead includes invoice VAT', () => {
+  near(monthlyOperatingOverhead(SYNTH), 1800000, 0);
+  near(monthlyCashOverhead(SYNTH), 1824000, 0);
   // cash overhead (incl irrecoverable invoice VAT) is at least the accounting overhead
-  assert.ok(monthlyCashOverhead(DEFAULT_PROFILE) >= monthlyOperatingOverhead(DEFAULT_PROFILE));
+  assert.ok(monthlyCashOverhead(SYNTH) >= monthlyOperatingOverhead(SYNTH));
 });
 
 test('overhead allocation is by net-revenue share and reconciles back to the whole', () => {
-  const p = DEFAULT_PROFILE;
+  const p = SYNTH;
   const items = [
-    { guestPrice: 3190, productCost: 642 },
+    { guestPrice: 2220, productCost: 500 },
     { guestPrice: 1200, productCost: 300 },
     { guestPrice: 900, productCost: 180 },
   ];
@@ -207,7 +237,7 @@ test('overhead allocation is by net-revenue share and reconciles back to the who
 });
 
 test('break-even: contribution-margin ratio drives the net break-even revenue', () => {
-  const m = businessModel(DEFAULT_PROFILE);
+  const m = businessModel(SYNTH);
   assert.ok(m.contributionMarginRatio > 0 && m.contributionMarginRatio < 100);
   // break-even = fixed overhead / CM ratio (CM ratio is reported to 0.1%, so allow
   // the rounding band rather than exact ISK equality)
@@ -216,35 +246,35 @@ test('break-even: contribution-margin ratio drives the net break-even revenue', 
 });
 
 test('business model: VAT, cash remaining and operating profit are internally consistent', () => {
-  const m = businessModel(DEFAULT_PROFILE);
+  const m = businessModel(SYNTH);
   near(m.grossReceipts - m.monthlyNetSales, m.outputVat, 2);
   near(m.operatingContribution - m.fixedOverhead, m.operatingProfit, 2);
   near(m.operatingContribution - m.loanCollection - m.cashOverhead, m.cashRemaining, 2);
 });
 
 test('alerts: negative gross margin and thin margin are flagged; a healthy item is clean', () => {
-  const loss = priceProduct({ guestPrice: 500, productCost: 800 }, DEFAULT_PROFILE);
+  const loss = priceProduct({ guestPrice: 500, productCost: 800 }, SYNTH);
   assert.ok(loss.warnings.some((w) => w.code === 'negative_gross' && w.level === 'error'));
 
-  const thin = priceProduct({ guestPrice: 1000, productCost: 700 }, DEFAULT_PROFILE);
+  const thin = priceProduct({ guestPrice: 1000, productCost: 700 }, SYNTH);
   assert.ok(thin.warnings.some((w) => w.code === 'low_gross'));
 
-  const healthy = priceProduct({ guestPrice: 3190, productCost: 642 }, DEFAULT_PROFILE);
+  const healthy = priceProduct({ guestPrice: 2220, productCost: 500 }, SYNTH);
   assert.ok(!healthy.warnings.some((w) => w.level === 'error'));
-  // a 77.7% gross margin must NOT trip the "below 60%" low-margin warning
+  // a 75% gross margin must NOT trip the "below 60%" low-margin warning
   assert.ok(healthy.grossMarginPct > 60);
   assert.ok(!healthy.warnings.some((w) => w.code === 'low_gross'), 'healthy margin must not warn low_gross');
 });
 
 test('missing data never yields a confident price: cost of 0 is an error, not silent', () => {
-  const r = priceProduct({ guestPrice: 3190, productCost: 0 }, DEFAULT_PROFILE);
+  const r = priceProduct({ guestPrice: 2220, productCost: 0 }, SYNTH);
   assert.ok(r.warnings.some((w) => w.code === 'missing_cost' && w.level === 'error'));
-  const noPrice = priceProduct({ guestPrice: 0, productCost: 642 }, DEFAULT_PROFILE);
+  const noPrice = priceProduct({ guestPrice: 0, productCost: 500 }, SYNTH);
   assert.ok(noPrice.warnings.some((w) => w.code === 'missing_price'));
 });
 
 test('recommended price never sits below the minimum sustainable floor', () => {
-  const r = priceProduct({ guestPrice: 3190, productCost: 642 }, DEFAULT_PROFILE);
+  const r = priceProduct({ guestPrice: 2220, productCost: 500 }, SYNTH);
   assert.ok(r.recommendedPrice >= r.minimumPrice, `${r.recommendedPrice} < ${r.minimumPrice}`);
   // recommended price ends in the menu ending
   assert.equal(r.recommendedPrice % 100, 90);
@@ -256,25 +286,25 @@ test('recommended price is derived from the full cost structure, not a flat ingr
   // that the engine embeds them: at a FIXED ingredient cost, a heavier overhead
   // burden must raise the minimum sustainable price — a pure ingredient markup
   // never would (the floor is the guard-independent, monotonic signal).
-  const base = priceProduct({ guestPrice: 3290, productCost: 642 }, DEFAULT_PROFILE);
-  const heavier = priceProduct({ guestPrice: 3290, productCost: 642 },
-    { ...DEFAULT_PROFILE, monthlyOperatingOverheadOverride: monthlyOperatingOverhead(DEFAULT_PROFILE) * 1.3 });
+  const base = priceProduct({ guestPrice: 2290, productCost: 500 }, SYNTH);
+  const heavier = priceProduct({ guestPrice: 2290, productCost: 500 },
+    { ...SYNTH, monthlyOperatingOverheadOverride: monthlyOperatingOverhead(SYNTH) * 1.3 });
   assert.ok(heavier.minimumPriceExact > base.minimumPriceExact, 'heavier overhead must raise the floor');
   // and it is emphatically not the rule-of-thumb 3x ingredient cost
-  assert.notEqual(base.minimumPriceExact, 642 * 3);
-  assert.ok(base.minimumPriceExact > 642, 'floor exceeds bare ingredient cost');
+  assert.notEqual(base.minimumPriceExact, 500 * 3);
+  assert.ok(base.minimumPriceExact > 500, 'floor exceeds bare ingredient cost');
 });
 
 test('absurd-price guard: an impossibly costly item is floored and flagged not achievable', () => {
   // a product whose cost cannot be recovered at the surplus target within 2.5x the floor
-  const r = recommendedPrice({ productCost: 100000, profile: engine.withDefaults(DEFAULT_PROFILE) });
+  const r = recommendedPrice({ productCost: 100000, profile: engine.withDefaults(SYNTH) });
   if (!r.achievable) assert.equal(r.achievable, false);
   assert.ok(r.price > 0);
 });
 
 test('solveGuestPrice returns null when no price can satisfy the constraints', () => {
   // an absurd overhead rate makes the coefficient of P non-positive
-  const p = engine.withDefaults({ ...DEFAULT_PROFILE, monthlyNetSales: 1, monthlyOperatingOverheadOverride: 10 });
+  const p = engine.withDefaults({ ...SYNTH, monthlyNetSales: 1, monthlyOperatingOverheadOverride: 10 });
   const r = solveGuestPrice({ productCost: 100, profile: p, includeOverhead: true, includeLoan: true, includeSurplus: true });
   assert.equal(r, null);
 });
@@ -284,4 +314,26 @@ test('num parses messy currency strings and falls back safely', () => {
   assert.equal(num('1240'), 1240);
   assert.equal(num(undefined, 7), 7);
   assert.equal(num('', 0), 0);
+});
+
+// ---------- containment: the shipped defaults carry no business inputs ----------
+test('DEFAULT_PROFILE keeps only public rules: VAT rates and menu rounding, every business input zero/empty', () => {
+  const d = DEFAULT_PROFILE;
+  assert.equal(d.salesVatRate, 0.11);
+  assert.equal(d.standardPurchaseVatRate, 0.24);
+  assert.equal(d.reducedPurchaseVatRate, 0.11);
+  for (const key of ['employerCostPct', 'turnoverRentPctOfNet', 'loanCollectionPct', 'cardShare', 'merchantFeePct',
+    'blendedProductCostPct', 'targetCashSurplusPctOfNet', 'monthlyNetSales', 'historicalMonthlyNetSales', 'wastePct', 'garnishPerServing']) {
+    assert.equal(d[key], 0, `${key} must not ship a business value`);
+  }
+  assert.deepEqual([...d.expenses], []);
+  assert.deepEqual([...d.historicalReconciliations], []);
+  assert.equal(engine.KANEL_BASELINE, undefined, 'no baseline alias is exported');
+  // With the neutral defaults the engine still works (VAT only, no overhead).
+  const r = priceProduct({ guestPrice: 2220, productCost: 500 });
+  near(r.netSales, 2000, 1);
+  assert.equal(r.turnoverRent, 0);
+  assert.equal(r.cardFee, 0);
+  assert.equal(r.loanCollection, 0);
+  assert.equal(r.allocatedOperatingOverhead, 0);
 });

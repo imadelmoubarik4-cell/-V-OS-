@@ -10,7 +10,7 @@
  *    include 11% VAT, so margin-on-menu-price overstates profit.
  *  - Operational materials (ice, garnish, cups, disposables) carry real costs;
  *    nothing is silently treated as zero.
- *  - The 15% loan collection is a FINANCING cash outflow, separated from operating
+ *  - The loan collection is a FINANCING cash outflow, separated from operating
  *    costs. Its base is configurable (gross incl VAT / net ex VAT / card only / settlement).
  *  - Monthly overhead is allocated across the expected sales mix and reconciles back
  *    to the whole-business overhead; it is never charged 100% to every product.
@@ -164,7 +164,7 @@
     const grossMarginPct = netSales > 0 ? grossProfit / netSales : NaN;
 
     // F. variable selling costs
-    const turnoverRent = netSales * p.turnoverRentPctOfNet;          // 9% of net
+    const turnoverRent = netSales * p.turnoverRentPctOfNet;          // on net sales
     const cardFee = guestPrice * p.cardShare * p.merchantFeePct;     // on card takings (incl VAT)
     const packaging = num(input.packagingPerServing, 0);
     const variableLabor = num(input.variableLaborPerServing, 0);
@@ -194,7 +194,7 @@
 
     // minimum sustainable price: covers product + variable selling + allocated OPERATING overhead
     const minimumPrice = solveGuestPrice({ productCost, targetNetMarginOfNet: 0, profile: p, includeOverhead: true, includeLoan: false, includeSurplus: false });
-    // recommended price: hits the business cash-surplus target (5% of net), guarded against absurdity
+    // recommended price: hits the business cash-surplus target (a share of net), guarded against absurdity
     const rec = recommendedPrice({ productCost, profile: p });
 
     return {
@@ -274,7 +274,7 @@
 
   function recommendedPrice({ productCost, profile }) {
     const p = profile;
-    // Price to hit the business cash-surplus target (5% of net) after overhead + loan.
+    // Price to hit the business cash-surplus target (a share of net) after overhead + loan.
     const target = solveGuestPrice({ productCost, profile: p, includeOverhead: true, includeLoan: true, includeSurplus: true });
     // Floor: minimum sustainable (operating break-even for the item).
     const floor = solveGuestPrice({ productCost, profile: p, includeOverhead: true, includeLoan: false, includeSurplus: false });
@@ -387,66 +387,37 @@
     withDefaults
   };
 
-  // ---------- KANEL launch baseline (October 2026 planning inputs) ----------
-  // Values and source classifications from the KANEL workbooks / VÁ records.
+  // ---------- neutral defaults ----------
+  // Only public rules live here: the Icelandic VAT rates and the menu rounding.
+  // Every business input (rates, sales, expenses) is zero/empty until a manager-
+  // authorised server profile supplies it; no business figures ship to the browser.
   var DEFAULT_PROFILE = {
     currency: 'ISK',
     salesVatRate: 0.11,                 // served F&B
     standardPurchaseVatRate: 0.24,
     reducedPurchaseVatRate: 0.11,
-    employerCostPct: 0.35,              // on gross wages (owner-selected allowance)
-    turnoverRentPctOfNet: 0.09,         // Heimar turnover rent, on net sales
-    loanCollectionPct: 0.15,
-    loanCollectionBase: 'gross_incl_vat', // conservative until the signed agreement verifies
-    cardShare: 0.90,
-    merchantFeePct: 0.02,               // effective Teya merchant fee
-    blendedProductCostPct: 0.25,        // preliminary blended COGS vs net sales
-    targetCashSurplusPctOfNet: 0.05,
-    // Overhead is allocated across the FORECAST net sales (V07 MODEL INPUTS:
-    // 7,214,400.56). The historical VÁ net is kept for context only.
-    monthlyNetSales: 7214401,           // KANEL forecast monthly net (overhead denominator)
-    historicalMonthlyNetSales: 5703083, // VÁ history — context, not current sales
-    wastePct: 0.03,                     // preparation/service waste (classics costing)
-    garnishPerServing: 20,              // direct per-drink garnish allowance (ISK)
+    employerCostPct: 0,
+    turnoverRentPctOfNet: 0,
+    loanCollectionPct: 0,
+    loanCollectionBase: 'gross_incl_vat',
+    cardShare: 0,
+    merchantFeePct: 0,
+    blendedProductCostPct: 0,
+    targetCashSurplusPctOfNet: 0,
+    monthlyNetSales: 0,                 // overhead denominator; 0 = no overhead allocation
+    historicalMonthlyNetSales: 0,
+    wastePct: 0,
+    garnishPerServing: 0,
     menuEnding: 90, menuStep: 100,      // round recommended prices up to xx90
     lowGrossMarginPct: 0.60,
     absurdPriceMultiple: 2.5,           // flag "recommended" if > 2.5x the floor
-    // Monthly expense baseline. monthlyEffective = ex recoverable VAT (accounting cost);
-    // monthlyCash = cash paid incl assumed invoice VAT. source = provenance class.
-    expenses: [
-      { key: 'heimar_building', label: 'Heimar shared building operating costs', category: 'property', monthlyEffective: 755000, monthlyCash: 755000, vatRecoverable: false, source: 'historical_revised_budget', note: 'Includes common-area cleaning, heating/hot water, ventilation, common electricity, shared waste. Do not double-charge these.' },
-      { key: 'heimar_marketing', label: 'Heimar shopping-centre marketing', category: 'marketing', monthlyEffective: 38000, monthlyCash: 47120, vatRecoverable: true, source: 'historical_midpoint' },
-      { key: 'electricity', label: 'Separate metered electricity', category: 'property', monthlyEffective: 30000, monthlyCash: 37200, vatRecoverable: true, source: 'historical_midpoint' },
-      { key: 'wages_gross', label: 'Historical gross staff wages', category: 'payroll', monthlyEffective: 1394654, monthlyCash: 1394654, vatRecoverable: false, source: 'historical_payroll_average' },
-      { key: 'employer_costs', label: 'Employer costs at 35%', category: 'payroll', monthlyEffective: 488129, monthlyCash: 488129, vatRecoverable: false, source: 'planning_allowance', note: '35% allowance covers payroll tax, pension, vacation accrual — do not add those again.' },
-      { key: 'weekend_staffing', label: 'Additional Friday/Saturday staffing', category: 'payroll', monthlyEffective: 75000, monthlyCash: 75000, vatRecoverable: false, source: 'launch_planning_allowance' },
-      { key: 'late_hour_building', label: 'Extended opening / late-hour building charges', category: 'property', monthlyEffective: 20000, monthlyCash: 24800, vatRecoverable: true, source: 'launch_planning_allowance' },
-      { key: 'proacc', label: 'ProAcc accounting and payroll', category: 'technology', monthlyEffective: 126138, monthlyCash: 156411, vatRecoverable: true, source: 'historical_cost_proxy' },
-      { key: 'dineout', label: 'Dineout POS / software', category: 'technology', monthlyEffective: 24371, monthlyCash: 30220, vatRecoverable: true, source: 'historical_cost_proxy' },
-      { key: 'teya_rental', label: 'Teya terminal rentals', category: 'technology', monthlyEffective: 6200, monthlyCash: 7688, vatRecoverable: true, source: 'historical_invoice_reference' },
-      { key: 'hringdu', label: 'Hringdu internet and service', category: 'technology', monthlyEffective: 15064, monthlyCash: 18679, vatRecoverable: true, source: 'historical_proxy' },
-      { key: 'vis_insurance', label: 'VÍS business insurance', category: 'insurance', monthlyEffective: 10552, monthlyCash: 10552, vatRecoverable: false, source: 'historical_policy_annualized', note: 'Insurance is VAT-exempt.' },
-      { key: 'isnic', label: 'ISNIC / domain renewal', category: 'technology', monthlyEffective: 516, monthlyCash: 640, vatRecoverable: true, source: 'historical_annualized' },
-      { key: 'meta_ads', label: 'Instagram / Meta advertising', category: 'marketing', monthlyEffective: 100000, monthlyCash: 100000, vatRecoverable: false, source: 'launch_marketing_budget', note: 'Foreign supplier — reverse-charge review required.' },
-      { key: 'creative', label: 'Marketing creative production', category: 'marketing', monthlyEffective: 25000, monthlyCash: 31000, vatRecoverable: true, source: 'launch_marketing_budget' },
-      { key: 'cloud_ai', label: 'Cloud, ChatGPT, Alcedo, AI and Workspace', category: 'technology', monthlyEffective: 35000, monthlyCash: 35000, vatRecoverable: false, source: 'launch_allowance', note: 'Mostly foreign software — reverse-charge review.' },
-      { key: 'cleaning', label: 'On-site cleaning and hygiene supplies', category: 'consumables', monthlyEffective: 25000, monthlyCash: 31000, vatRecoverable: true, source: 'launch_planning_allowance' },
-      { key: 'smart_waste', label: 'Additional smart-waste usage', category: 'property', monthlyEffective: 20000, monthlyCash: 24800, vatRecoverable: true, source: 'launch_planning_allowance' },
-      { key: 'permits', label: 'Permits and licence renewal reserve', category: 'compliance', monthlyEffective: 10000, monthlyCash: 10000, vatRecoverable: false, source: 'launch_planning_allowance' },
-      { key: 'repairs', label: 'Repairs, maintenance and breakage reserve', category: 'maintenance', monthlyEffective: 30000, monthlyCash: 37200, vatRecoverable: true, source: 'launch_planning_allowance' },
-      { key: 'bank_admin', label: 'Bank charges, sundries and administration', category: 'banking', monthlyEffective: 20000, monthlyCash: 20000, vatRecoverable: false, source: 'launch_planning_allowance' }
-    ],
-    // Non-recurring reference (not in monthly totals):
-    historicalReconciliations: [
-      { key: 'laufey_2025_2026', label: 'Heimar operating-cost reconciliation adjustment', amount: 628757, recurring: false, source: 'historical_reconciliation_event', note: 'One-off reconciliation for a specific service period — not a recurring monthly charge.' }
-    ]
+    expenses: [],
+    historicalReconciliations: []
   };
 
   engine.DEFAULT_PROFILE = DEFAULT_PROFILE;
-  engine.KANEL_BASELINE = DEFAULT_PROFILE;
   if (typeof module !== 'undefined' && module.exports) {
     module.exports.DEFAULT_PROFILE = DEFAULT_PROFILE;
-    module.exports.KANEL_BASELINE = DEFAULT_PROFILE;
     Object.assign(module.exports, engine);
   }
   return engine;

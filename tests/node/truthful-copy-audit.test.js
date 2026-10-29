@@ -25,11 +25,13 @@ test('L41: with file reading off, Data stores files and promises no import', () 
   assert.match(data, /cfg\.IMPORT_WORKER_API === `\$\{target\}\/functions\/v1\/atlas-import-worker` \? cfg\.IMPORT_WORKER_API : ''/);
 });
 
-test('L42: Menu Pricing names its baseline as the built-in launch baseline, never "saved"', () => {
+test('L42: Menu Pricing never claims figures it does not have: no "saved" or built-in baseline', () => {
   const pricing = read('apps/web/assets/js/finance-pricing-workspace.js');
   assert.doesNotMatch(pricing, /saved baseline/i);
-  assert.match(pricing, /KANEL’s built-in launch baseline \(October 2026 planning figures/);
-  assert.match(pricing, /over the built-in launch baseline \(October 2026 planning figures\), not live menu prices/);
-  // The figures really are the engine's built-in profile.
-  assert.match(read('apps/web/assets/js/kanel-pricing-engine.js'), /KANEL launch baseline \(October 2026 planning inputs\)/);
+  // No business figures ship with the app (containment), so the copy may not
+  // promise a built-in baseline; it says the figures come from the server.
+  assert.doesNotMatch(pricing, /built-in launch baseline|bundled with the app\. Nothing/);
+  assert.match(pricing, /The pricing profile \(rent, card fees, loan, overhead and VAT\) comes from the secure pricing service\./);
+  assert.match(pricing, /Pricing figures are only available from the secure pricing service, which is not connected yet\. No prices were changed\./);
+  assert.doesNotMatch(read('apps/web/assets/js/kanel-pricing-engine.js'), /launch baseline|planning inputs/);
 });

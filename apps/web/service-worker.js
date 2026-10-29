@@ -4,7 +4,7 @@
 //   * App-shell cache so the installed app opens instantly and works offline.
 //   * Push + notification click handling.
 // Bump CACHE whenever the precache list below or the caching rules change.
-const CACHE = 'alcedo-shell-v4';
+const CACHE = 'alcedo-shell-v5';
 const SHELL = [
   './',
   './index.html',
